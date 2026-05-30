@@ -1,0 +1,10 @@
+{
+  "name": "@boule/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Boule 前后端共享类型。各类型随其消费 IU 落地（workflow/phase/agent/cost/share）。",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

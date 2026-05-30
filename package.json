@@ -1,0 +1,24 @@
+{
+  "name": "boule",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Boule — AI 驱动咨询流程的 Web 工作台（consulting-team v2.4 skill 的 Web 化执行+可视化层）",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "db:generate": "pnpm --filter @boule/api db:generate",
+    "db:migrate": "pnpm --filter @boule/api db:migrate",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

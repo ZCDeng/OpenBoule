@@ -1,0 +1,22 @@
+{
+  "name": "@boule/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Boule Fastify 后端（U1: 数据层；后续 U2-U6/U10）。",
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=../../.env src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@boule/shared": "workspace:*",
+    "drizzle-orm": "^0.38.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.0",
+    "drizzle-kit": "^0.30.0"
+  }
+}

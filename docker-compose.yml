@@ -1,0 +1,64 @@
+# Boule 基础设施（U1：数据层）。
+# 默认 `docker compose up -d` 只起 postgres + redis（数据层）。
+# api 服务在 profile `app` 下（待 U3/U6 有 Fastify 入口后用 `--profile app` 启用）。
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: boule-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-boule}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-boule_dev_pw_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-boule}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - boule_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-boule} -d ${POSTGRES_DB:-boule}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: boule-redis
+    restart: unless-stopped
+    # AOF 持久化（KTD-19）：BullMQ 用 DB 0、nonce 撤销集 + 分布式锁用 DB 1（逻辑隔离），
+    # appendonly 保证已撤销 nonce 不因重启丢失。
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - boule_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── app（U3/U6 启用）──
+  # 当前无 Fastify 入口（src/index.ts 待 U6），故置于 profile `app`，默认不启动。
+  # 启用迁移/服务：docker compose --profile app run --rm api
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: boule-api
+    profiles: ["app"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-boule}:${POSTGRES_PASSWORD:-boule_dev_pw_change_me}@postgres:5432/${POSTGRES_DB:-boule}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    # U1 阶段默认跑迁移；U6 起改为启动 Fastify。
+    command: ["pnpm", "--filter", "@boule/api", "db:migrate"]
+
+volumes:
+  boule_pgdata:
+  boule_redisdata:
