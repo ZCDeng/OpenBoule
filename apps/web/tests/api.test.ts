@@ -66,6 +66,26 @@ test("并发 401 单飞刷新：只刷新一次", async () => {
   assert.equal(refreshHits, 1); // 单飞：两路 401 只触发一次刷新
 });
 
+test("空 body POST 不带 content-type（避免 Fastify FST_ERR_CTP_EMPTY_JSON_BODY）", async () => {
+  let seen: Record<string, string> | undefined;
+  const h = makeClient((_url, init) => {
+    seen = init?.headers as Record<string, string>;
+    return res(200, { ticket: "t1" });
+  });
+  await h.client.json<{ ticket: string }>("/api/sse/ticket", { method: "POST" });
+  assert.equal(seen?.["content-type"], undefined); // 无 body → 不声明 JSON content-type
+});
+
+test("有 body 时自动声明 JSON content-type", async () => {
+  let seen: Record<string, string> | undefined;
+  const h = makeClient((_url, init) => {
+    seen = init?.headers as Record<string, string>;
+    return res(200, { ok: true });
+  });
+  await h.client.json("/api/projects", { method: "POST", body: JSON.stringify({ name: "x" }) });
+  assert.equal(seen?.["content-type"], "application/json");
+});
+
 test("auth 端点的 401 不触发刷新（避免递归）", async () => {
   const h = makeClient(() => res(401, { error: "INVALID_CREDENTIALS" }));
   const r = await h.client.request("/api/auth/login", { method: "POST" });

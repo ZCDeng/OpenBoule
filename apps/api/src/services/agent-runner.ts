@@ -96,6 +96,6 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
       score = { composite: result.ok ? 0.85 : 0, mustFix: 0, languageGateFailed: !gate.passed };
     }
 
-    return { ok: result.ok, text: result.finalText, score };
+    return { ok: result.ok, text: result.finalText, score, errorCode: result.errorCode };
   };
 }

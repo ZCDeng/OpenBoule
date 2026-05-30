@@ -356,8 +356,8 @@ export class WorkflowEngine {
       attemptNumber: number;
     };
     return this.withAttempt(job, workflowId, phase, attemptNumber, async () => {
-      const { artifact, ok } = await runSinglePhase(this.agentRunner, { workflowId, phase });
-      if (!ok) throw new Error(`phase ${phase} agent 失败`);
+      const { artifact, ok, errorCode } = await runSinglePhase(this.agentRunner, { workflowId, phase });
+      if (!ok) throw new Error(`phase ${phase} agent 失败（${errorCode ?? "UNKNOWN"}）`);
       await writeArtifactIdempotent(this.db, {
         workflowId,
         phase,

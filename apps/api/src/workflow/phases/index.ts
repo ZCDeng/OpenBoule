@@ -22,6 +22,8 @@ export interface AgentRunResult {
   text: string;
   /** Phase 4 editor 自评 / U5 PM 语言闸门评分；缺省按「不可放行」处理。 */
   score?: { composite: number; mustFix: number; languageGateFailed: boolean };
+  /** 失败时的归类码（U3 classifyError）；ok=false 时携带，供 engine fail-loud 上报。 */
+  errorCode?: string;
 }
 
 export type AgentRunner = (spec: AgentRunSpec) => Promise<AgentRunResult>;
@@ -37,14 +39,14 @@ export interface PhaseArtifact {
 export async function runSinglePhase(
   agentRunner: AgentRunner,
   args: { workflowId: string; phase: string; role?: string; task?: string },
-): Promise<{ artifact: PhaseArtifact; ok: boolean }> {
+): Promise<{ artifact: PhaseArtifact; ok: boolean; errorCode?: string }> {
   const r = await agentRunner({
     workflowId: args.workflowId,
     phase: args.phase,
     role: args.role ?? args.phase,
     task: args.task ?? args.phase,
   });
-  return { ok: r.ok, artifact: { type: args.phase, body: r.text, status: "draft" } };
+  return { ok: r.ok, errorCode: r.errorCode, artifact: { type: args.phase, body: r.text, status: "draft" } };
 }
 
 // ── fanout：child + aggregate ──

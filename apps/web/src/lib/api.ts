@@ -90,10 +90,13 @@ export class ApiClient {
   }
 
   async json<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const res = await this.request(path, {
-      ...init,
-      headers: { "content-type": "application/json", ...(init.headers as Record<string, string>) },
-    });
+    // 仅在有 body 时声明 JSON content-type：空 body 的 POST（如 /api/sse/ticket）
+    // 若带 content-type:application/json，Fastify 会以 FST_ERR_CTP_EMPTY_JSON_BODY 拒绝（400）。
+    const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
+    if (init.body != null && headers["content-type"] === undefined) {
+      headers["content-type"] = "application/json";
+    }
+    const res = await this.request(path, { ...init, headers });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
       throw new ApiError(res.status, body.error ?? "ERROR", body.message);
