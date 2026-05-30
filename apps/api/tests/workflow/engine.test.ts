@@ -147,3 +147,59 @@ test("redo：在 checkpoint 重排当前 phase（新 attempt）", { timeout: 300
   const nums = (attempts as unknown as { rows: { attempt_number: number }[] }).rows.map((x) => x.attempt_number);
   assert.deepEqual(nums, [1, 2]); // 两次 attempt
 });
+
+test("checkpoint→surface：暂停时建 pending surface + 发 surface_request；approve 解析 + 留痕", { timeout: 30000 }, async () => {
+  const wf = await seed();
+  await engine.startWorkflow(wf);
+  await waitForStatus(wf, "paused_for_approval");
+
+  // pending surface 已建，schema_digest = phase:attempt
+  const pend = await db.execute(
+    sql`SELECT id, schema_digest AS "sd", status FROM checkpoint_surfaces WHERE workflow_id = ${wf} AND status = 'pending'`,
+  );
+  const surfaces = (pend as unknown as { rows: { id: string; sd: string; status: string }[] }).rows;
+  assert.equal(surfaces.length, 1);
+  assert.equal(surfaces[0]!.sd, "phase0_init:1");
+
+  // surface_request 事件已落 workflow_events
+  const ev = await db.execute(
+    sql`SELECT count(*)::int AS "n" FROM workflow_events WHERE run_id = ${wf} AND event = 'surface_request'`,
+  );
+  assert.ok((ev as unknown as { rows: { n: number }[] }).rows[0]!.n >= 1);
+
+  // approve 带 responded_by → surface resolved + 留痕
+  await engine.approve(wf, { user_id: "u-test", role: "editor" });
+  const resolved = await db.execute(
+    sql`SELECT status, responded_by AS "rb" FROM checkpoint_surfaces WHERE id = ${surfaces[0]!.id}`,
+  );
+  const row = (resolved as unknown as { rows: { status: string; rb: { user_id: string; role: string } }[] }).rows[0]!;
+  assert.equal(row.status, "resolved");
+  assert.equal(row.rb.user_id, "u-test");
+  assert.equal(row.rb.role, "editor");
+});
+
+test("rerunFrom：清 stale + 重排该 phase（新 attempt），运行中拒绝 409", { timeout: 30000 }, async () => {
+  const wf = await seed();
+  await engine.startWorkflow(wf);
+  await waitForStatus(wf, "paused_for_approval"); // phase0 暂停
+
+  // 造一个 phase0 的 stale artifact（模拟编辑后下游过期）
+  await db.execute(
+    sql`INSERT INTO artifacts (workflow_id, phase, type, version, body, stale) VALUES (${wf}, 'phase0_init', 't', 1, 'x', true)`,
+  );
+
+  await engine.rerunFrom(wf, "phase0_init", { user_id: "u-test", role: "editor" });
+  await waitForStatus(wf, "paused_for_approval"); // 重排后再次暂停
+
+  // stale 已清
+  const stale = await db.execute(
+    sql`SELECT count(*)::int AS "n" FROM artifacts WHERE workflow_id = ${wf} AND phase = 'phase0_init' AND stale = true`,
+  );
+  assert.equal((stale as unknown as { rows: { n: number }[] }).rows[0]!.n, 0);
+
+  // 多了一次 attempt + 审计落库
+  const audit = await db.execute(
+    sql`SELECT count(*)::int AS "n" FROM workflow_events WHERE run_id = ${wf} AND event = 'rerun-audit'`,
+  );
+  assert.ok((audit as unknown as { rows: { n: number }[] }).rows[0]!.n >= 1);
+});

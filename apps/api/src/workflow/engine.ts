@@ -46,6 +46,9 @@ import {
   writeArtifactIdempotent,
 } from "./checkpoint.ts";
 import { EventReplayBuffer, type EventSink } from "./events.ts";
+import { requestSurface, resolvePendingSurfaces } from "../services/surface-cache.ts";
+import { clearStale, downstreamPhases, logRerun } from "../services/lineage.ts";
+import type { Role } from "../services/rbac.ts";
 import {
   runSinglePhase,
   runResearchChild,
@@ -164,10 +167,11 @@ export class WorkflowEngine {
   }
 
   /** 审批通过 → 继续下一 phase。CAS 输 → 409。 */
-  async approve(workflowId: string): Promise<{ done: boolean; next: PhaseId | null }> {
+  async approve(workflowId: string, respondedBy?: { user_id: string; role: Role }): Promise<{ done: boolean; next: PhaseId | null }> {
     const wf = await this.getWorkflow(workflowId);
     const won = await approveCAS(this.db, workflowId);
     if (!won) throw new CheckpointConflictError(`approve 失败：workflow ${workflowId} 非 paused_for_approval`);
+    await this.resolveSurface(workflowId, wf.currentPhase, respondedBy);
     await this.emit(workflowId, "workflow-status-changed", { phase: wf.currentPhase, status: "approved" });
 
     const next = resolveNextPhase(wf.currentPhase, "continue");
@@ -181,18 +185,21 @@ export class WorkflowEngine {
   }
 
   /** 重跑当前 phase（新 attempt）。CAS 输 → 409。 */
-  async redo(workflowId: string): Promise<void> {
+  async redo(workflowId: string, respondedBy?: { user_id: string; role: Role }): Promise<void> {
     const wf = await this.getWorkflow(workflowId);
     const won = await claimCheckpointToRunning(this.db, workflowId);
     if (!won) throw new CheckpointConflictError(`redo 失败：workflow ${workflowId} 非 paused_for_approval`);
+    await this.resolveSurface(workflowId, wf.currentPhase, respondedBy);
     const attempt = await nextAttemptNumber(this.db, workflowId, wf.currentPhase);
     await this.enqueuePhase(workflowId, wf.currentPhase, attempt);
   }
 
   /** 补研究：回 Phase 2 重跑（新 attempt）。CAS 输 → 409。 */
-  async augment(workflowId: string): Promise<void> {
+  async augment(workflowId: string, respondedBy?: { user_id: string; role: Role }): Promise<void> {
+    const wf = await this.getWorkflow(workflowId);
     const won = await claimCheckpointToRunning(this.db, workflowId);
     if (!won) throw new CheckpointConflictError(`augment 失败：workflow ${workflowId} 非 paused_for_approval`);
+    await this.resolveSurface(workflowId, wf.currentPhase, respondedBy);
     const target: PhaseId = "phase2_research";
     const attempt = await nextAttemptNumber(this.db, workflowId, target);
     await resumeRunning(this.db, workflowId, target);
@@ -200,11 +207,34 @@ export class WorkflowEngine {
   }
 
   /** 拒绝。CAS 输 → 409。 */
-  async reject(workflowId: string): Promise<void> {
+  async reject(workflowId: string, respondedBy?: { user_id: string; role: Role }): Promise<void> {
     const wf = await this.getWorkflow(workflowId);
     const won = await rejectCAS(this.db, workflowId);
     if (!won) throw new CheckpointConflictError(`reject 失败：workflow ${workflowId} 非 paused_for_approval`);
+    await this.resolveSurface(workflowId, wf.currentPhase, respondedBy);
     await this.emit(workflowId, "workflow-status-changed", { phase: wf.currentPhase, status: "rejected" });
+  }
+
+  /**
+   * lineage 重跑：从某 phase 重新执行（读最新上游 artifact 再生成下游）。
+   * 用户在文档工作台「保存并重跑下游」后调；清该 phase 的 stale + 重排（新 attempt）+ 留痕审计。
+   * workflow 正在 running 某 phase 时拒绝（409），避免与在跑 phase 撞。
+   */
+  async rerunFrom(workflowId: string, phase: PhaseId, respondedBy?: { user_id: string; role: Role }): Promise<void> {
+    const wf = await this.getWorkflow(workflowId);
+    if (wf.status === "running") {
+      throw new CheckpointConflictError(`rerun 失败：workflow ${workflowId} 正在执行 phase，请等当前 checkpoint`);
+    }
+    await clearStale(this.db, workflowId, phase);
+    await resumeRunning(this.db, workflowId, phase);
+    const attempt = await nextAttemptNumber(this.db, workflowId, phase);
+    await this.enqueuePhase(workflowId, phase, attempt);
+    await logRerun(this.db, workflowId, {
+      phase,
+      status: "enqueued",
+      readArtifactVersions: { downstream: downstreamPhases(phase) },
+    });
+    await this.emit(workflowId, "workflow-rerun-requested", { phase, by: respondedBy?.user_id });
   }
 
   /**
@@ -399,7 +429,7 @@ export class WorkflowEngine {
     try {
       await body();
       await completeAttempt(this.db, attempt.id, owner);
-      await this.checkpoint(workflowId, phase);
+      await this.checkpoint(workflowId, phase, attemptNumber);
       return { ok: true };
     } catch (err) {
       clearInterval(hb);
@@ -410,10 +440,25 @@ export class WorkflowEngine {
     }
   }
 
-  /** phase 完成 → 挂起等审批 + 发事件。 */
-  private async checkpoint(workflowId: string, phase: PhaseId): Promise<void> {
+  /**
+   * phase 完成 → 挂起等审批 + 建 checkpoint surface + 发事件。
+   * schema_digest = `${phase}:${attempt}`：每 attempt 一个独立 surface（reconnect 不重弹已答的；
+   * redo 产 attempt+1 → 新 digest → 重新弹出）。
+   */
+  private async checkpoint(workflowId: string, phase: PhaseId, attemptNumber: number): Promise<void> {
     await pauseForApproval(this.db, workflowId, phase);
+    const schemaDigest = `${phase}:${attemptNumber}`;
+    const surface = await requestSurface(this.db, { workflowId, phase, schemaDigest });
+    await this.emit(workflowId, "surface_request", { surfaceId: surface.id, phase, schemaDigest, status: "pending" });
     await this.emit(workflowId, "workflow-status-changed", { phase, status: "paused_for_approval" });
+  }
+
+  /** 决策后把当前 phase 的 pending surface 置 resolved + 发 surface_response。 */
+  private async resolveSurface(workflowId: string, phase: PhaseId, respondedBy?: { user_id: string; role: Role }): Promise<void> {
+    const resolved = await resolvePendingSurfaces(this.db, workflowId, phase, respondedBy);
+    for (const s of resolved) {
+      await this.emit(workflowId, "surface_response", { surfaceId: s.id, schemaDigest: s.schemaDigest, status: "resolved" });
+    }
   }
 
   // ── 辅助 ──

@@ -106,3 +106,22 @@ test("非 editor 审批被拒：viewer approve → 403", async () => {
   const denied = await app.inject({ method: "POST", url: `/api/workflows/${wf}/approve`, headers: auth(viewer.token) });
   assert.equal(denied.statusCode, 403); // viewer 不能审批 checkpoint
 });
+
+test("HTTP rerun：editor 在 checkpoint 重跑某 phase → 200；非法 phase → 400", async () => {
+  const owner = await registerUser(app);
+  users.push(owner.userId);
+  const projRes = await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "RR" } });
+  const projectId = (projRes.json() as { projectId: string }).projectId;
+  projects.push(projectId);
+  const wfRes = await app.inject({ method: "POST", url: "/api/workflows", headers: auth(owner.token), payload: { projectId } });
+  const wf = (wfRes.json() as { workflowId: string }).workflowId;
+  await waitPaused(wf);
+
+  const bad = await app.inject({ method: "POST", url: `/api/workflows/${wf}/rerun`, headers: auth(owner.token), payload: { phase: "nope" } });
+  assert.equal(bad.statusCode, 400);
+
+  const ok = await app.inject({ method: "POST", url: `/api/workflows/${wf}/rerun`, headers: auth(owner.token), payload: { phase: "phase0_init" } });
+  assert.equal(ok.statusCode, 200);
+  assert.equal((ok.json() as { rerunFrom: string }).rerunFrom, "phase0_init");
+  await waitPaused(wf); // 重跑后再次暂停
+});

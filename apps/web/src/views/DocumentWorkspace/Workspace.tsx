@@ -3,12 +3,13 @@
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "../../stores/auth.ts";
 import { DocumentList, type DocItem } from "./DocumentList.tsx";
 import { Editor } from "./Editor.tsx";
 import { VersionHistory } from "./VersionHistory.tsx";
 import { Skeleton, EmptyState, ErrorBanner } from "../../components/States.tsx";
+import { PHASE_LABELS } from "../../lib/phases.ts";
 
 interface ArtifactRow extends DocItem {
   version: number;
@@ -42,9 +43,31 @@ export function Workspace({ workflowId }: { workflowId: string }) {
   }
 
   const stalePhases = new Set(stale.data?.stalePhases ?? []);
+  // 最早的 stale phase（按 phase 顺序）——重跑从它起，下游随审批前进自然重跑
+  const earliestStale = PHASE_LABELS.map((p) => p.id).find((id) => stalePhases.has(id));
+
+  const rerun = useMutation({
+    mutationFn: (phase: string) =>
+      api.json(`/api/workflows/${workflowId}/rerun`, { method: "POST", body: JSON.stringify({ phase }) }),
+    onSuccess: () => void stale.refetch(),
+  });
 
   return (
-    <div className="grid grid-cols-[200px_1fr_180px] gap-4">
+    <div className="space-y-4">
+      {earliestStale && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          <span>⚠ {stalePhases.size} 个下游阶段因上游编辑已过期。</span>
+          <button
+            onClick={() => rerun.mutate(earliestStale)}
+            disabled={rerun.isPending}
+            className="rounded bg-amber-600 px-2.5 py-1 text-xs text-white disabled:opacity-50"
+          >
+            {rerun.isPending ? "重跑中…" : "保存并重跑下游"}
+          </button>
+          {rerun.isError && <span className="text-xs text-red-600">重跑失败（需 Editor 且当前无运行中阶段）</span>}
+        </div>
+      )}
+      <div className="grid grid-cols-[200px_1fr_180px] gap-4">
       <aside className="rounded-lg border border-neutral-200 bg-white">
         <DocumentList docs={arts.data.artifacts} stalePhases={stalePhases} selectedId={selectedId} onSelect={setSelectedId} />
       </aside>
@@ -65,6 +88,7 @@ export function Workspace({ workflowId }: { workflowId: string }) {
           </>
         )}
       </aside>
+      </div>
     </div>
   );
 }

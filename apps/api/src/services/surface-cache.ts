@@ -66,6 +66,25 @@ export async function resolvedDigests(db: DB, workflowId: string): Promise<strin
   return (res as unknown as { rows?: { schemaDigest: string }[] }).rows?.map((r) => r.schemaDigest) ?? [];
 }
 
+/**
+ * 引擎决策（approve/redo/...）时把某 phase 的 pending surface 批量置 resolved。
+ * RBAC 已在审批路由的 requireProjectRole 把关，这里不再门控；respondedBy 选传作审计留痕。
+ * 返回被解析的 {id, schemaDigest}（供引擎发 surface_response 事件）。
+ */
+export async function resolvePendingSurfaces(
+  db: DB,
+  workflowId: string,
+  phase: string,
+  respondedBy?: { user_id: string; role: Role },
+): Promise<{ id: string; schemaDigest: string }[]> {
+  const setRb = respondedBy ? sql`, responded_by = ${JSON.stringify(respondedBy)}::jsonb` : sql``;
+  const res = await db.execute(sql`
+    UPDATE checkpoint_surfaces SET status = 'resolved'${setRb}
+     WHERE workflow_id = ${workflowId} AND phase = ${phase} AND status = 'pending'
+    RETURNING id, schema_digest AS "schemaDigest"`);
+  return (res as unknown as { rows?: { id: string; schemaDigest: string }[] }).rows ?? [];
+}
+
 export type RespondResult =
   | { ok: true; surfaceId: string }
   | { ok: false; code: "FORBIDDEN"; status: 403 }

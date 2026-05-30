@@ -120,8 +120,14 @@
   **真 socket 验证**：起进程 listening:3100 → curl /health·注册(发JWT)·建项目·列表·401·SIGTERM 优雅关闭，全通。
   scripts: `pnpm --filter @boule/api start|dev`；compose api 服务改 migrate→start，配置走 compose env（JWT_SECRET 必填）。
   注：role 映射是临时表（真实 dispatch matrix 待接）；phase 真跑需 SDK auth（CLI 会话或 ANTHROPIC_API_KEY）。
-- **engine↔surface/2.5/lineage-rerun wiring**：checkpoint→requestSurface+emit surface 事件；Phase 2.5 结构化裁决落库；
-  lineage「保存并重跑下游」调 engine re-enqueue。
+- ✅ **engine↔surface wiring**（已做）：checkpoint 暂停时 `requestSurface`（schema_digest=`phase:attempt`，
+  reconnect 不重弹/redo 新 attempt 重弹）+ emit `surface_request`；approve/redo/augment/reject 解析当前 phase 的
+  pending surface（`resolvePendingSurfaces` + `responded_by` 留痕，RBAC 在审批路由把关）+ emit `surface_response`。
+- ✅ **lineage-rerun wiring**（已做）：`engine.rerunFrom(phase)` 清 stale + 重排 phase（新 attempt）+ logRerun 审计，
+  运行中拒绝 409；`POST /api/workflows/:id/rerun`（editor+）；前端文档工作台 stale 横幅「保存并重跑下游」。
+  真测：engine surface 生命周期(建/解析/留痕) + rerun(清 stale/重排/审计) + HTTP rerun 200·非法 phase 400。
+- **Phase 2.5 结构化裁决落库**（仍未接）：需 source-verifier 多票 loop + adjudicate 写库（依赖 agent 输出 schema），
+  比纯 wiring 多——VerdictView 现仍由 props 注入。
 - Open Q 13：messages-api 裸 key 端到端对照（需 `ANTHROPIC_API_KEY`）。
 - git remote 是否建（当前无 origin，全程未 push）。
 - 优化：TipTap/React Flow bundle code-split；Recharts/ELK.js 升级；langfuse（KTD-22 Deferred）。
