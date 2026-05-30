@@ -15,7 +15,8 @@
 | U4 工作流引擎 | `c456f51` | ✅ | 真 BullMQ+真 PG 整合：9-phase happy 全跑通 / 每 phase checkpoint 暂停 / 审批后继续 / fan-out partial（researcher 失败不阻塞）/ redo 重排 / 双 approve→409。21 新测（state 纯机 + checkpoint CAS/lease/幂等/事件 + engine 整合），全套 53 绿 |
 | U5 确定性 PM 逻辑 | `47363f7` | ✅ | invariant helper（url-dedup / coverage / grep / language-gate / cost-calc）+ KTD-21 裁决核心（adjudicate 四态/顺序即正确性/弃权归一）+ config 从真值源解析（不硬编码）。23 新测（含对真实缓存 SKILL.md/editor.md 回归 + cost 真 PG），全套 76 绿 |
 | U6 API 网关层 | `821779b` | ✅ | Fastify 网关 wire U2/U4/U5：自建 JWT(HS256)+scrypt 认证 / 四级 RBAC / publication+stub 护栏 / opaque 分享 token(404/410/429) / surface 写授权(editor+,external·viewer 拒) / SSE 一次性 ticket + Last-Event-ID 续传 + 重连重新鉴权。11 新测（app.inject 真 PG+Redis + 真引擎 E2E 注册→项目→workflow→逐 checkpoint 审批→完成），全套 87 绿 |
-| U7 前端骨架 | （本次） | ✅ | Vite+React19+Tailwind4 脚手架 + 路由(/login,/projects,/projects/:id,/workflows/:id,/methodology,/s/:token) + Zustand/React Query + lib(api 401刷新 / sse 有界队列+退避+Last-Event-ID 续传 / surface 去重) + CheckpointCard + 6 态原语。14 web 单测（注入 fetch/EventSource/scheduler）+ pnpm build 通过 + dev 冒烟 200。api 仍 87 绿 |
+| U7 前端骨架 | `eea36c9` | ✅ | Vite+React19+Tailwind4 脚手架 + 路由(/login,/projects,/projects/:id,/workflows/:id,/methodology,/s/:token) + Zustand/React Query + lib(api 401刷新 / sse 有界队列+退避+Last-Event-ID 续传 / surface 去重) + CheckpointCard + 6 态原语。14 web 单测（注入 fetch/EventSource/scheduler）+ pnpm build 通过 + dev 冒烟 200。api 仍 87 绿 |
+| U8 前端核心视图 | （本次） | ✅ | 方法论 React Flow 编排图(@xyflow/react,确定性布局)+ Run 时间线(phase 卡片/当前高亮/审批 inline+role 门控/below_threshold 徽章)+ Agent 监控(KPI/SVG 成本图/虚拟列表 job/四态裁决 tab)。补 U6: GET /:id/cost + workflow GET 带 myRole。lib/derive 5 测(phaseStatus/verdictBadge/布局/KPI)，web 19 测，build 通过，api 87 绿 |
 
 ## 环境状态
 
@@ -74,9 +75,19 @@
   各页复用，避免漏态。
 - **方法论页为静态 phase 总览占位**：完整 React Flow 7-phase 交互编排图是 U8。
 
+## U8 落地说明
+
+- **可视化「真跑」= pnpm build(含 React Flow 编译) + derive 纯逻辑 node:test + 6 态覆盖**。组件展示层经
+  vite build 验证；phaseStatus/verdictBadge/布局/KPI 等派生逻辑 node:test 过。
+- **布局不引 ELK.js**：7+2 phase 是线性链，确定性手算（layoutPhases）即可，省一个 async/worker 依赖。
+- **成本图用内联 SVG 替 Recharts/Tremor**：v1 数据点少，省重依赖；图表库待交互/数据量上来再换。
+- **VerdictView 数据源未落库**：Phase 2.5 结构化裁决的 engine↔2.5 wiring 未做，VerdictView 由 props 注入（空态友好）。
+  徽章用 U5 同义的代码裁决映射（verdictBadge），非 verifier 自报（KTD-21）。
+- **顺带补 U6**：GET /api/workflows/:id/cost(computeCost)+ workflow GET 带 myRole（前端按 editor/viewer 显隐审批按钮）。
+
 ## 下一步
 
-- **U8 前端核心视图**：方法论 React Flow 编排图 + Run 时间线 + Agent/成本监控。依赖 U6/U7。
+- **U9 文档工作台 + 报告预览**：TipTap 编辑器 + 版本历史 + 单写者锁(Redis) + artifact lineage(stale 下游) + iframe 报告预览。依赖 U7。
 - 未决：Open Q 13（messages-api 裸 key 端到端对照，需 `ANTHROPIC_API_KEY`）；git remote 是否建；
   组合根（server.ts listen + 生产 agentRunner role 映射，随 dispatch matrix）；
   surface 生命周期 engine↔U6 wiring（checkpoint→requestSurface+emit surface 事件，目前 checkpoint 走 workflow-status-changed）。

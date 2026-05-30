@@ -5,8 +5,9 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole } from "../middleware/auth.ts";
+import { authenticate, requireProjectRole, getProjectRoleFromReq } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
+import { computeCost } from "../pm/cost-calc.ts";
 
 export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
@@ -56,9 +57,25 @@ export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): voi
       const res = await db.execute(sql`
         SELECT id, project_id AS "projectId", current_phase AS "currentPhase", status, mode, axes
           FROM workflows WHERE id = ${id}`);
-      const row = (res as unknown as { rows?: unknown[] }).rows?.[0];
+      const row = (res as unknown as { rows?: Record<string, unknown>[] }).rows?.[0];
       if (!row) return reply.code(404).send({ error: "NOT_FOUND" });
-      return reply.send(row);
+      // 带上调用者角色：前端据此显隐审批按钮（editor+ 可见，viewer 隐藏）
+      return reply.send({ ...row, myRole: getProjectRoleFromReq(req).role });
+    },
+  );
+
+  // 成本三层（KTD-22）：Agent 监控 KPI/图表数据源（viewer+）
+  app.get(
+    "/api/workflows/:id/cost",
+    {
+      preHandler: [
+        authenticate,
+        requireProjectRole(db, "viewer", async (req) => getWorkflowProjectId(db, (req.params as { id: string }).id)),
+      ],
+    },
+    async (req, reply) => {
+      const id = (req.params as { id: string }).id;
+      return reply.send(await computeCost(db, id));
     },
   );
 }
