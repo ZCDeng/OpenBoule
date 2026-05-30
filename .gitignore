@@ -1,0 +1,27 @@
+# deps
+node_modules/
+**/node_modules/
+
+# build
+dist/
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# runtime caches
+skills-cache/
+spikes/.snapshot-cache/
+
+# editor / os
+.DS_Store
+*.log
+
+# claude worktrees
+.claude/worktrees/
+
+# tooling runtime state (machine-local, not project source)
+.omx/
+.claude/homunculus/

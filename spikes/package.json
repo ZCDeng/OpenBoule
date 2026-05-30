@@ -1,0 +1,17 @@
+{
+  "name": "boule-u0-spike",
+  "private": true,
+  "type": "module",
+  "description": "U0 Feasibility Spike — 验证 Agent SDK headless / 并发隔离 / 真值源快照消费 / 6 类归一化事件映射。非生产代码，U1 才搭真正的 monorepo。",
+  "scripts": {
+    "spike1": "node u0-agent-sdk/test-role.ts",
+    "spike2": "node u0-agent-sdk/concurrency.ts",
+    "spike3": "node u0-truth-sync/sync.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.158"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}
