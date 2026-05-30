@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* 中文优先：思源宋体标题 + 无衬线正文（KTD-9）。无字体资源时回退系统字体。 */
+:root {
+  --font-serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
+  --font-sans: "Source Han Sans SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+}
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: #f7f7f6;
+  color: #1a1a1a;
+}
+h1, h2, h3 {
+  font-family: var(--font-serif);
+}

@@ -14,7 +14,8 @@
 | U3 Agent SDK 执行器 | `05cb98d` | ✅ | claude-sdk live 生产路径；32 单测（含 runtime-contract）；messages-api 裸 key 对照挂 Open Q 13 |
 | U4 工作流引擎 | `c456f51` | ✅ | 真 BullMQ+真 PG 整合：9-phase happy 全跑通 / 每 phase checkpoint 暂停 / 审批后继续 / fan-out partial（researcher 失败不阻塞）/ redo 重排 / 双 approve→409。21 新测（state 纯机 + checkpoint CAS/lease/幂等/事件 + engine 整合），全套 53 绿 |
 | U5 确定性 PM 逻辑 | `47363f7` | ✅ | invariant helper（url-dedup / coverage / grep / language-gate / cost-calc）+ KTD-21 裁决核心（adjudicate 四态/顺序即正确性/弃权归一）+ config 从真值源解析（不硬编码）。23 新测（含对真实缓存 SKILL.md/editor.md 回归 + cost 真 PG），全套 76 绿 |
-| U6 API 网关层 | （本次） | ✅ | Fastify 网关 wire U2/U4/U5：自建 JWT(HS256)+scrypt 认证 / 四级 RBAC / publication+stub 护栏 / opaque 分享 token(404/410/429) / surface 写授权(editor+,external·viewer 拒) / SSE 一次性 ticket + Last-Event-ID 续传 + 重连重新鉴权。11 新测（app.inject 真 PG+Redis + 真引擎 E2E 注册→项目→workflow→逐 checkpoint 审批→完成），全套 87 绿 |
+| U6 API 网关层 | `821779b` | ✅ | Fastify 网关 wire U2/U4/U5：自建 JWT(HS256)+scrypt 认证 / 四级 RBAC / publication+stub 护栏 / opaque 分享 token(404/410/429) / surface 写授权(editor+,external·viewer 拒) / SSE 一次性 ticket + Last-Event-ID 续传 + 重连重新鉴权。11 新测（app.inject 真 PG+Redis + 真引擎 E2E 注册→项目→workflow→逐 checkpoint 审批→完成），全套 87 绿 |
+| U7 前端骨架 | （本次） | ✅ | Vite+React19+Tailwind4 脚手架 + 路由(/login,/projects,/projects/:id,/workflows/:id,/methodology,/s/:token) + Zustand/React Query + lib(api 401刷新 / sse 有界队列+退避+Last-Event-ID 续传 / surface 去重) + CheckpointCard + 6 态原语。14 web 单测（注入 fetch/EventSource/scheduler）+ pnpm build 通过 + dev 冒烟 200。api 仍 87 绿 |
 
 ## 环境状态
 
@@ -61,9 +62,21 @@
 - **SSE 流式成功路径**走 hijack（inject 测不了会挂）——故测**鉴权/授权失败**(401/403/404) + **回放服务**
   （replayEvents 只补 id>lastEventId / authorizeSse 降权→403），覆盖 plan 续传不重投不漏投。
 
+## U7 落地说明
+
+- **前端「真跑」= pnpm build（tsc+vite 编译打包）+ lib 逻辑 node:test + dev 冒烟**。可测的实质逻辑（api 401
+  刷新单飞 / sse 续传退避有界 / surface 去重）全部依赖注入（fetch/EventSource/scheduler），node:test 无浏览器跑过；
+  组件/页面经 vite build 编译验证（esbuild）。浏览器级 E2E（点击流）留待 U8 或手动 + Playwright MCP。
+- **lib 文件避开参数属性/enum**（Node strip-only 限制，与后端同纪律）：ApiError 显式字段赋值。
+- **SSE 自管重连**：原生 EventSource 自动重连会撞已消费的一次性 ticket，故 SseClient 每次重连取新 ticket +
+  url 带 lastEventId（服务端 range-scan 续传）。指数退避，连上即重置。
+- **6 态强制**：States.tsx 集中加载/空/内容/错误(P0红顶+重试/P1黄内联/P2灰) /离线降级(SSE 重连横幅)/权限不足，
+  各页复用，避免漏态。
+- **方法论页为静态 phase 总览占位**：完整 React Flow 7-phase 交互编排图是 U8。
+
 ## 下一步
 
-- **U7 前端骨架**：Vite + React 19 + 路由 + Zustand/React Query + useSSE(Last-Event-ID 续传) + CheckpointCard +
-  6 态规范。依赖 U1/U6（API 就绪）。
+- **U8 前端核心视图**：方法论 React Flow 编排图 + Run 时间线 + Agent/成本监控。依赖 U6/U7。
 - 未决：Open Q 13（messages-api 裸 key 端到端对照，需 `ANTHROPIC_API_KEY`）；git remote 是否建；
-  组合根（server.ts listen + 生产 agentRunner role 映射，随 dispatch matrix）。
+  组合根（server.ts listen + 生产 agentRunner role 映射，随 dispatch matrix）；
+  surface 生命周期 engine↔U6 wiring（checkpoint→requestSurface+emit surface 事件，目前 checkpoint 走 workflow-status-changed）。
