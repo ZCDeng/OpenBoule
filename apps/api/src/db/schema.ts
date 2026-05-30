@@ -15,6 +15,7 @@ import {
   uuid,
   text,
   integer,
+  boolean,
   bigserial,
   jsonb,
   timestamp,
@@ -227,6 +228,9 @@ export const artifacts = pgTable(
     body: text("body").notNull(),
     status: artifactStatus("status").notNull().default("draft"),
     idempotencyKey: text("idempotency_key"),
+    // U9 lineage：本 artifact 读取的上游 artifact 版本（provenance）+ 下游过期标记
+    inputArtifactVersions: jsonb("input_artifact_versions"),
+    stale: boolean("stale").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

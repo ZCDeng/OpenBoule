@@ -16,7 +16,8 @@
 | U5 确定性 PM 逻辑 | `47363f7` | ✅ | invariant helper（url-dedup / coverage / grep / language-gate / cost-calc）+ KTD-21 裁决核心（adjudicate 四态/顺序即正确性/弃权归一）+ config 从真值源解析（不硬编码）。23 新测（含对真实缓存 SKILL.md/editor.md 回归 + cost 真 PG），全套 76 绿 |
 | U6 API 网关层 | `821779b` | ✅ | Fastify 网关 wire U2/U4/U5：自建 JWT(HS256)+scrypt 认证 / 四级 RBAC / publication+stub 护栏 / opaque 分享 token(404/410/429) / surface 写授权(editor+,external·viewer 拒) / SSE 一次性 ticket + Last-Event-ID 续传 + 重连重新鉴权。11 新测（app.inject 真 PG+Redis + 真引擎 E2E 注册→项目→workflow→逐 checkpoint 审批→完成），全套 87 绿 |
 | U7 前端骨架 | `eea36c9` | ✅ | Vite+React19+Tailwind4 脚手架 + 路由(/login,/projects,/projects/:id,/workflows/:id,/methodology,/s/:token) + Zustand/React Query + lib(api 401刷新 / sse 有界队列+退避+Last-Event-ID 续传 / surface 去重) + CheckpointCard + 6 态原语。14 web 单测（注入 fetch/EventSource/scheduler）+ pnpm build 通过 + dev 冒烟 200。api 仍 87 绿 |
-| U8 前端核心视图 | （本次） | ✅ | 方法论 React Flow 编排图(@xyflow/react,确定性布局)+ Run 时间线(phase 卡片/当前高亮/审批 inline+role 门控/below_threshold 徽章)+ Agent 监控(KPI/SVG 成本图/虚拟列表 job/四态裁决 tab)。补 U6: GET /:id/cost + workflow GET 带 myRole。lib/derive 5 测(phaseStatus/verdictBadge/布局/KPI)，web 19 测，build 通过，api 87 绿 |
+| U8 前端核心视图 | `d7f09ae` | ✅ | 方法论 React Flow 编排图(@xyflow/react,确定性布局)+ Run 时间线(phase 卡片/当前高亮/审批 inline+role 门控/below_threshold 徽章)+ Agent 监控(KPI/SVG 成本图/虚拟列表 job/四态裁决 tab)。补 U6: GET /:id/cost + workflow GET 带 myRole。lib/derive 5 测(phaseStatus/verdictBadge/布局/KPI)，web 19 测，build 通过，api 87 绿 |
+| U9 文档工作台+预览 | （本次） | ✅ | 后端:单写者锁(Redis SET NX+Lua 原子续期/释放)+ lineage stale 传播(编辑→下游标 stale)+ 迁移 0001(artifacts 加 stale/input_artifact_versions)+ 路由(lock 4 端点/PUT 传播/GET stale·artifacts)。前端:TipTap 编辑器(autosave debounce 2s+锁 UI+本地兜底)/文档树(stale ⚠)/版本历史/iframe 预览(sandbox 无 same-origin)/分享面板。8 新测(doc-lock 并发单赢·续期 owner / lineage 传播序+DB / 锁路由 409 / PUT 传播 / debounce 合并)，全套 api 95 + web 22 绿，build 通过 |
 
 ## 环境状态
 
@@ -85,9 +86,22 @@
   徽章用 U5 同义的代码裁决映射（verdictBadge），非 verifier 自报（KTD-21）。
 - **顺带补 U6**：GET /api/workflows/:id/cost(computeCost)+ workflow GET 带 myRole（前端按 editor/viewer 显隐审批按钮）。
 
+## U9 落地说明
+
+- **锁用 Redis SET NX + Lua 原子 compare-and-act**（续期/释放校验 owner，防误删他人锁）；docId=artifactId
+  （v1 锁版本行，逻辑文档级锁待版本聚合需求再细化）。
+- **lineage stale：v1 不自动级联**——PUT 编辑只标下游 stale + 返回受影响 phase，用户确认后才重跑
+  （与 OD「refresh 是显式 action」同哲学）。ANY/cast 类型推断不稳，DB 用 `IN (sql.join)` 逐参绑定。
+- **报告预览职责边界**：前端只做 iframe 隔离（`sandbox="allow-scripts"` **不给** allow-same-origin，srcdoc）；
+  服务端渲染 + 资源内联 + CSP 由 **U10** 提供，SharePage 现用占位 HTML 演示隔离。
+- **stale 列用 boolean**（非 int 旗标）；artifacts schema 加 input_artifact_versions(jsonb)，迁移 0001 已应用。
+- **重跑触发引擎 re-enqueue 暂未接**：lineage 标记 + 审计(logRerun→workflow_events)就绪，实际重跑下游
+  调 engine 的 wiring 随组合根落地。TipTap 把 web 包体推到 866kB（仅警告），code-split 留待优化。
+
 ## 下一步
 
-- **U9 文档工作台 + 报告预览**：TipTap 编辑器 + 版本历史 + 单写者锁(Redis) + artifact lineage(stale 下游) + iframe 报告预览。依赖 U7。
+- **U10 报告渲染/分享服务**（最后单元）：服务端渲染客户语言 HTML + 资源内联 + CSP 头 + 签名链接服务完善。
+  依赖 U6。这之后 U0–U10 全主干闭环。
 - 未决：Open Q 13（messages-api 裸 key 端到端对照，需 `ANTHROPIC_API_KEY`）；git remote 是否建；
   组合根（server.ts listen + 生产 agentRunner role 映射，随 dispatch matrix）；
   surface 生命周期 engine↔U6 wiring（checkpoint→requestSurface+emit surface 事件，目前 checkpoint 走 workflow-status-changed）。

@@ -6,6 +6,8 @@ import { useWorkflow } from "../stores/workflow.ts";
 import { SseClient, type EventSourceLike } from "../lib/sse.ts";
 import { Timeline } from "../views/RunTimeline/Timeline.tsx";
 import { Dashboard } from "../views/AgentMonitor/Dashboard.tsx";
+import { Workspace } from "../views/DocumentWorkspace/Workspace.tsx";
+import { SharePanel } from "../views/ReportShare/SharePanel.tsx";
 import type { Decision } from "../components/CheckpointCard.tsx";
 import { ErrorBanner } from "../components/States.tsx";
 import { ApiError } from "../lib/api.ts";
@@ -24,7 +26,7 @@ export function WorkflowPage() {
   const setConnection = useWorkflow((s) => s.setConnection);
   const pushEvent = useWorkflow((s) => s.pushEvent);
   const connection = useWorkflow((s) => s.connection);
-  const [tab, setTab] = useState<"timeline" | "monitor">("timeline");
+  const [tab, setTab] = useState<"timeline" | "monitor" | "docs" | "share">("timeline");
   const [busy, setBusy] = useState(false);
   const [decisionError, setDecisionError] = useState<{ severity: "P0" | "P1"; msg: string } | null>(null);
 
@@ -77,9 +79,9 @@ export function WorkflowPage() {
       </div>
 
       <div className="flex gap-1 rounded-lg bg-neutral-100 p-1 text-sm">
-        {(["timeline", "monitor"] as const).map((t) => (
+        {(["timeline", "monitor", "docs", "share"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`rounded px-3 py-1 ${tab === t ? "bg-white shadow-sm" : "text-neutral-500"}`}>
-            {t === "timeline" ? "时间线" : "Agent 监控"}
+            {{ timeline: "时间线", monitor: "Agent 监控", docs: "文档", share: "分享" }[t]}
           </button>
         ))}
       </div>
@@ -98,8 +100,12 @@ export function WorkflowPage() {
           onDecide={decide}
           onRetry={() => void status.refetch()}
         />
-      ) : (
+      ) : tab === "monitor" ? (
         id && <Dashboard workflowId={id} />
+      ) : tab === "docs" ? (
+        id && <Workspace workflowId={id} />
+      ) : (
+        id && <SharePanel workflowId={id} />
       )}
     </div>
   );

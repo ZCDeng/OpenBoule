@@ -9,6 +9,7 @@ import { authenticate, requireProjectRole } from "../middleware/auth.ts";
 import { getArtifactContext } from "../services/rbac.ts";
 import { checkPublication } from "../artifacts/publication-guard.ts";
 import { checkStub, type StubMode } from "../artifacts/stub-guard.ts";
+import { markDownstreamStale } from "../services/lineage.ts";
 
 interface ArtifactRow {
   id: string;
@@ -97,7 +98,14 @@ export function registerArtifactRoutes(app: FastifyInstance, deps: AppDeps): voi
         VALUES (${a.workflowId}, ${a.phase}, ${a.type}, ${nextVersion}, ${body}, 'draft')
         RETURNING id`);
       const newId = (ins as unknown as { rows: { id: string }[] }).rows[0]!.id;
-      return reply.send({ id: newId, version: nextVersion, warning: stub.verdict === "warn" ? "STUB_WARN" : undefined });
+      // lineage：编辑产出 → 下游 phase 标 stale（v1 不自动级联，只上报受影响下游）
+      const affectedDownstream = await markDownstreamStale(db, a.workflowId, a.phase);
+      return reply.send({
+        id: newId,
+        version: nextVersion,
+        warning: stub.verdict === "warn" ? "STUB_WARN" : undefined,
+        affectedDownstream,
+      });
     },
   );
 }

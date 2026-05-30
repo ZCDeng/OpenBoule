@@ -18,6 +18,7 @@ import { registerArtifactRoutes } from "./routes/artifacts.ts";
 import { registerSurfaceRoutes } from "./routes/surfaces.ts";
 import { registerShareRoutes } from "./routes/shares.ts";
 import { registerSseRoutes } from "./routes/sse.ts";
+import { registerLockRoutes } from "./routes/locks.ts";
 
 /** 创建 workflow 时固化的真值源快照（生产 = U2 syncTruthSource 产；测试可注入 stub）。 */
 export interface FrozenSnapshot {
@@ -51,6 +52,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerSurfaceRoutes(app, deps);
   registerShareRoutes(app, deps);
   registerSseRoutes(app, deps);
+  registerLockRoutes(app, deps);
 
   return app;
 }

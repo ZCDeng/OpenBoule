@@ -8,6 +8,7 @@ import type { AppDeps } from "../app.ts";
 import { authenticate, requireProjectRole, getProjectRoleFromReq } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { computeCost } from "../pm/cost-calc.ts";
+import { listStalePhases } from "../services/lineage.ts";
 
 export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
@@ -76,6 +77,40 @@ export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): voi
     async (req, reply) => {
       const id = (req.params as { id: string }).id;
       return reply.send(await computeCost(db, id));
+    },
+  );
+
+  // 文档树：各 (phase,type) 的最新版本 artifact（viewer+）
+  app.get(
+    "/api/workflows/:id/artifacts",
+    {
+      preHandler: [
+        authenticate,
+        requireProjectRole(db, "viewer", async (req) => getWorkflowProjectId(db, (req.params as { id: string }).id)),
+      ],
+    },
+    async (req, reply) => {
+      const id = (req.params as { id: string }).id;
+      const res = await db.execute(sql`
+        SELECT DISTINCT ON (phase, type) id, phase, type, version, status, stale
+          FROM artifacts WHERE workflow_id = ${id}
+         ORDER BY phase, type, version DESC`);
+      return reply.send({ artifacts: (res as unknown as { rows: unknown[] }).rows });
+    },
+  );
+
+  // lineage：当前 stale 的下游 phase（文档树 ⚠ 徽章数据源，viewer+）
+  app.get(
+    "/api/workflows/:id/stale",
+    {
+      preHandler: [
+        authenticate,
+        requireProjectRole(db, "viewer", async (req) => getWorkflowProjectId(db, (req.params as { id: string }).id)),
+      ],
+    },
+    async (req, reply) => {
+      const id = (req.params as { id: string }).id;
+      return reply.send({ stalePhases: await listStalePhases(db, id) });
     },
   );
 }
