@@ -17,7 +17,8 @@
 | U6 API 网关层 | `821779b` | ✅ | Fastify 网关 wire U2/U4/U5：自建 JWT(HS256)+scrypt 认证 / 四级 RBAC / publication+stub 护栏 / opaque 分享 token(404/410/429) / surface 写授权(editor+,external·viewer 拒) / SSE 一次性 ticket + Last-Event-ID 续传 + 重连重新鉴权。11 新测（app.inject 真 PG+Redis + 真引擎 E2E 注册→项目→workflow→逐 checkpoint 审批→完成），全套 87 绿 |
 | U7 前端骨架 | `eea36c9` | ✅ | Vite+React19+Tailwind4 脚手架 + 路由(/login,/projects,/projects/:id,/workflows/:id,/methodology,/s/:token) + Zustand/React Query + lib(api 401刷新 / sse 有界队列+退避+Last-Event-ID 续传 / surface 去重) + CheckpointCard + 6 态原语。14 web 单测（注入 fetch/EventSource/scheduler）+ pnpm build 通过 + dev 冒烟 200。api 仍 87 绿 |
 | U8 前端核心视图 | `d7f09ae` | ✅ | 方法论 React Flow 编排图(@xyflow/react,确定性布局)+ Run 时间线(phase 卡片/当前高亮/审批 inline+role 门控/below_threshold 徽章)+ Agent 监控(KPI/SVG 成本图/虚拟列表 job/四态裁决 tab)。补 U6: GET /:id/cost + workflow GET 带 myRole。lib/derive 5 测(phaseStatus/verdictBadge/布局/KPI)，web 19 测，build 通过，api 87 绿 |
-| U9 文档工作台+预览 | （本次） | ✅ | 后端:单写者锁(Redis SET NX+Lua 原子续期/释放)+ lineage stale 传播(编辑→下游标 stale)+ 迁移 0001(artifacts 加 stale/input_artifact_versions)+ 路由(lock 4 端点/PUT 传播/GET stale·artifacts)。前端:TipTap 编辑器(autosave debounce 2s+锁 UI+本地兜底)/文档树(stale ⚠)/版本历史/iframe 预览(sandbox 无 same-origin)/分享面板。8 新测(doc-lock 并发单赢·续期 owner / lineage 传播序+DB / 锁路由 409 / PUT 传播 / debounce 合并)，全套 api 95 + web 22 绿，build 通过 |
+| U9 文档工作台+预览 | `9625e03` | ✅ | 后端:单写者锁(Redis SET NX+Lua 原子续期/释放)+ lineage stale 传播(编辑→下游标 stale)+ 迁移 0001(artifacts 加 stale/input_artifact_versions)+ 路由(lock 4 端点/PUT 传播/GET stale·artifacts)。前端:TipTap 编辑器(autosave debounce 2s+锁 UI+本地兜底)/文档树(stale ⚠)/版本历史/iframe 预览(sandbox 无 same-origin)/分享面板。8 新测，api 95 + web 22 绿 |
+| U10 报告渲染+签名分享 | （本次） | ✅ | 后端:renderer(零-XSS:硬拒 script/iframe/on*/javascript: + 模板插值标量+escape fail loud)+ inline-assets(SSRF/路径穿越 realpath 落 baseDir/非 file·私网/OOM stat-then-read 多层上限)+ signer(scope 403)+ share-token 撤销(nonce→Redis 撤销集→410)+ 路由(GET /s/:token/report 渲染 HTML+CSP sandbox 头 / POST revoke)。前端:ReportPublic(免登录拉 /report 进隔离 iframe)+ MethodologyPublic。16 新测(穷举 XSS 向量/穿越·私网·OOM/创建→访问→撤销→410·scope→403)，全套 api 111 + web 22 绿，build 通过 |
 
 ## 环境状态
 
@@ -98,10 +99,28 @@
 - **重跑触发引擎 re-enqueue 暂未接**：lineage 标记 + 审计(logRerun→workflow_events)就绪，实际重跑下游
   调 engine 的 wiring 随组合根落地。TipTap 把 web 包体推到 866kB（仅警告），code-split 留待优化。
 
-## 下一步
+## U10 落地说明
 
-- **U10 报告渲染/分享服务**（最后单元）：服务端渲染客户语言 HTML + 资源内联 + CSP 头 + 签名链接服务完善。
-  依赖 U6。这之后 U0–U10 全主干闭环。
+- **零-XSS 双层**：iframe opaque sandbox 是隔离层，renderer 是渲染前硬拒层（正则删危险结构 + 模板插值标量+escape）。
+- **inline-assets 仅 guard 已接入**：v1 报告是 DB artifact body（无文件资源），路由走 buildReportDocument；
+  inline-assets 的 SSRF/穿越/OOM guard 独立测就绪，接入待文件型报告出现（已留痕）。
+- **撤销=nonce 入 Redis 撤销集**（保留 DB 行，验证撤销→410 而非 404）；GET /s/:token/report 顶层导航加
+  `Content-Security-Policy: sandbox allow-scripts` 强制 opaque-origin。
+- **puppeteer/PDF v1 不实现**（plan 明示推迟）。
+
+## 主干状态：U0–U10 全部完成 ✅
+
+后端 111 测 + 前端 22 测全绿；docker(PG/Redis)运行；迁移 0001 应用；pnpm build 通过。
+
+## 剩余未决 / 收尾项（非 plan 实现单元）
+
+- **组合根**：server.ts listen() + 生产 agentRunner（role 名→role 文件映射，需 U5 deferred 的 dispatch matrix）+
+  snapshotProvider 接 createFrozenSnapshot + 起 BullMQ worker。把已测的 buildApp/WorkflowEngine/真值源 wire 成可部署进程。
+- **engine↔surface/2.5/lineage-rerun wiring**：checkpoint→requestSurface+emit surface 事件；Phase 2.5 结构化裁决落库；
+  lineage「保存并重跑下游」调 engine re-enqueue。
+- Open Q 13：messages-api 裸 key 端到端对照（需 `ANTHROPIC_API_KEY`）。
+- git remote 是否建（当前无 origin，全程未 push）。
+- 优化：TipTap/React Flow bundle code-split；Recharts/ELK.js 升级；langfuse（KTD-22 Deferred）。
 - 未决：Open Q 13（messages-api 裸 key 端到端对照，需 `ANTHROPIC_API_KEY`）；git remote 是否建；
   组合根（server.ts listen + 生产 agentRunner role 映射，随 dispatch matrix）；
   surface 生命周期 engine↔U6 wiring（checkpoint→requestSurface+emit surface 事件，目前 checkpoint 走 workflow-status-changed）。

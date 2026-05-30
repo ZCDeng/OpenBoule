@@ -47,6 +47,18 @@ interface ShareRow {
   workflowId: string;
   scope: ShareScope;
   expiry: string;
+  nonce: string;
+}
+
+const REVOKED_SET = "share:revoked";
+
+/** 撤销：把 token 的 nonce 加进撤销集（保留 DB 行，验证时撤销→410 而非 404）。 */
+export async function revokeShare(db: DB, redis: Redis, token: string): Promise<boolean> {
+  const res = await db.execute(sql`SELECT nonce FROM share_links WHERE token = ${token}`);
+  const nonce = (res as unknown as { rows?: { nonce: string }[] }).rows?.[0]?.nonce;
+  if (!nonce) return false;
+  await redis.sadd(REVOKED_SET, nonce);
+  return true;
 }
 
 /**
@@ -60,11 +72,16 @@ export async function validateShareToken(
   ctx: { nowMs: number; ip?: string },
 ): Promise<ShareValidation> {
   const res = await db.execute(sql`
-    SELECT workflow_id AS "workflowId", scope, expiry FROM share_links WHERE token = ${token}`);
+    SELECT workflow_id AS "workflowId", scope, expiry, nonce FROM share_links WHERE token = ${token}`);
   const row = (res as unknown as { rows?: ShareRow[] }).rows?.[0];
   if (!row) return { ok: false, code: "NOT_FOUND", status: 404 };
 
   if (new Date(row.expiry).getTime() <= ctx.nowMs) {
+    return { ok: false, code: "EXPIRED", status: 410 };
+  }
+
+  // 撤销检查（nonce 在撤销集 → 410 Gone）
+  if ((await redis.sismember(REVOKED_SET, row.nonce)) === 1) {
     return { ok: false, code: "EXPIRED", status: 410 };
   }
 
