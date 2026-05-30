@@ -21,6 +21,13 @@ export const config = {
 
   databaseUrl: required("DATABASE_URL"),
 
+  // 自建 JWT（KTD-10）。secret 缺失即 fail loud——绝不用默认值签发可伪造的 token。
+  jwt: {
+    secret: optional("JWT_SECRET", ""),
+    accessTtlSec: Number(optional("JWT_ACCESS_TTL_SEC", "900")), // 15min
+    refreshTtlSec: Number(optional("JWT_REFRESH_TTL_SEC", "1209600")), // 14d
+  },
+
   redis: {
     host: optional("REDIS_HOST", "localhost"),
     port: Number(optional("REDIS_PORT", "6379")),

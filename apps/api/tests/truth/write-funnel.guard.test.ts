@@ -21,12 +21,16 @@ const SRC = join(here, "..", "..", "src");
 // 允许引用 truth_snapshot 的文件（相对 src/）：
 //  - db/schema.ts：定义该列
 //  - truth/*：产生者 / 类型 / 读取者 / drift
+//  - app.ts / routes/workflows.ts：创建 workflow 时持久化快照——值经注入的 snapshotProvider
+//    取自 createFrozenSnapshot，路由本身不构造 snapshot（缺 provider 即 503，已 review，U6）
 const ALLOWLIST = new Set([
   "db/schema.ts",
   "truth/sync.ts",
   "truth/types.ts",
   "truth/loader.ts",
   "truth/drift.ts",
+  "app.ts",
+  "routes/workflows.ts",
 ]);
 
 const PATTERN = /truthSnapshot|truth_snapshot/;

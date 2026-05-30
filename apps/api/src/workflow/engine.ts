@@ -93,6 +93,8 @@ export interface EngineOptions {
   heartbeatSeconds?: number;
   bufferCapacity?: number;
   workerConcurrency?: number;
+  /** 队列名（多租户/测试隔离用）；默认 PHASE_QUEUE。 */
+  queueName?: string;
   /** worker 身份（多实例并发恢复时区分；省略用随机短 id 由调用方传入避免 Date/random 依赖）。 */
   workerId: string;
 }
@@ -110,6 +112,7 @@ export class WorkflowEngine {
   private readonly editorCount: number;
   private readonly workerConcurrency: number;
   private readonly workerId: string;
+  private readonly queueName: string;
   private readonly researcherCountFn?: (workflowId: string) => Promise<number>;
 
   private queue?: Queue;
@@ -128,6 +131,7 @@ export class WorkflowEngine {
     this.editorCount = opts.editorCount ?? 3;
     this.workerConcurrency = opts.workerConcurrency ?? 4;
     this.workerId = opts.workerId;
+    this.queueName = opts.queueName ?? PHASE_QUEUE;
     this.researcherCountFn = opts.researcherCount;
   }
 
@@ -138,9 +142,9 @@ export class WorkflowEngine {
 
   /** 起 worker + 队列原语。 */
   start(): void {
-    this.queue = makeQueue(this.connection);
+    this.queue = makeQueue(this.connection, this.queueName);
     this.flow = makeFlowProducer(this.connection);
-    this.worker = makeWorker(this.workerConnection, (job) => this.process(job), this.workerConcurrency);
+    this.worker = makeWorker(this.workerConnection, (job) => this.process(job), this.workerConcurrency, this.queueName);
   }
 
   async close(): Promise<void> {
@@ -234,13 +238,13 @@ export class WorkflowEngine {
       const n = await this.resolveResearcherCount(workflowId);
       const children = Array.from({ length: n }, (_, i) => ({
         name: JOB_RESEARCH_CHILD,
-        queueName: PHASE_QUEUE,
+        queueName: this.queueName,
         data: { workflowId, phase, role: `researcher-${i + 1}`, childIndex: i + 1 },
         opts: { ignoreDependencyOnFailure: true, attempts: 3, backoff: { type: "fixed", delay: 50 } },
       }));
       await this.flow!.add({
         name: JOB_AGGREGATE,
-        queueName: PHASE_QUEUE,
+        queueName: this.queueName,
         data: { workflowId, phase, attemptNumber, childCount: n },
         children,
       });

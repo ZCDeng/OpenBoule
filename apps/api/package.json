@@ -13,8 +13,10 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.158",
     "@boule/shared": "workspace:*",
+    "@fastify/cookie": "^11.0.2",
     "bullmq": "^5.77.6",
     "drizzle-orm": "^0.38.0",
+    "fastify": "^5.8.5",
     "ioredis": "^5.11.0",
     "pg": "^8.13.0"
   },

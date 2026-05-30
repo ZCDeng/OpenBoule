@@ -92,5 +92,7 @@ export async function getEventsSince(
      WHERE run_id = ${runId} AND event_id > ${lastEventId}
      ORDER BY event_id ASC
   `);
-  return (res as unknown as { rows?: BufferedEvent[] }).rows ?? [];
+  // bigserial 经原始 SQL 返回字符串，强制转 Number 以与内存环的 eventId 类型一致
+  const rows = (res as unknown as { rows?: BufferedEvent[] }).rows ?? [];
+  return rows.map((r) => ({ ...r, eventId: Number(r.eventId) }));
 }

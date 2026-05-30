@@ -31,16 +31,16 @@ function asConnection(conn: Redis): ConnectionOptions {
   return conn as unknown as ConnectionOptions;
 }
 
-export function makeQueue(conn: Redis): Queue {
-  return new Queue(PHASE_QUEUE, { connection: asConnection(conn) });
+export function makeQueue(conn: Redis, queueName = PHASE_QUEUE): Queue {
+  return new Queue(queueName, { connection: asConnection(conn) });
 }
 
 export function makeFlowProducer(conn: Redis): FlowProducer {
   return new FlowProducer({ connection: asConnection(conn) });
 }
 
-export function makeWorker(conn: Redis, processor: Processor, concurrency = 4): Worker {
-  return new Worker(PHASE_QUEUE, processor, {
+export function makeWorker(conn: Redis, processor: Processor, concurrency = 4, queueName = PHASE_QUEUE): Worker {
+  return new Worker(queueName, processor, {
     connection: asConnection(conn),
     concurrency,
   });

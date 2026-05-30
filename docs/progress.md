@@ -13,7 +13,8 @@
 | U2 真值源同步 | `8f5bc10` | ✅ | live 拉私有 repo 9 文件 + 缓存一致 + 降级 + drift + token fail-loud；13 单测 |
 | U3 Agent SDK 执行器 | `05cb98d` | ✅ | claude-sdk live 生产路径；32 单测（含 runtime-contract）；messages-api 裸 key 对照挂 Open Q 13 |
 | U4 工作流引擎 | `c456f51` | ✅ | 真 BullMQ+真 PG 整合：9-phase happy 全跑通 / 每 phase checkpoint 暂停 / 审批后继续 / fan-out partial（researcher 失败不阻塞）/ redo 重排 / 双 approve→409。21 新测（state 纯机 + checkpoint CAS/lease/幂等/事件 + engine 整合），全套 53 绿 |
-| U5 确定性 PM 逻辑 | （本次） | ✅ | invariant helper（url-dedup / coverage / grep / language-gate / cost-calc）+ KTD-21 裁决核心（adjudicate 四态/顺序即正确性/弃权归一）+ config 从真值源解析（不硬编码）。23 新测（含对真实缓存 SKILL.md/editor.md 回归 + cost 真 PG），全套 76 绿 |
+| U5 确定性 PM 逻辑 | `47363f7` | ✅ | invariant helper（url-dedup / coverage / grep / language-gate / cost-calc）+ KTD-21 裁决核心（adjudicate 四态/顺序即正确性/弃权归一）+ config 从真值源解析（不硬编码）。23 新测（含对真实缓存 SKILL.md/editor.md 回归 + cost 真 PG），全套 76 绿 |
+| U6 API 网关层 | （本次） | ✅ | Fastify 网关 wire U2/U4/U5：自建 JWT(HS256)+scrypt 认证 / 四级 RBAC / publication+stub 护栏 / opaque 分享 token(404/410/429) / surface 写授权(editor+,external·viewer 拒) / SSE 一次性 ticket + Last-Event-ID 续传 + 重连重新鉴权。11 新测（app.inject 真 PG+Redis + 真引擎 E2E 注册→项目→workflow→逐 checkpoint 审批→完成），全套 87 绿 |
 
 ## 环境状态
 
@@ -46,9 +47,23 @@
   其消费方是 workflow 创建/fan-out 派发（U6/U7），现在解析属未测的投机代码——故 defer 到消费方接入时，
   避免造无人调用的解析器（rule 2 simplicity / rule 12 不造假）。
 
+## U6 落地说明
+
+- **密码用 stdlib scrypt 而非 bcrypt**（已注释）：避免 node-gyp 原生构建与 pnpm onlyBuiltDependencies/Node
+  strip-only 摩擦，安全等价（memory-hard KDF）。JWT 手写 HS256（stdlib crypto，零依赖，符合 KTD-10 自建）。
+- **写入收口 tripwire 按设计触发**：routes/workflows.ts 写 truth_snapshot 被 U2 write-funnel.guard 逮到 →
+  已 review 并入 ALLOWLIST；同时**移除路由里伪造 snapshot 的兜底**，改为缺 snapshotProvider 即 503
+  （值必须源自 createFrozenSnapshot，绝不在路由构造）。
+- **引擎加 per-instance queueName**：多租户/测试隔离用；E2E 用唯一队列名避免与 U4 engine.test 并行抢 job。
+- **组合根 + 生产 agentRunner 暂缓**：listen() 入口 + 真 agentRunner（role 名→role 文件映射）依赖 U5 deferred 的
+  dispatch matrix，现在写属投机未测代码。U6 交付**完全测过的网关 + 引擎 wiring**，E2E inject 已等价跑通
+  plan Verification 的「注册→项目→workflow→checkpoint→审批→完成」。
+- **SSE 流式成功路径**走 hijack（inject 测不了会挂）——故测**鉴权/授权失败**(401/403/404) + **回放服务**
+  （replayEvents 只补 id>lastEventId / authorizeSse 降权→403），覆盖 plan 续传不重投不漏投。
+
 ## 下一步
 
-- **U6 API 网关层**：REST + 认证 + 项目 RBAC + 审批 checkpoint + SSE + 签名分享 + publication/stub guard + surface-cache。
-  依赖 U1/U3/U4/U5（均就绪）。这里把 U4 引擎、U5 helper、U2 真值源 wire 成对外 HTTP，
-  并接 language-gate→放行闸、adjudicate→2.5、cost-calc→成本面板的真实数据流。
-- 未决：Open Q 13（messages-api 裸 key 端到端对照，需 `ANTHROPIC_API_KEY`）；git remote 是否建。
+- **U7 前端骨架**：Vite + React 19 + 路由 + Zustand/React Query + useSSE(Last-Event-ID 续传) + CheckpointCard +
+  6 态规范。依赖 U1/U6（API 就绪）。
+- 未决：Open Q 13（messages-api 裸 key 端到端对照，需 `ANTHROPIC_API_KEY`）；git remote 是否建；
+  组合根（server.ts listen + 生产 agentRunner role 映射，随 dispatch matrix）。
