@@ -52,12 +52,23 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    ports:
+      - "${API_PORT:-3000}:3000"
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-boule}:${POSTGRES_PASSWORD:-boule_dev_pw_change_me}@postgres:5432/${POSTGRES_DB:-boule}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-    # U1 阶段默认跑迁移；U6 起改为启动 Fastify。
-    command: ["pnpm", "--filter", "@boule/api", "db:migrate"]
+      REDIS_BULLMQ_DB: "0"
+      REDIS_SECURITY_DB: "1"
+      API_PORT: "3000"
+      JWT_SECRET: ${JWT_SECRET:?须在 .env 设强随机 JWT_SECRET}
+      AGENT_MODEL: ${AGENT_MODEL:-claude-opus-4-8}
+      # SDK auth：CLI 会话或裸 key（KTD-2）。配 key 才能真跑 phase。
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      TRUTH_SOURCE_REPO: ${TRUTH_SOURCE_REPO:-ZCDeng/consulting-team}
+    # 组合根（U10 收尾）：先迁移再启动 Fastify + 引擎。
+    command: ["sh", "-c", "pnpm --filter @boule/api db:migrate && pnpm --filter @boule/api start"]
 
 volumes:
   boule_pgdata:

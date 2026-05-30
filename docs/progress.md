@@ -112,10 +112,14 @@
 
 后端 111 测 + 前端 22 测全绿；docker(PG/Redis)运行；迁移 0001 应用；pnpm build 通过。
 
-## 剩余未决 / 收尾项（非 plan 实现单元）
+## 收尾项
 
-- **组合根**：server.ts listen() + 生产 agentRunner（role 名→role 文件映射，需 U5 deferred 的 dispatch matrix）+
-  snapshotProvider 接 createFrozenSnapshot + 起 BullMQ worker。把已测的 buildApp/WorkflowEngine/真值源 wire 成可部署进程。
+- ✅ **组合根**（已做）：`apps/api/src/server.ts` —— buildApp + WorkflowEngine(生产 agentRunner) + snapshotProvider
+  (createFrozenSnapshot) + boot recoverStalled + 优雅关闭。`services/agent-runner.ts` 把 role spec wire 到
+  U2 快照→loadRolePrompt→U3 runRole→workflow_costs，editor 用 U5 languageGate 算放行闸。
+  **真 socket 验证**：起进程 listening:3100 → curl /health·注册(发JWT)·建项目·列表·401·SIGTERM 优雅关闭，全通。
+  scripts: `pnpm --filter @boule/api start|dev`；compose api 服务改 migrate→start，配置走 compose env（JWT_SECRET 必填）。
+  注：role 映射是临时表（真实 dispatch matrix 待接）；phase 真跑需 SDK auth（CLI 会话或 ANTHROPIC_API_KEY）。
 - **engine↔surface/2.5/lineage-rerun wiring**：checkpoint→requestSurface+emit surface 事件；Phase 2.5 结构化裁决落库；
   lineage「保存并重跑下游」调 engine re-enqueue。
 - Open Q 13：messages-api 裸 key 端到端对照（需 `ANTHROPIC_API_KEY`）。

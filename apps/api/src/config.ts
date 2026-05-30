@@ -40,4 +40,10 @@ export const config = {
     repo: optional("TRUTH_SOURCE_REPO", "ZCDeng/consulting-team"),
     branch: optional("TRUTH_SOURCE_BRANCH", "main"),
   },
+
+  // 组合根：role 执行用模型 + worker 身份。SDK auth 走 CLI 会话或 ANTHROPIC_API_KEY（KTD-2）。
+  agent: {
+    model: optional("AGENT_MODEL", "claude-opus-4-8"),
+    workerId: optional("WORKER_ID", "boule-worker-1"),
+  },
 } as const;

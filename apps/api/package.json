@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Boule Fastify 后端（U1: 数据层；后续 U2-U6/U10）。",
   "scripts": {
+    "start": "node --env-file-if-exists=../../.env src/server.ts",
+    "dev": "node --watch --env-file-if-exists=../../.env src/server.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=../../.env src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
