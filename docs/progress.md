@@ -160,3 +160,19 @@
   **全 5 个用 Aditly 真检索**：coverage {total:5,missing:0}，synthesis 含 16 个 http 来源，抽样含 2026-04-06
   训练截止后真实文章（确为实时检索）。researcher 输出 token 81k（凭知识时仅 4.5k）。api 140/140 全绿。
 - 仍未接（deferred）：真实 dispatch matrix（role→agent 权威表，现 mapRoleToFile 临时映射）；接案 brief 叠加透传 researcher。
+
+## 2026-05-31 Web-CLI 协同层 U1–U4 实现（feat/web-cli-bridge）
+
+ce-work 执行 plan 2026-05-31-002（U1→U4 全跑，串行 + 每单元真跑验证 + 增量提交）：
+
+| 单元 | commit | 状态 | 真跑验证 |
+|---|---|---|---|
+| U1 MCP 服务器 + API Key + Active Context | `0467d18` | ✅ | api_keys 表/迁移 0002；authenticate 扩展接 bk_ key（read 拒写·project 范围）；active-context team Redis/local JSON 双源；7 MCP tools thin proxy；submit_artifact 后端；stdio server（低层 Server）。13 新测，全套 153 绿 |
+| U2-core 本地免登录（docker PG 退路） | `4d?` | ✅ | **SQLite spike 未过**（62 处 PG 专用 raw SQL）→ KTD-4 既定退回 docker PG。免登录单用户 + loopback-only + listen 127.0.0.1。5 新测，158 绿 |
+| U3 Thin CLI `boule` | `(本次)` | ✅ | 零依赖 process.argv；7 子命令 thin client；boule mcp 经 @boule/api "./mcp" export 复用 U1 server。3 测；help/mcp/未知命令 smoke 通 |
+| U4 Git-linked（后端+安全+agent 接线） | `(本次)` | ✅ | 两路径分离（团队拒 localDir）；validateLocalDir realpath 防穿越/symlink 逃逸（真实临时目录测）；resolveSafeCwd 防 TOCTOU；RoleContext cwd/additionalDirectories 透传锁子树。7 测，全套 165 绿 |
+
+- **spike 硬闸生效**：SQLite 路线因 62 处 PG 专用 SQL（::cast/DISTINCT ON/now()/bigserial）放弃，本地模式退回 docker PG（保留零注册，放弃零基础设施）。
+- **fail-loud 落地范围**：plan 8 MCP tool 实落 7（create_checkpoint 引擎语义冲突，挂 Deferred）；resources 仅 axes（skills/methods 缺端点）。
+- **本轮 deferred（已建 task，非遗漏）**：R5 本地→团队 export/import（体量大）；U4 ProjectDetail 配置 UI（thin 表单）。
+- 全套：api 165 测 + cli 3 测全绿，tsc 双包 0，迁移 0002/0003 应用。
