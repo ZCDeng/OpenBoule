@@ -50,5 +50,7 @@ export const config = {
     // researcher 多步检索需更多回合；纯推理 role 回合少。
     researcherMaxTurns: Number(optional("AGENT_RESEARCHER_MAX_TURNS", "12")),
     reasoningMaxTurns: Number(optional("AGENT_REASONING_MAX_TURNS", "6")),
+    // Aditly 自托管 MCP（web 检索网关，外部依赖）。设为 "off" 关闭 → researcher 降级 + fail-loud 标注。
+    aditlyMcpUrl: optional("ADITLY_MCP_URL", "http://127.0.0.1:8643/mcp/"),
   },
 } as const;

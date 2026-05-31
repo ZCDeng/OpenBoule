@@ -23,27 +23,43 @@ import type { AgentRunner } from "../workflow/phases/index.ts";
 /** 纯推理 role 禁用的文件系统/执行工具——止 sandbox 空转（R-2）。 */
 const FS_TOOLS = ["Bash", "Glob", "Grep", "Read", "Write", "Edit", "NotebookEdit"];
 
+/** Aditly MCP server 名 + researcher 的 web 工具白名单（README always-on 工具，无需平台凭证）。 */
+const ADITLY_SERVER = "aditly";
+const ADITLY_WEB_TOOLS = [
+  `mcp__${ADITLY_SERVER}__anspire_web_search`,
+  `mcp__${ADITLY_SERVER}__bocha_web_search`,
+  `mcp__${ADITLY_SERVER}__jina_read_url`,
+  `mcp__${ADITLY_SERVER}__reach_read_url`,
+];
+
 export interface RolePolicy {
   allowedTools: string[];
   disallowedTools: string[];
   allowToolExecution: boolean;
   maxTurns: number;
   watchdogMs: number;
+  /** researcher 接 Aditly 时的 MCP server 配置；缺省 undefined。 */
+  mcpServers?: Record<string, unknown>;
+  /** researcher web 检索是否可用（false → 降级 + fail-loud 标注）。 */
+  webEnabled?: boolean;
 }
 
 /**
- * role 运行策略（web 场景）：researcher 拿 web 工具白名单 + 高回合 + 大 watchdog 且真实执行；
- * 纯推理 role 禁文件系统工具、不执行工具、回合少。具体 web 工具白名单 + mcpServers 由 U4 填充。
- * KTD：路由/超时让代码答（确定性映射），不交给模型。
+ * role 运行策略（web 场景）：researcher 拿 Aditly web 工具白名单 + 高回合 + 大 watchdog 且真实执行；
+ * 纯推理 role 禁文件系统工具、不执行工具、回合少。KTD：路由/超时让代码答（确定性映射），不交给模型。
  */
 export function rolePolicy(roleFile: string): RolePolicy {
   if (roleFile === "industry-researcher") {
+    const url = config.agent.aditlyMcpUrl.trim();
+    const webEnabled = url !== "" && url.toLowerCase() !== "off"; // "off" 显式关闭（optional 不接受空值）
     return {
-      allowedTools: [], // U4：mcp__aditly__* web 工具
+      allowedTools: webEnabled ? [...ADITLY_WEB_TOOLS] : [],
       disallowedTools: [],
       allowToolExecution: true,
       maxTurns: config.agent.researcherMaxTurns,
       watchdogMs: config.agent.watchdogMs,
+      mcpServers: webEnabled ? { [ADITLY_SERVER]: { type: "http", url } } : undefined,
+      webEnabled,
     };
   }
   return {
@@ -109,8 +125,13 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
   return async (spec) => {
     const snapshot = await loadSnapshot(db, spec.workflowId);
     const roleFile = mapRoleToFile(spec.role, spec.phase);
-    const systemPrompt = loadRolePrompt(snapshot, roleFile);
     const policy = rolePolicy(roleFile);
+
+    // researcher 无可用 web 工具时 fail-loud：让 agent 在产出里显式标注未联网，不静默假装检索（KTD-5）。
+    let systemPrompt = loadRolePrompt(snapshot, roleFile);
+    if (roleFile === "industry-researcher" && policy.webEnabled === false) {
+      systemPrompt += "\n\n[运行时] 无可用 web 检索工具：基于已有知识作答，并在产出中显式标注「未联网检索」。";
+    }
 
     const result = await runRole(
       {
@@ -121,6 +142,7 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
         model: config.agent.model,
         allowedTools: policy.allowedTools,
         disallowedTools: policy.disallowedTools,
+        mcpServers: policy.mcpServers,
         maxTurns: policy.maxTurns,
         allowToolExecution: policy.allowToolExecution,
       },

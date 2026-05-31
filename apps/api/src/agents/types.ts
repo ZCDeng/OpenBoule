@@ -18,6 +18,8 @@ export interface RoleContext {
   allowedTools?: string[];
   /** 显式拒绝表（U3 web 策略：纯推理 role 禁文件系统工具，止 sandbox 空转）。 */
   disallowedTools?: string[];
+  /** MCP server 配置（U4：researcher 接 Aditly web 工具网关）。形如 { aditly: { type:"http", url } }。 */
+  mcpServers?: Record<string, unknown>;
   maxTurns?: number;
   /** 是否允许真实执行工具（live 验 tool_use/tool_result；生产由 phase 配置决定）。 */
   allowToolExecution?: boolean;

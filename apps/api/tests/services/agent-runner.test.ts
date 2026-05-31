@@ -17,6 +17,16 @@ test("researcher：可执行工具 + 高回合 + 大 watchdog", () => {
   assert.ok(p.watchdogMs >= 300_000); // 比原 120s 大
 });
 
+test("researcher web 启用（默认 Aditly url 非空）：mcpServers + web 白名单", () => {
+  const p = rolePolicy("industry-researcher");
+  assert.equal(p.webEnabled, true);
+  assert.ok(p.mcpServers && "aditly" in p.mcpServers);
+  // 白名单全是 mcp__aditly__* web 工具，不含文件系统工具
+  assert.ok(p.allowedTools.length >= 3);
+  assert.ok(p.allowedTools.every((t) => t.startsWith("mcp__aditly__")));
+  assert.ok(!p.allowedTools.includes("Bash"));
+});
+
 test("纯推理 role：禁文件系统工具、不执行工具、回合少", () => {
   for (const role of ["editor", "strategy-advisor", "source-verifier", "designer", "market-scanner", "information-architect"]) {
     const p = rolePolicy(role);
