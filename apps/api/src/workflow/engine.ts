@@ -56,6 +56,7 @@ import {
   runSerialReview,
   type AgentRunner,
 } from "./phases/index.ts";
+import { buildScaffoldArtifact } from "./scaffold.ts";
 import {
   PHASE_QUEUE,
   createConnection,
@@ -65,6 +66,7 @@ import {
 } from "./queues.ts";
 
 // ── job 名 ──
+const JOB_SCAFFOLD = "phase-scaffold";
 const JOB_SINGLE = "phase-single";
 const JOB_SERIAL = "phase-serial";
 const JOB_AGGREGATE = "phase-aggregate";
@@ -279,11 +281,9 @@ export class WorkflowEngine {
         children,
       });
     } else {
-      await this.queue!.add(kind === "serial" ? JOB_SERIAL : JOB_SINGLE, {
-        workflowId,
-        phase,
-        attemptNumber,
-      });
+      const jobName =
+        kind === "scaffold" ? JOB_SCAFFOLD : kind === "serial" ? JOB_SERIAL : JOB_SINGLE;
+      await this.queue!.add(jobName, { workflowId, phase, attemptNumber });
     }
   }
 
@@ -298,6 +298,8 @@ export class WorkflowEngine {
 
   private async process(job: Job): Promise<unknown> {
     switch (job.name) {
+      case JOB_SCAFFOLD:
+        return this.processScaffold(job);
       case JOB_RESEARCH_CHILD:
         return this.processResearchChild(job);
       case JOB_AGGREGATE:
@@ -346,6 +348,33 @@ export class WorkflowEngine {
         idempotencyKey: idempotencyKey(workflowId, phase, attemptNumber),
       });
       await this.emit(workflowId, "phase-aggregated", { phase, total: agg.total, missing: agg.missing });
+    });
+  }
+
+  /** scaffold phase（phase0）：引擎内确定性算骨架，**不调 agent**（零 token）。 */
+  private async processScaffold(job: Job): Promise<unknown> {
+    const { workflowId, phase, attemptNumber } = job.data as {
+      workflowId: string;
+      phase: PhaseId;
+      attemptNumber: number;
+    };
+    return this.withAttempt(job, workflowId, phase, attemptNumber, async () => {
+      const res = await this.db.execute(
+        sql`SELECT mode, truth_snapshot->'manifest' AS "manifest" FROM workflows WHERE id = ${workflowId}`,
+      );
+      const row = (res as unknown as { rows?: { mode?: string | null; manifest?: unknown }[] }).rows?.[0];
+      const manifest = Array.isArray(row?.manifest) ? (row!.manifest as string[]) : [];
+      const artifact = buildScaffoldArtifact(row?.mode ?? null, manifest);
+      await writeArtifactIdempotent(this.db, {
+        workflowId,
+        phase,
+        type: artifact.type,
+        version: attemptNumber,
+        body: artifact.body,
+        status: artifact.status,
+        idempotencyKey: idempotencyKey(workflowId, phase, attemptNumber),
+      });
+      await this.emit(workflowId, "phase-scaffolded", { phase, mode: row?.mode ?? null });
     });
   }
 
