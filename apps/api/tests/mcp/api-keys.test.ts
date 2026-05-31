@@ -128,3 +128,111 @@ test("active-context 路由：POST 心跳 → GET 命中（自己的）", async 
   assert.equal((get.json() as { activeContext: { workflowId: string } }).activeContext.workflowId, "wf-x");
   await app.close();
 });
+
+// ── code-review #1：scope 提权回归 ──
+
+test("提权防线：write key 不能 mint 新 key（POST /api/api-keys → 403）", async () => {
+  const app = makeApp();
+  const u = await registerUser(app);
+  createdUsers.push(u.userId);
+  const key = await createApiKey(db, { userId: u.userId, name: "w", scope: "write", projectIds: null });
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/api-keys",
+    headers: auth(key.plaintext),
+    payload: { name: "minted", scope: "write" },
+  });
+  assert.equal(res.statusCode, 403, "API key 不能管理 key");
+  // GET / DELETE 同样拒
+  assert.equal((await app.inject({ method: "GET", url: "/api/api-keys", headers: auth(key.plaintext) })).statusCode, 403);
+  await app.close();
+});
+
+test("提权防线：scoped key 不能创建新项目（POST /api/projects → 403）", async () => {
+  const app = makeApp();
+  const u = await registerUser(app);
+  createdUsers.push(u.userId);
+  const pid = await seedProject(u.userId);
+  createdProjects.push(pid);
+  const scoped = await createApiKey(db, { userId: u.userId, name: "s", scope: "write", projectIds: [pid] });
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/projects",
+    headers: auth(scoped.plaintext),
+    payload: { name: "新项目" },
+  });
+  assert.equal(res.statusCode, 403, "受限 key 不能创建项目");
+  // 全账户 key 可以
+  const full = await createApiKey(db, { userId: u.userId, name: "f", scope: "write", projectIds: null });
+  const ok = await app.inject({
+    method: "POST",
+    url: "/api/projects",
+    headers: auth(full.plaintext),
+    payload: { name: "全账户建的" },
+  });
+  assert.equal(ok.statusCode, 201);
+  createdProjects.push((ok.json() as { projectId: string }).projectId);
+  await app.close();
+});
+
+// ── API key CRUD HTTP（route 层，之前只测了 service 层）──
+
+test("CRUD HTTP：POST 回显明文一次 / GET 不漏 hash / DELETE 200+二次 404 / 他人不能删", async () => {
+  const app = makeApp();
+  const owner = await registerUser(app);
+  const other = await registerUser(app);
+  createdUsers.push(owner.userId, other.userId);
+
+  const create = await app.inject({
+    method: "POST",
+    url: "/api/api-keys",
+    headers: auth(owner.token),
+    payload: { name: "my-laptop", scope: "read" },
+  });
+  assert.equal(create.statusCode, 201);
+  const created = create.json() as { id: string; apiKey: string; prefix: string };
+  assert.match(created.apiKey, /^bk_/, "回显明文一次");
+
+  const list = await app.inject({ method: "GET", url: "/api/api-keys", headers: auth(owner.token) });
+  const body = list.body;
+  assert.doesNotMatch(body, /key_hash|keyHash/, "列表不漏 hash");
+  assert.doesNotMatch(body, new RegExp(created.apiKey), "列表不漏明文");
+
+  // 他人不能删我的 key
+  const otherDel = await app.inject({ method: "DELETE", url: `/api/api-keys/${created.id}`, headers: auth(other.token) });
+  assert.equal(otherDel.statusCode, 404, "他人删不到（按 userId 过滤）");
+
+  const del = await app.inject({ method: "DELETE", url: `/api/api-keys/${created.id}`, headers: auth(owner.token) });
+  assert.equal(del.statusCode, 200);
+  const del2 = await app.inject({ method: "DELETE", url: `/api/api-keys/${created.id}`, headers: auth(owner.token) });
+  assert.equal(del2.statusCode, 404, "二次删幂等 404");
+  await app.close();
+});
+
+test("撤销后经 HTTP authenticate → 401（不只是 service 层 null）", async () => {
+  const app = makeApp();
+  const u = await registerUser(app);
+  createdUsers.push(u.userId);
+  const key = await createApiKey(db, { userId: u.userId, name: "k", scope: "read", projectIds: null });
+  await revokeApiKey(db, u.userId, key.id);
+  const res = await app.inject({ method: "GET", url: "/api/projects", headers: auth(key.plaintext) });
+  assert.equal(res.statusCode, 401, "撤销的 key 被中间件拒");
+  await app.close();
+});
+
+// ── code-review #4：Redis 失败降级（注入抛错的 redis stub）──
+
+test("active-context：Redis 抛错时 read 返回 null、write 不抛（降级）", async () => {
+  const throwing = {
+    get: async () => {
+      throw new Error("redis down");
+    },
+    set: async () => {
+      throw new Error("redis down");
+    },
+  } as unknown as typeof securityRedis;
+  // write 不抛
+  await writeActiveContext(throwing, "u-x", { workflowId: "wf" });
+  // read 返回 null 而非抛
+  assert.equal(await readActiveContext(throwing, "u-x"), null);
+});

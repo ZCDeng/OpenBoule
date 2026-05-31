@@ -25,6 +25,7 @@ export async function readResource(client: BouleClient, uri: string): Promise<st
   if (!workflowId) return null;
   const res = await client.fetchImpl(`${client.baseUrl}/api/workflows/${workflowId}`, {
     headers: { authorization: `Bearer ${client.apiKey}` },
+    signal: AbortSignal.timeout(15_000), // code-review #3：超时兜底
   });
   if (!res.ok) throw new Error(`读取 axes 资源失败：HTTP ${res.status}`);
   const wf = (await res.json()) as { axes?: unknown };

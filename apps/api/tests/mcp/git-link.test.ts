@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sql } from "drizzle-orm";
 import { makeApp, registerUser, auth, seedProject, db, securityRedis } from "../routes/_helpers.ts";
-import { isWithin, validateGitUrl, validateLocalDir } from "../../src/services/git-link.ts";
+import { isWithin, validateGitUrl, validateLocalDir, resolveSafeCwd } from "../../src/services/git-link.ts";
 
 const users: string[] = [];
 const projects: string[] = [];
@@ -66,6 +66,25 @@ test("validateLocalDir：非绝对路径 / 无 .git / 越界 全拒", async () =
   tmps.push(outside);
   await mkdir(join(outside, ".git"), { recursive: true });
   assert.equal((await validateLocalDir(outside)).ok, false, "root 外越界");
+});
+
+test("resolveSafeCwd TOCTOU：链接后被换成逃逸 symlink → 执行前再校验抛错（code-review）", async () => {
+  const root = await mkdtemp(join(tmpdir(), "boule-toctou-"));
+  const outside = await mkdtemp(join(tmpdir(), "boule-toctou-out-"));
+  tmps.push(root, outside);
+  process.env.BOULE_LOCAL_ROOT = root;
+
+  // 链接时：合法 git repo
+  const repo = join(root, "repo");
+  await mkdir(join(repo, ".git"), { recursive: true });
+  assert.ok((await validateLocalDir(repo)).ok, "链接时合法");
+
+  // 执行前：repo 被换成指向 root 外的 symlink（TOCTOU 攻击）
+  await rm(repo, { recursive: true, force: true });
+  await mkdir(join(outside, ".git"), { recursive: true });
+  await symlink(outside, repo);
+
+  await assert.rejects(() => resolveSafeCwd(repo), /校验失败/, "执行前 realpath 再校验拆穿逃逸");
 });
 
 test("validateLocalDir：symlink 跳出 root → realpath 拆穿后拒", async () => {

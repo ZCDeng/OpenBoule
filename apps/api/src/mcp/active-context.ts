@@ -45,7 +45,12 @@ export async function writeActiveContext(
     await writeFile(path, JSON.stringify({ userId, value }), { mode: 0o600 });
     return;
   }
-  await redis.set(redisKey(userId), JSON.stringify(value), "EX", TTL_SEC);
+  // Redis 失败不该 500 心跳（best-effort 信号，code-review #4）：吞错降级，与 local 分支对称。
+  try {
+    await redis.set(redisKey(userId), JSON.stringify(value), "EX", TTL_SEC);
+  } catch {
+    // 心跳丢一拍无碍——下次交互再写。
+  }
 }
 
 /** 读 active context；无则 null。local 模式校验文件内 userId 与请求方匹配（防越权读他人）。 */
@@ -60,6 +65,10 @@ export async function readActiveContext(redis: Redis, userId: string): Promise<A
       return null; // 文件不存在 = 尚无 active context
     }
   }
-  const raw = await redis.get(redisKey(userId));
-  return raw ? (JSON.parse(raw) as ActiveContext) : null;
+  try {
+    const raw = await redis.get(redisKey(userId));
+    return raw ? (JSON.parse(raw) as ActiveContext) : null;
+  } catch {
+    return null; // Redis blip → 当作无 active context（code-review #4，与 local 分支对称）
+  }
 }

@@ -144,3 +144,15 @@ test("路由：export（owner）→ import 端到端 + 非法 bundle 422", async
   assert.equal(bad.statusCode, 422);
   await app.close();
 });
+
+test("export：非 owner → 403（code-review 测试缺口）", async () => {
+  const app = makeApp();
+  const author = await registerUser(app);
+  const other = await registerUser(app);
+  users.push(author.userId, other.userId);
+  const pid = await seedProject(author.userId);
+  projects.push(pid);
+  const res = await app.inject({ method: "GET", url: `/api/projects/${pid}/export`, headers: auth(other.token) });
+  assert.equal(res.statusCode, 403, "非 owner 不能导出");
+  await app.close();
+});

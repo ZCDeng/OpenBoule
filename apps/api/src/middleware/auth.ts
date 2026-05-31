@@ -124,6 +124,38 @@ export function getProjectRoleFromReq(req: FastifyRequest): { role?: Role; proje
   return { role: r.projectRole, projectId: r.projectId };
 }
 
+/**
+ * 拒绝 API-key 认证的请求（key 管理端点专用）。key 只能用 Web 会话管理——否则一个泄露的
+ * write key 可 mint 新的全账户 key 逃逸自身 scope（code-review #1 提权）。依赖 authenticate 先跑。
+ */
+export async function rejectApiKeyAuth(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  if (getUser(req)?.apiKey) {
+    await reply.code(403).send({ error: "FORBIDDEN", message: "API key 不能管理 key，请用 Web 会话" });
+  }
+}
+
+/**
+ * 拒绝 project-scoped key（projectIds 非 null）创建新项目——scoped key 创建白名单外项目会绕过其
+ * 自身约束（code-review #1）。全账户 key（projectIds=null）放行。依赖 authenticate 先跑。
+ */
+export async function rejectScopedApiKey(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const apiKey = getUser(req)?.apiKey;
+  if (apiKey && apiKey.projectIds !== null) {
+    await reply.code(403).send({ error: "FORBIDDEN", message: "受限 API key 不能创建新项目" });
+  }
+}
+
+/** Host 头是否指向本机（U2 本地模式 anti-DNS-rebinding，纯函数）。允许任意端口。 */
+export function isLocalHost(hostHeader: string | undefined): boolean {
+  if (!hostHeader) return false;
+  let host = hostHeader.trim().toLowerCase();
+  // 括号 IPv6（[::1]:3100）：取括号内。裸 ::1 直接命中下方判定，不做端口剥离（避免吃掉 :1）。
+  const bracket = host.match(/^\[([^\]]+)\](?::\d+)?$/);
+  if (bracket) host = bracket[1]!;
+  else if (/^[^:]+:\d+$/.test(host)) host = host.replace(/:\d+$/, ""); // 仅 host:port（单冒号）剥端口
+  return host === "127.0.0.1" || host === "localhost" || host === "::1" || host.startsWith("127.");
+}
+
 /** 回环地址判定（U2 本地模式 loopback-only 守卫，纯函数便于测试）。 */
 export function isLoopbackAddress(ip: string | undefined): boolean {
   if (!ip) return false;
@@ -145,6 +177,12 @@ export function localModeHook(localUserId: string) {
   return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
     if (!isLoopbackAddress(req.ip)) {
       await reply.code(403).send({ error: "FORBIDDEN", message: "本地模式仅接受本机（loopback）请求" });
+      return;
+    }
+    // anti-DNS-rebinding（code-review #2）：源 IP 是回环不够——恶意站点可 DNS rebind 到 127.0.0.1
+    // 让浏览器同源打本地 daemon。校验 Host 头必须指向本机，挡掉重绑定域名。
+    if (!isLocalHost(req.headers.host)) {
+      await reply.code(403).send({ error: "FORBIDDEN", message: "本地模式 Host 头非本机（防 DNS 重绑定）" });
       return;
     }
     setUser(req, { userId: localUserId });

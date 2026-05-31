@@ -9,7 +9,7 @@ import { sql } from "drizzle-orm";
 import { buildApp } from "../../src/app.ts";
 import { db } from "../routes/_helpers.ts";
 import { createSecurityRedis } from "../../src/services/redis.ts";
-import { isLoopbackAddress } from "../../src/middleware/auth.ts";
+import { isLoopbackAddress, isLocalHost } from "../../src/middleware/auth.ts";
 import { ensureLocalUser, LOCAL_USER_ID } from "../../src/services/local-user.ts";
 
 const redis = createSecurityRedis();
@@ -70,5 +70,28 @@ test("team 模式（无 localMode）：未认证仍 401", async () => {
   const app = buildApp({ db, securityRedis: redis });
   const res = await app.inject({ method: "GET", url: "/api/projects" });
   assert.equal(res.statusCode, 401, "团队模式不受本地模式影响");
+  await app.close();
+});
+
+// ── code-review #2：anti-DNS-rebinding ──
+
+test("isLocalHost：本机 Host 放行、重绑定域名拒", () => {
+  for (const h of ["127.0.0.1", "127.0.0.1:3100", "localhost", "localhost:5173", "[::1]", "::1"]) {
+    assert.equal(isLocalHost(h), true, `${h} 应是本机`);
+  }
+  for (const h of ["evil.com", "attacker.example:3100", "boule.io", "", undefined]) {
+    assert.equal(isLocalHost(h), false, `${h} 不应是本机`);
+  }
+});
+
+test("local 模式：回环 IP 但 Host 头是攻击者域名 → 403（防 DNS 重绑定）", async () => {
+  const app = buildApp({ db, securityRedis: redis, localMode: { userId: LOCAL_USER_ID } });
+  const res = await app.inject({
+    method: "GET",
+    url: "/api/projects",
+    headers: { host: "evil.attacker.com" },
+  });
+  assert.equal(res.statusCode, 403);
+  assert.match((res.json() as { message: string }).message, /DNS 重绑定/);
   await app.close();
 });

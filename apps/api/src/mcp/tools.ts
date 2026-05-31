@@ -50,6 +50,8 @@ async function call(
         ...(body !== undefined ? { "content-type": "application/json" } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      // 超时兜底（code-review #3）：半开连接不会无限挂起。
+      signal: AbortSignal.timeout(15_000),
     });
   } catch (err) {
     throw new Error(

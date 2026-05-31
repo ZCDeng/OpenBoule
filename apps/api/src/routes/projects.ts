@@ -5,7 +5,7 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
-import { authenticate, getUser, requireProjectRole } from "../middleware/auth.ts";
+import { authenticate, getUser, requireProjectRole, rejectScopedApiKey } from "../middleware/auth.ts";
 import type { Role } from "../services/rbac.ts";
 import { config } from "../config.ts";
 import { validateGitUrl, validateLocalDir, type LinkMode } from "../services/git-link.ts";
@@ -14,7 +14,7 @@ import { exportProject, importProject, validateBundle, MAX_BUNDLE_BYTES } from "
 export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
 
-  app.post("/api/projects", { preHandler: authenticate }, async (req, reply) => {
+  app.post("/api/projects", { preHandler: [authenticate, rejectScopedApiKey] }, async (req, reply) => {
     const user = getUser(req)!;
     const { name } = (req.body ?? {}) as { name?: string };
     if (!name) return reply.code(400).send({ error: "BAD_REQUEST", message: "name 必填" });
@@ -76,7 +76,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void
   // bodyLimit 抬到 10MB（默认 1MB 不够），超限 Fastify 413 兜底；validateBundle 再精校。
   app.post(
     "/api/projects/import",
-    { preHandler: authenticate, bodyLimit: MAX_BUNDLE_BYTES + 1024 },
+    { preHandler: [authenticate, rejectScopedApiKey], bodyLimit: MAX_BUNDLE_BYTES + 1024 },
     async (req, reply) => {
       const user = getUser(req)!;
       const raw = req.body;

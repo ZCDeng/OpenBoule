@@ -17,6 +17,7 @@ async function request(cfg: CliConfig, method: string, path: string, body?: unkn
         ...(body !== undefined ? { "content-type": "application/json" } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(15_000), // code-review #3：半开连接超时兜底
     });
   } catch (err) {
     throw new CliError(`无法连接 Boule（${cfg.daemonUrl}）：daemon 在运行吗？(${(err as Error).message})`);
