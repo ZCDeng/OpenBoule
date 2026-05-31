@@ -22,8 +22,14 @@ export const PHASE_IDS = [
 
 export type PhaseId = (typeof PHASE_IDS)[number];
 
-/** phase 执行形态：单角色 / fan-out 并发 / serial 串行（editor-1→2→3）。 */
-export type PhaseKind = "single" | "fanout" | "serial";
+/**
+ * phase 执行形态：
+ * - scaffold：确定性脚手架，引擎内算产物，**不调 agent**（phase0「骨架生成、目录创建」）
+ * - single：单角色 agent
+ * - fanout：并发 researcher fan-out
+ * - serial：editor-1→2→3 串行
+ */
+export type PhaseKind = "scaffold" | "single" | "fanout" | "serial";
 
 export interface PhaseDescriptor {
   id: PhaseId;
@@ -32,6 +38,7 @@ export interface PhaseDescriptor {
   kind: PhaseKind;
 }
 
+const SCAFFOLD: Set<PhaseId> = new Set(["phase0_init"]);
 const FANOUT: Set<PhaseId> = new Set(["phase2_research"]);
 const SERIAL: Set<PhaseId> = new Set(["phase4_review"]);
 
@@ -41,7 +48,13 @@ export const PHASES: Record<PhaseId, PhaseDescriptor> = Object.fromEntries(
     {
       id,
       next: (PHASE_IDS[i + 1] ?? null) as PhaseId | null,
-      kind: FANOUT.has(id) ? "fanout" : SERIAL.has(id) ? "serial" : "single",
+      kind: SCAFFOLD.has(id)
+        ? "scaffold"
+        : FANOUT.has(id)
+          ? "fanout"
+          : SERIAL.has(id)
+            ? "serial"
+            : "single",
     },
   ]),
 ) as Record<PhaseId, PhaseDescriptor>;
