@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
 import { Layout } from "../components/Layout.tsx";
 import { LoginPage } from "../pages/Login.tsx";
+import { LandingPage } from "../pages/Landing.tsx";
 import { ProjectsPage } from "../pages/Projects.tsx";
 import { ProjectDetailPage } from "../pages/ProjectDetail.tsx";
 import { WorkflowPage } from "../pages/Workflow.tsx";
@@ -18,13 +19,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
 export function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/s/:token" element={<SharePage />} />
       <Route path="/projects" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
       <Route path="/projects/:id" element={<RequireAuth><ProjectDetailPage /></RequireAuth>} />
       <Route path="/workflows/:id" element={<RequireAuth><WorkflowPage /></RequireAuth>} />
       <Route path="/methodology" element={<RequireAuth><MethodologyPage /></RequireAuth>} />
-      <Route path="/" element={<Navigate to="/projects" replace />} />
       <Route path="*" element={<Navigate to="/projects" replace />} />
     </Routes>
   );
