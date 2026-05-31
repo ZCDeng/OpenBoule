@@ -63,6 +63,11 @@ services:
       API_PORT: "3000"
       JWT_SECRET: ${JWT_SECRET:?须在 .env 设强随机 JWT_SECRET}
       AGENT_MODEL: ${AGENT_MODEL:-claude-opus-4-8}
+      # 无事件 watchdog（ms）。researcher 联网检索慢，默认 300s（U3）。
+      AGENT_WATCHDOG_MS: ${AGENT_WATCHDOG_MS:-300000}
+      # Aditly 自托管 MCP（web 检索网关）。独立项目，需另跑其 compose；=off 关闭 researcher 联网（U4）。
+      # 容器内访问宿主机用 host.docker.internal；本机直跑用 127.0.0.1。
+      ADITLY_MCP_URL: ${ADITLY_MCP_URL:-http://host.docker.internal:8643/mcp/}
       # SDK auth：CLI 会话或裸 key（KTD-2）。配 key 才能真跑 phase。
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}

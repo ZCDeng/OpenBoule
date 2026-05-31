@@ -134,3 +134,21 @@
 - 未决：Open Q 13（messages-api 裸 key 端到端对照，需 `ANTHROPIC_API_KEY`）；git remote 是否建；
   组合根（server.ts listen + 生产 agentRunner role 映射，随 dispatch matrix）；
   surface 生命周期 engine↔U6 wiring（checkpoint→requestSurface+emit surface 事件，目前 checkpoint 走 workflow-status-changed）。
+
+## 2026-05-31 浏览器实测修复 + phase0 去 agent 化（feat/phase0-scaffold-web-tooling）
+
+浏览器真点全栈（chrome-devtools，Claude CLI 会话跑真 agent，无 API key）暴露并修：
+- ✅ 前端 2 真 bug（commit d29f160，已上 main）：vite proxy `/s` 前缀吞 `/src/*` 致白屏 → 正则 `^/s/`；
+  api 客户端空 body POST 带 JSON content-type 致 SSE ticket 400 死循环 → 仅有 body 才声明。+errorCode fail-loud。
+- ✅ **phase0 跑不完遗留 → 已关闭**（plan 2026-05-31-001，U1–U5）：
+  - 根因：phase0_init 被派 information-architect agent，sandbox 无真实 workspace，`ls` 被拦后空转，
+    120s watchdog 掐断 → TERMINATED_UNKNOWN。cost 落库但 phase 永不完成。
+  - U1/U2：新增 `scaffold` PhaseKind + `buildScaffoldArtifact`（纯函数）+ 引擎 `processScaffold`——
+    phase0 引擎内确定性产骨架、零 token、正常 checkpoint，不调 agent。
+  - U3：`rolePolicy` 策略表——纯推理 role 用 `disallowedTools` 禁 Bash/Glob/Read/Write/Edit 止空转；
+    researcher 高回合(12)+可执行工具；watchdog 默认 120s→300s 且 env 可配（AGENT_WATCHDOG_MS）。
+  - U4：researcher 接 Aditly 自托管 MCP（web 检索网关 :8643），`mcp__aditly__*` 白名单经 SDK mcpServers；
+    `ADITLY_MCP_URL` env（=off 关闭 → 降级 + systemPrompt fail-loud 标注「未联网检索」）。
+  - U5：.env.example / docker-compose api env 收口（host.docker.internal:8643）。
+- 仍未接（deferred）：真实 dispatch matrix（role→agent 权威表，现 mapRoleToFile 临时映射）；
+  KTD-6 streaming-input 活体确认（外部 HTTP MCP 是否需 async-generator prompt，待真跑 phase2 验证）。
