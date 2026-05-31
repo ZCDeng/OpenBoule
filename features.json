@@ -1,0 +1,60 @@
+{
+  "project": "Boule / OpenConsult",
+  "updated": "2026-05-31",
+  "note": "特性线追踪（long-term）。状态以 git + PR 为准，progress.md 为详情。",
+  "features": [
+    {
+      "id": "F1",
+      "title": "核心架构主干（U0–U10）",
+      "status": "completed",
+      "plan": "docs/plans/2026-05-30-001-feat-boule-architecture-plan.md",
+      "units": "U0 feasibility spike → U1 数据层 → U2 真值源同步 → U3 Agent SDK 执行器 → U4 工作流引擎 → U5 确定性 PM → U6 API 网关 → U7 前端骨架 → U8 核心视图 → U9 文档工作台 → U10 报告渲染+签名分享",
+      "completedAt": "2026-05-31",
+      "verification": "后端 111 + 前端 22 测全绿；docker(PG/Redis)；组合根可部署"
+    },
+    {
+      "id": "F2",
+      "title": "Phase0 去 agent 化 + Web 工具链",
+      "status": "completed",
+      "plan": "docs/plans/2026-05-31-001-feat-phase0-deterministic-web-agent-tooling-plan.md",
+      "units": "scaffold PhaseKind 确定性产骨架 / rolePolicy 工具白名单止空转 / researcher 接 Aditly MCP web 检索 / task-threading 端到端",
+      "completedAt": "2026-05-31",
+      "verification": "浏览器真点全栈；phase0 秒级 scaffold；phase2 fan-out 5 researcher 真检索；api 140 绿"
+    },
+    {
+      "id": "F3",
+      "title": "Web-CLI 协同层（MCP 桥 + 本地模式 + Thin CLI + Git-linked）",
+      "status": "completed",
+      "plan": "docs/plans/2026-05-31-002-feat-web-cli-bridge-plan.md",
+      "prs": [2, 3, 4],
+      "units": {
+        "U1": "MCP 服务器 + API Key 认证 + Active Context（7 tools）",
+        "U2-core": "本地免登录模式（docker PG 退路，SQLite spike 未过）",
+        "U2-R5": "本地→团队 export/import（owner 重映射 + 强校验）",
+        "U3": "Thin CLI boule（零依赖，复用 MCP server）",
+        "U4": "Git-linked Projects（两路径分离 + agent 执行边界 + 配置 UI）"
+      },
+      "review": {
+        "type": "8-persona ce-code-review",
+        "findings": "10（#1–#10）全部落地或清零",
+        "fixes": "#1 scope 提权 / #2 DNS 重绑定 / #3 fetch 超时 / #4 Redis 降级（PR #2）；#6–10（PR #3）；#5 authenticate 去 singletonDb（PR #4 / plan 003）"
+      },
+      "completedAt": "2026-05-31",
+      "verification": "api 181 + cli 3 + web 24 测全绿，tsc 三包 0，迁移 0002–0004 应用，4 PR 全合 main"
+    }
+  ],
+  "deferred": [
+    {
+      "ref": "F3 plan KTD-22",
+      "item": "langfuse 可观测性（Deferred）"
+    },
+    {
+      "ref": "F3 Open Q",
+      "item": "Thin CLI 发布方式（npm 公开包 vs workspace link，Open Q5）；CLI 是否值得做（Open Q6）"
+    },
+    {
+      "ref": "F1",
+      "item": "Phase 2.5 结构化裁决落库（VerdictView 仍 props 注入）；Open Q 13 messages-api 裸 key 端到端对照"
+    }
+  ]
+}
