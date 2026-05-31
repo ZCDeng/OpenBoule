@@ -28,6 +28,9 @@ export const config = {
   nodeEnv: optional("NODE_ENV", "development"),
   apiPort: Number(optional("API_PORT", "3000")),
 
+  // 运行模式（U1 引入，U2 本地模式消费）：team = Postgres + JWT；local = SQLite + 免登录 + loopback-only。
+  mode: optional("MODE", "team") === "local" ? "local" : "team",
+
   databaseUrl: required("DATABASE_URL"),
 
   // 自建 JWT（KTD-10）。secret 缺失即 fail loud——绝不用默认值签发可伪造的 token。

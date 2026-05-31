@@ -11,6 +11,8 @@ import type { DB } from "./db/client.ts";
 import type { Redis } from "ioredis";
 import type { WorkflowEngine } from "./workflow/engine.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
+import { registerApiKeyRoutes } from "./routes/api-keys.ts";
+import { registerActiveContextRoutes } from "./routes/active-context.ts";
 import { registerProjectRoutes } from "./routes/projects.ts";
 import { registerWorkflowRoutes } from "./routes/workflows.ts";
 import { registerApprovalRoutes } from "./routes/approvals.ts";
@@ -46,6 +48,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.get("/health", async () => ({ ok: true }));
 
   registerAuthRoutes(app, deps);
+  registerApiKeyRoutes(app, deps);
+  registerActiveContextRoutes(app, deps);
   registerProjectRoutes(app, deps);
   registerWorkflowRoutes(app, deps);
   registerApprovalRoutes(app, deps);

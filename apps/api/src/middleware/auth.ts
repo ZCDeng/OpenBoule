@@ -10,10 +10,20 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { verifyJwt, JwtError } from "../auth/jwt.ts";
 import { config } from "../config.ts";
 import { getProjectRole, hasMinRole, type Role } from "../services/rbac.ts";
+import { db as singletonDb } from "../db/client.ts";
+import {
+  isApiKeyToken,
+  isReadOnlyMethod,
+  verifyApiKey,
+  apiKeyAllowsProject,
+  type ApiKeyAuth,
+} from "../services/api-keys.ts";
 import type { DB } from "../db/client.ts";
 
 export interface AuthUser {
   userId: string;
+  /** 经 API key 认证时携带（MCP/CLI，U1/KTD-8）；JWT cookie 认证时缺省。 */
+  apiKey?: ApiKeyAuth;
 }
 
 /** 把已认证用户挂到 req（避免全局 module augmentation 的脆弱性）。 */
@@ -34,11 +44,29 @@ function extractToken(req: FastifyRequest): string | null {
   return cookies?.[ACCESS_COOKIE] ?? null;
 }
 
-/** preHandler：校验 access token，挂 req.user；缺失/无效/过期 → 401。 */
+/**
+ * preHandler：校验 access token，挂 req.user；缺失/无效/过期 → 401。
+ *
+ * 双路径（additive，KTD-8）：`bk_` 前缀 → API key（MCP/CLI），否则 → JWT（Web cookie/Bearer）。
+ * API key 走 db 单例查 hash（与测试注入的同一实例）。read scope 的 key 拒非只读方法 → 403。
+ */
 export async function authenticate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
   const token = extractToken(req);
   if (!token) {
     await reply.code(401).send({ error: "UNAUTHENTICATED", message: "缺少凭证" });
+    return;
+  }
+  if (isApiKeyToken(token)) {
+    const auth = await verifyApiKey(singletonDb, token);
+    if (!auth) {
+      await reply.code(401).send({ error: "UNAUTHENTICATED", message: "无效或已撤销的 API key" });
+      return;
+    }
+    if (auth.scope === "read" && !isReadOnlyMethod(req.method)) {
+      await reply.code(403).send({ error: "FORBIDDEN", message: "只读 API key 不可写" });
+      return;
+    }
+    setUser(req, { userId: auth.userId, apiKey: auth });
     return;
   }
   try {
@@ -69,6 +97,12 @@ export function requireProjectRole(db: DB, minRole: Role, resolve: ProjectResolv
     const projectId = await resolve(req, db);
     if (!projectId) {
       await reply.code(404).send({ error: "NOT_FOUND", message: "目标项目/资源不存在" });
+      return;
+    }
+    // API key 项目范围（D 簇）：白名单 key 命中范围外项目即拒，先于角色判定（缩小泄露面）。
+    if (user.apiKey && !apiKeyAllowsProject(user.apiKey, projectId)) {
+      req.log.warn({ userId: user.userId, projectId }, "API key 项目范围拒绝");
+      await reply.code(403).send({ error: "FORBIDDEN", message: "API key 无此项目权限" });
       return;
     }
     const role = await getProjectRole(db, user.userId, projectId);

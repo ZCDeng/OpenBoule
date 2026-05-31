@@ -15,6 +15,13 @@
       "when": 1780162028769,
       "tag": "0001_wild_loners",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780233205581,
+      "tag": "0002_tense_union_jack",
+      "breakpoints": true
     }
   ]
 }
