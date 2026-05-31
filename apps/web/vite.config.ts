@@ -6,6 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 // 目标端口走 VITE_API_PORT，默认 3000（本地 3000 被占时可覆盖，如 Flowise 占用）。
 const apiTarget = `http://localhost:${process.env.VITE_API_PORT ?? "3000"}`;
 export default defineConfig({
+  base: "/OpenBoule/",
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
