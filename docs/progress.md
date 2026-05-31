@@ -153,6 +153,8 @@
 - 实跑验证（feat 分支）：phase0 秒级 scaffold（零 cost）；phase1/1.5 reasoning agent ~60s 干净跑完不空转；
   api 132/132 + web 24/24 全绿。**KTD-6 解决**：repro 证明字符串 prompt 即可触发 `mcp__aditly__anspire_web_search`
   （aditly status: connected），外部 HTTP MCP 无需 async-generator，runtime 不用改。
-- 实跑发现（deferred，非缺陷）：live phase2 researcher 未真搜——`processResearchChild` 传 task=phase id 而非真实 axis，
-  无具体可搜内容。web 能力已接通且 repro 证明可用，e2e 受上游 task 内容透传门控 → 下一步「task-threading」。
-- 仍未接（deferred）：真实 dispatch matrix（role→agent 权威表 + axis/brief 透传 researcher task，现 mapRoleToFile 临时映射）。
+- ✅ **task-threading 已补做并端到端验证**（TA/TB，同分支）：phase1.5 真 agent 产 5 个结构化 axes →
+  parseAxes 持久化 workflows.axes（axes-resolved count=5）→ phase2 fan-out 5 researcher 各拿对应 axis 具体 task →
+  **全 5 个用 Aditly 真检索**：coverage {total:5,missing:0}，synthesis 含 16 个 http 来源，抽样含 2026-04-06
+  训练截止后真实文章（确为实时检索）。researcher 输出 token 81k（凭知识时仅 4.5k）。api 140/140 全绿。
+- 仍未接（deferred）：真实 dispatch matrix（role→agent 权威表，现 mapRoleToFile 临时映射）；接案 brief 叠加透传 researcher。

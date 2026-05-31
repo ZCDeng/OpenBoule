@@ -179,8 +179,9 @@ flowchart TD
 **In scope**：phase0 去 agent 化（仅此 phase）；role 运行策略表（工具/回合/超时）；Aditly MCP 接入 researcher；watchdog 默认值调大 + 可配；env/compose/文档收口。
 
 ### Deferred to Follow-Up Work
-- **researcher task 内容透传**（实跑发现）：`processResearchChild` 现传 `task=phase id`，researcher 无真实 axis/问题可搜，故 web 能力虽接通但 e2e 未被有效利用。需把 phase1.5 产的 axis / 接案 brief 透传进 researcher task。属下方 dispatch matrix 的一部分。
+- ~~researcher task 内容透传~~ **已补做并验证**（见「task-threading 增补」）。
 - 真实 dispatch matrix（role→agent 的权威数据表，替代 `mapRoleToFile` 临时映射）——本计划只在其旁加策略表，不重写。
+- 接案 brief 透传 researcher（本次只透传 axis；brief 作为额外上下文可后续叠加）。
 - 其余 phase（phase1/1.5 等）是否部分确定性化——本轮明确保留 agent。
 - Aditly 的社媒/GitHub 等需凭证的 reach 工具接入——本轮只接 always-on web 工具。
 - phase0 脚手架 artifact 被下游 phase 当真实输入消费（当前下游用 `task:phase`，不消费上游 artifact）。
@@ -212,7 +213,13 @@ flowchart TD
 4. ✅ `node --test` 全绿：api **132/132**（+scaffold/config/agent-runner/claude-sdk 新增）；web 24/24 不回归。
 5. ✅ `related` 计划「phase0 跑不完」遗留项已在 `docs/progress.md` 标关闭。
 
-**实跑发现（诚实留痕，非本计划缺陷）**：live phase2 的 researcher **未触发 web 搜索**——因 `processResearchChild` 传的 `task` 是字面量 `"phase2_research"`（phase id），而非真实 axis/研究问题，researcher 无具体可搜内容即凭知识作答。web 能力本身正确接通（repro 已证），**e2e 研究质量受上游 task 内容透传门控**。把 axis/brief 透传进 researcher task 属「真实 dispatch matrix / task-threading」deferred 工作，见 Scope Boundaries，留作下一步。
+**task-threading 后续（已补，实跑验证）**：plan 初版发现 live researcher 未真搜（task=phase id）。已补 task-threading（见下文「task-threading 增补」）：phase1.5 真 agent 产 **5 个结构化 axes** → `parseAxes` 持久化到 `workflows.axes`（`axes-resolved` count=5）→ phase2 fan-out 5 researcher 各拿对应 axis 具体 task → **全 5 个成功用 Aditly 真检索**（coverage {total:5,missing:0}，synthesis 含 **16 个 http 来源链接**，抽样含 `2026-04-06` 训练截止后的真实文章 → 确为实时检索非记忆）。researcher token 从凭知识 ~4.5k 输出升到 5 个共 81k。web 能力端到端打通。
+
+## task-threading 增补（plan 主体外补做，同分支）
+
+- **TA**：`workflow/axes.ts` —— `parseAxes(text)`（从 agent 文本末尾 ```json 块容错提取 axes）+ `researcherTask(axis)`（轴内容 + web 检索指令构建 researcher 具体 task）。纯函数 + 7 测试。
+- **TB**：agent-runner 给 `phase1_5_axis` systemPrompt 追加「输出结构化 axes 块」指令；engine `processSingle` 后若 phase=phase1_5_axis 则 `parseAxes` 写回 `workflows.axes`（解析不出保留既有，不臆造）；fan-out `resolveAxes` 定 researcher 数 + `researcherTask` 透传每 axis 为对应 researcher task；`processResearchChild` 透传 `job.data.task`（缺省退化 phase id）。engine 端到端测试覆盖。
+- 验证：api **140/140** 全绿；live e2e 如上。
 
 ## Sources & Research
 
