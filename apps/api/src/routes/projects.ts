@@ -9,6 +9,7 @@ import { authenticate, getUser, requireProjectRole } from "../middleware/auth.ts
 import type { Role } from "../services/rbac.ts";
 import { config } from "../config.ts";
 import { validateGitUrl, validateLocalDir, type LinkMode } from "../services/git-link.ts";
+import { exportProject, importProject, validateBundle, MAX_BUNDLE_BYTES } from "../services/project-export.ts";
 
 export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
@@ -53,6 +54,36 @@ export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void
         return reply.code(409).send({ error: "ALREADY_MEMBER" });
       }
       return reply.code(201).send({ projectId, userId, role });
+    },
+  );
+
+  // R5 export：打包 project 为可移植 JSON bundle（owner only）。
+  app.get(
+    "/api/projects/:id/export",
+    {
+      preHandler: [
+        authenticate,
+        requireProjectRole(db, "owner", async (req) => (req.params as { id: string }).id),
+      ],
+    },
+    async (req, reply) => {
+      const projectId = (req.params as { id: string }).id;
+      return reply.send(await exportProject(db, projectId));
+    },
+  );
+
+  // R5 import：在本实例重建 project，归属导入者（owner 重映射，E 簇）。需登录；bundle 强校验。
+  // bodyLimit 抬到 10MB（默认 1MB 不够），超限 Fastify 413 兜底；validateBundle 再精校。
+  app.post(
+    "/api/projects/import",
+    { preHandler: authenticate, bodyLimit: MAX_BUNDLE_BYTES + 1024 },
+    async (req, reply) => {
+      const user = getUser(req)!;
+      const raw = req.body;
+      const v = validateBundle(raw, Buffer.byteLength(JSON.stringify(raw ?? null), "utf8"));
+      if (!v.ok || !v.bundle) return reply.code(422).send({ error: "INVALID_BUNDLE", message: v.error });
+      const projectId = await importProject(db, user.userId, v.bundle);
+      return reply.code(201).send({ projectId, name: v.bundle.project.name });
     },
   );
 

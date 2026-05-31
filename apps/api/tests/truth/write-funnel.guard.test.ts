@@ -25,6 +25,9 @@ const SRC = join(here, "..", "..", "src");
 //    取自 createFrozenSnapshot，路由本身不构造 snapshot（缺 provider 即 503，已 review，U6）
 //  - services/agent-runner.ts：**只读** workflow 快照取 role prompt（loadSnapshot SELECT），不写不构造（已 review，组合根）
 //  - workflow/engine.ts：**只读** truth_snapshot->'manifest' 算 phase0 确定性脚手架（processScaffold SELECT），不写不构造（已 review，U2 去 agent 化）
+//  - services/project-export.ts：R5 迁移**搬运原始快照**（export SELECT / import INSERT carry-over）。
+//    刻意不 re-freeze——import 写入的是源实例已固化的快照，重新 createFrozenSnapshot 会捕获导入方 HEAD
+//    而非源 HEAD，破坏 provenance。故此处合法写入但不经 createFrozenSnapshot（已 review，U2 R5）
 const ALLOWLIST = new Set([
   "db/schema.ts",
   "truth/sync.ts",
@@ -35,6 +38,7 @@ const ALLOWLIST = new Set([
   "routes/workflows.ts",
   "services/agent-runner.ts",
   "workflow/engine.ts",
+  "services/project-export.ts",
 ]);
 
 const PATTERN = /truthSnapshot|truth_snapshot/;
