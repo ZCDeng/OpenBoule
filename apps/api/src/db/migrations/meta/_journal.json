@@ -29,6 +29,13 @@
       "when": 1780234484899,
       "tag": "0003_material_alice",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780237746309,
+      "tag": "0004_kind_silver_centurion",
+      "breakpoints": true
     }
   ]
 }

@@ -54,6 +54,8 @@ export const artifactStatus = pgEnum("artifact_status", [
   "below_threshold",
   "published",
 ]);
+// U4 Git-linked workspace 来源（code-review #7：DB 层枚举约束，不只靠 app 层 route 守卫）。
+export const projectLinkMode = pgEnum("link_mode", ["gitUrl", "localDir"]);
 
 // ── 1. users ──
 export const users = pgTable("users", {
@@ -75,7 +77,7 @@ export const projects = pgTable("projects", {
     .references(() => users.id),
   gitUrl: text("git_url"),
   localBaseDir: text("local_base_dir"),
-  linkMode: text("link_mode"), // null（未链接）/ gitUrl / localDir
+  linkMode: projectLinkMode("link_mode"), // null（未链接）/ gitUrl / localDir
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
