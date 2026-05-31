@@ -56,7 +56,7 @@ import {
   runSerialReview,
   type AgentRunner,
 } from "./phases/index.ts";
-import { buildScaffoldArtifact } from "./scaffold.ts";
+import { buildScaffoldArtifact, manifestPaths } from "./scaffold.ts";
 import {
   PHASE_QUEUE,
   createConnection,
@@ -363,8 +363,7 @@ export class WorkflowEngine {
         sql`SELECT mode, truth_snapshot->'manifest' AS "manifest" FROM workflows WHERE id = ${workflowId}`,
       );
       const row = (res as unknown as { rows?: { mode?: string | null; manifest?: unknown }[] }).rows?.[0];
-      const manifest = Array.isArray(row?.manifest) ? (row!.manifest as string[]) : [];
-      const artifact = buildScaffoldArtifact(row?.mode ?? null, manifest);
+      const artifact = buildScaffoldArtifact(row?.mode ?? null, manifestPaths(row?.manifest));
       await writeArtifactIdempotent(this.db, {
         workflowId,
         phase,

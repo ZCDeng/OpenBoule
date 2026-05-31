@@ -23,6 +23,18 @@ const MODE_SECTIONS: Record<string, readonly string[]> = {
 export const DEFAULT_MODE = "调研";
 
 /**
+ * 从快照 manifest 取文件路径字符串。
+ * manifest 实为 ManifestEntry[]（{path,hash} 对象，见 truth/types.ts），非裸字符串数组——
+ * 容错处理两种形态，产出 path 字符串列表（空/非数组 → []）。
+ */
+export function manifestPaths(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((m) => (typeof m === "string" ? m : (m as { path?: unknown })?.path))
+    .filter((p): p is string => typeof p === "string" && p !== "");
+}
+
+/**
  * 按 mode + manifest 产出确定性脚手架 artifact。
  *
  * @param mode workflow 的 mode（可空 → DEFAULT_MODE；未知 mode → 也回落 DEFAULT_MODE 骨架）

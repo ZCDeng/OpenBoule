@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildScaffoldArtifact, DEFAULT_MODE } from "../../src/workflow/scaffold.ts";
+import { buildScaffoldArtifact, manifestPaths, DEFAULT_MODE } from "../../src/workflow/scaffold.ts";
 
 const MANIFEST = [
   "skills/SKILL.md",
@@ -48,6 +48,23 @@ test("边界：manifest 为空 → 仍产合法骨架，manifestRefs=[]", () => 
   const parsed = JSON.parse(art.body) as { sections: unknown[]; manifestRefs: string[] };
   assert.ok(parsed.sections.length > 0);
   assert.deepEqual(parsed.manifestRefs, []);
+});
+
+test("manifestPaths：ManifestEntry[]（{path,hash}）→ path 字符串列表", () => {
+  const raw = [
+    { path: "skills/roles/editor.md", hash: "abc" },
+    { path: "skills/SKILL.md", hash: "def" },
+  ];
+  assert.deepEqual(manifestPaths(raw), ["skills/roles/editor.md", "skills/SKILL.md"]);
+});
+
+test("manifestPaths：容错裸字符串、混杂、非数组、坏元素", () => {
+  assert.deepEqual(manifestPaths(["a.md", "b.md"]), ["a.md", "b.md"]);
+  assert.deepEqual(manifestPaths([{ path: "a.md", hash: "x" }, "b.md"]), ["a.md", "b.md"]);
+  assert.deepEqual(manifestPaths(undefined), []);
+  assert.deepEqual(manifestPaths(null), []);
+  assert.deepEqual(manifestPaths("nope"), []);
+  assert.deepEqual(manifestPaths([{ hash: "no-path" }, { path: "" }, 42]), []); // 坏元素全过滤
 });
 
 test("各 mode 都有非空章节", () => {
