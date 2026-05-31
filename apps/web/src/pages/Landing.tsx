@@ -37,8 +37,9 @@ const monoMeta: CSSProperties = {
 const CAPABILITIES: { no: string; title: string; body: string }[] = [
   { no: "01", title: "确定性脚手架", body: "Phase 0 秒级生成项目骨架与目录，不调模型、不耗 token。该用代码答的判断，绝不空转 agent。" },
   { no: "02", title: "多角色 agent 编排", body: "researcher / strategy / editor / designer 按 7+2 阶段 DAG 分工 fan-out 并发、串行放行闸，合议交付。" },
-  { no: "03", title: "真实联网检索", body: "researcher 接 web 工具真检索，带来源 URL 落进报告，不靠模型记忆编造，可超训练截止时点。" },
+  { no: "03", title: "真实联网检索", body: "researcher 接 Aditly MCP 真检索：安思派深度搜索、博查实时信息、Jina 静态提取、Reach 动态抓取。带来源 URL 落进报告，不靠模型记忆编造，可超训练截止时点。" },
   { no: "04", title: "对抗验证三票", body: "source-verifier 对每条断言独立三票裁决，refute 优先。站不住的论据当场出局，不让似是而非过关。" },
+  { no: "05", title: "AI persona 访谈", body: "atypica-research 生成 3–5 个 AI persona 深度访谈，抽取用户痛点与决策动机。basis 标 simulated，占比 ≤20%，诊断模式禁用。" },
 ];
 
 /* Nº 02 角色编队（demo CREW，7 个真角色 + 第 8 张黑色扩展卡）。 */
@@ -419,14 +420,14 @@ EDITION 2026 · v1 · 开发代号 BOULE · 31.2306° N, 121.4737° E
         .boule-caps, .boule-crew, .boule-rt { display: grid; grid-template-columns: 1fr; }
         .boule-method-row { display: grid; grid-template-columns: 64px 1fr; gap: 16px; }
         @media (min-width: 720px) {
-          .boule-caps { grid-template-columns: repeat(2, 1fr); }
+          .boule-caps { grid-template-columns: repeat(3, 1fr); }
           .boule-crew { grid-template-columns: repeat(2, 1fr); }
           .boule-rt { grid-template-columns: repeat(3, 1fr); }
           .boule-method-row { grid-template-columns: 96px 1fr 1.1fr; }
         }
         @media (min-width: 1024px) {
           .boule-hero-grid { grid-template-columns: 1.55fr 1fr; }
-          .boule-caps { grid-template-columns: repeat(4, 1fr); }
+          .boule-caps { grid-template-columns: repeat(5, 1fr); }
           .boule-crew { grid-template-columns: repeat(4, 1fr); }
         }
       `}</style>
