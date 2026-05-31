@@ -1,0 +1,19 @@
+{
+  "name": "@boule/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Boule Thin CLI（U3）。面向「无 agent 宿主」场景的人用便捷层——子命令 thin client POST 到 API；boule mcp 复用 U1 MCP server。",
+  "bin": {
+    "boule": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test --test-force-exit \"tests/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@boule/api": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0"
+  }
+}

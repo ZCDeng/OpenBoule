@@ -23,6 +23,9 @@ importers:
       '@fastify/cookie':
         specifier: ^11.0.2
         version: 11.0.2
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@4.4.3)
       bullmq:
         specifier: ^5.77.6
         version: 5.77.6
@@ -100,6 +103,16 @@ importers:
       vite:
         specifier: ^6.0.0
         version: 6.4.2(@types/node@22.19.19)(jiti@2.7.0)(lightningcss@1.32.0)
+
+  packages/cli:
+    dependencies:
+      '@boule/api':
+        specifier: workspace:*
+        version: link:../../apps/api
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.19
 
   packages/shared: {}
 

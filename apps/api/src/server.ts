@@ -15,9 +15,17 @@ import { createSecurityRedis } from "./services/redis.ts";
 import { WorkflowEngine } from "./workflow/engine.ts";
 import { makeProductionAgentRunner } from "./services/agent-runner.ts";
 import { createFrozenSnapshot } from "./truth/sync.ts";
+import { ensureLocalUser, LOCAL_USER_ID } from "./services/local-user.ts";
 
 async function main() {
   const securityRedis = createSecurityRedis();
+
+  // 本地免登录模式（U2）：确保固定本地用户存在，buildApp 注入 localMode（loopback-only + 跳 JWT）。
+  const localMode = config.mode === "local" ? { userId: LOCAL_USER_ID } : undefined;
+  if (localMode) {
+    await ensureLocalUser(db);
+    console.log("[boule] MODE=local：免登录单用户 + 仅本机访问");
+  }
 
   const engine = new WorkflowEngine(db, {
     agentRunner: makeProductionAgentRunner(db),
@@ -38,9 +46,12 @@ async function main() {
     securityRedis,
     engine,
     snapshotProvider: () => createFrozenSnapshot(), // 创建 workflow 时固化当前 HEAD 快照
+    localMode,
   });
 
-  await app.listen({ port: config.apiPort, host: "0.0.0.0" });
+  // 本地模式仅监听回环（双保险：listen host + onRequest loopback 守卫）。
+  const host = localMode ? "127.0.0.1" : "0.0.0.0";
+  await app.listen({ port: config.apiPort, host });
   console.log(`[boule] API listening on :${config.apiPort}`);
 
   let closing = false;

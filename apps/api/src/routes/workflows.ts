@@ -9,6 +9,7 @@ import { authenticate, requireProjectRole, getProjectRoleFromReq } from "../midd
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { computeCost } from "../pm/cost-calc.ts";
 import { listStalePhases } from "../services/lineage.ts";
+import { checkPublication } from "../artifacts/publication-guard.ts";
 
 export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
@@ -96,6 +97,45 @@ export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): voi
           FROM artifacts WHERE workflow_id = ${id}
          ORDER BY phase, type, version DESC`);
       return reply.send({ artifacts: (res as unknown as { rows: unknown[] }).rows });
+    },
+  );
+
+  // submit_artifact 后端（U1/R3）：外部 agent（Claude Code via MCP）提交产出 → 落 draft artifact。
+  // editor+ 且过 API key scope/项目范围（中间件已把关）；发布护栏拒残留模板占位符。
+  app.post(
+    "/api/workflows/:id/artifacts",
+    {
+      preHandler: [
+        authenticate,
+        requireProjectRole(db, "editor", async (req) => getWorkflowProjectId(db, (req.params as { id: string }).id)),
+      ],
+    },
+    async (req, reply) => {
+      const id = (req.params as { id: string }).id;
+      const { phase, type, body } = (req.body ?? {}) as { phase?: string; type?: string; body?: string };
+      if (!type || typeof body !== "string") {
+        return reply.code(400).send({ error: "BAD_REQUEST", message: "type + body 必填" });
+      }
+      const pub = checkPublication(body);
+      if (pub.blocked) {
+        return reply.code(422).send({
+          error: "ARTIFACT_PUBLICATION_BLOCKED",
+          message: "残留模板占位符，拒绝提交",
+          hits: pub.hits.map((h) => h.match),
+        });
+      }
+      // 同 (phase,type) 递增版本（首次为 1）。phase 缺省归到 external（CLI 提交无 phase 语境）。
+      const ph = phase ?? "external";
+      const maxV = await db.execute(sql`
+        SELECT COALESCE(MAX(version), 0) AS "v" FROM artifacts
+         WHERE workflow_id = ${id} AND phase = ${ph} AND type = ${type}`);
+      const nextVersion = Number((maxV as unknown as { rows: { v: number }[] }).rows[0]!.v) + 1;
+      const ins = await db.execute(sql`
+        INSERT INTO artifacts (workflow_id, phase, type, version, body, status)
+        VALUES (${id}, ${ph}, ${type}, ${nextVersion}, ${body}, 'draft')
+        RETURNING id`);
+      const artifactId = (ins as unknown as { rows: { id: string }[] }).rows[0]!.id;
+      return reply.code(201).send({ artifactId, phase: ph, type, version: nextVersion, status: "draft" });
     },
   );
 

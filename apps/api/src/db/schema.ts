@@ -65,12 +65,17 @@ export const users = pgTable("users", {
 });
 
 // ── 2. projects ──
+// U4 Git-linked：link_mode 决定 workspace 来源。gitUrl=clone 到服务端（团队/本地皆可）；
+// localDir=agent cwd 直指用户真实 repo（**仅本地模式**，团队拒——服务端 worker 访问不到成员笔记本）。
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.id),
+  gitUrl: text("git_url"),
+  localBaseDir: text("local_base_dir"),
+  linkMode: text("link_mode"), // null（未链接）/ gitUrl / localDir
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -255,6 +260,35 @@ export const checkpointSurfaces = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("checkpoint_surfaces_workflow_idx").on(t.workflowId)],
+);
+
+// ── 13. api_keys（MCP/CLI 认证，KTD-8 / U1）──
+// JWT cookie 面向 Web；MCP server 和 Thin CLI 不便走 cookie 流程，改用 Bearer <api_key>。
+// 只存 hash 不存明文；scope=read 的 key 拒写；project_ids=null 即全账户（需显式授权），
+// 否则仅限列表内项目（D 簇：缩小泄露爆炸半径）。
+export const apiKeyScope = pgEnum("api_key_scope", ["read", "write"]);
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // 用户可读标签（"我的 laptop Claude Code"）
+    // prefix = key 前 12 字符（bk_ + 8 hex），明文展示用于辨识；keyHash = sha256(完整 key)
+    prefix: text("prefix").notNull(),
+    keyHash: text("key_hash").notNull(),
+    scope: apiKeyScope("scope").notNull().default("write"),
+    // null = 全账户权限（显式授权）；否则白名单项目 id 数组
+    projectIds: jsonb("project_ids"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("api_keys_hash_uniq").on(t.keyHash),
+    index("api_keys_user_idx").on(t.userId),
+  ],
 );
 
 // ── 12. share_links（opaque token + 持久化记录，KTD-13）──

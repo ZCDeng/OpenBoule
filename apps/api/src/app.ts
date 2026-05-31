@@ -10,7 +10,10 @@ import cookie from "@fastify/cookie";
 import type { DB } from "./db/client.ts";
 import type { Redis } from "ioredis";
 import type { WorkflowEngine } from "./workflow/engine.ts";
+import { localModeHook } from "./middleware/auth.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
+import { registerApiKeyRoutes } from "./routes/api-keys.ts";
+import { registerActiveContextRoutes } from "./routes/active-context.ts";
 import { registerProjectRoutes } from "./routes/projects.ts";
 import { registerWorkflowRoutes } from "./routes/workflows.ts";
 import { registerApprovalRoutes } from "./routes/approvals.ts";
@@ -37,15 +40,26 @@ export interface AppDeps {
   snapshotProvider?: () => Promise<FrozenSnapshot>;
   /** 当前时间（ms）注入，便于测试确定性（token 过期 / 分享过期）。默认 Date.now。 */
   now?: () => number;
+  /** 本地免登录模式（U2）：注入则全局 loopback-only + 固定本地用户，跳过 JWT。 */
+  localMode?: { userId: string };
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: false });
   app.register(cookie);
 
+  // 本地模式：onRequest 先于所有 preHandler——拒非回环 + 注入本地用户（authenticate 见 user 即放行）。
+  if (deps.localMode) {
+    const localUserId = deps.localMode.userId;
+    app.addHook("onRequest", localModeHook(localUserId));
+  }
+
   app.get("/health", async () => ({ ok: true }));
 
-  registerAuthRoutes(app, deps);
+  // 本地模式免登录，不注册 register/login 路由（条件注册，U2）。
+  if (!deps.localMode) registerAuthRoutes(app, deps);
+  registerApiKeyRoutes(app, deps);
+  registerActiveContextRoutes(app, deps);
   registerProjectRoutes(app, deps);
   registerWorkflowRoutes(app, deps);
   registerApprovalRoutes(app, deps);

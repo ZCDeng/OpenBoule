@@ -4,18 +4,23 @@
   "private": true,
   "type": "module",
   "description": "Boule Fastify 后端（U1: 数据层；后续 U2-U6/U10）。",
+  "exports": {
+    "./mcp": "./src/mcp/server.ts"
+  },
   "scripts": {
     "start": "node --env-file-if-exists=../../.env src/server.ts",
     "dev": "node --watch --env-file-if-exists=../../.env src/server.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=../../.env src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
+    "mcp": "node --env-file-if-exists=../../.env src/mcp/server.ts",
     "test": "node --test --test-force-exit --env-file-if-exists=../../.env \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.158",
     "@boule/shared": "workspace:*",
     "@fastify/cookie": "^11.0.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "bullmq": "^5.77.6",
     "drizzle-orm": "^0.38.0",
     "fastify": "^5.8.5",
