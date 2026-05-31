@@ -8,7 +8,7 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole } from "../middleware/auth.ts";
+import { makeAuthenticate, requireProjectRole } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { revokeShare } from "../services/share-token.ts";
 import { validateForScope } from "./signer.ts";
@@ -16,6 +16,7 @@ import { buildReportDocument } from "./renderer.ts";
 
 export function registerShareRenderRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, securityRedis } = deps;
+  const authenticate = makeAuthenticate(db);
   const now = deps.now ?? Date.now;
 
   // 免登录渲染报告 HTML（opaque-origin sandbox）

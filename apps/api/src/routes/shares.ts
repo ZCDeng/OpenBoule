@@ -4,12 +4,13 @@
 
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole } from "../middleware/auth.ts";
+import { makeAuthenticate, requireProjectRole } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { createShareToken, validateShareToken, type ShareScope } from "../services/share-token.ts";
 
 export function registerShareRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, securityRedis } = deps;
+  const authenticate = makeAuthenticate(db);
   const now = deps.now ?? Date.now;
 
   app.post(

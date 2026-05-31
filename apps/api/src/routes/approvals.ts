@@ -5,13 +5,14 @@
 
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole, getUser, getProjectRoleFromReq } from "../middleware/auth.ts";
+import { makeAuthenticate, requireProjectRole, getUser, getProjectRoleFromReq } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { CheckpointConflictError } from "../workflow/engine.ts";
 import { isPhaseId } from "../workflow/state.ts";
 
 export function registerApprovalRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
+  const authenticate = makeAuthenticate(db);
   const wfProject = async (req: { params: unknown }) =>
     getWorkflowProjectId(db, (req.params as { id: string }).id);
 

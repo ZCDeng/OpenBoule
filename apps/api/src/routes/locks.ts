@@ -5,12 +5,13 @@
 
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole, getUser } from "../middleware/auth.ts";
+import { makeAuthenticate, requireProjectRole, getUser } from "../middleware/auth.ts";
 import { getArtifactContext } from "../services/rbac.ts";
 import { acquireLock, heartbeatLock, releaseLock, lockStatus } from "../services/doc-lock.ts";
 
 export function registerLockRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, securityRedis } = deps;
+  const authenticate = makeAuthenticate(db);
   const artifactProject = async (req: { params: unknown }) => {
     const ctx = await getArtifactContext(db, (req.params as { id: string }).id);
     return ctx?.projectId ?? null;

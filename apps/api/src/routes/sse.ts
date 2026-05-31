@@ -7,7 +7,7 @@
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AppDeps } from "../app.ts";
-import { authenticate, getUser } from "../middleware/auth.ts";
+import { makeAuthenticate, getUser } from "../middleware/auth.ts";
 import { verifyJwt } from "../auth/jwt.ts";
 import { config } from "../config.ts";
 import { issueSseTicket, consumeSseTicket, authorizeSse, replayEvents } from "../services/sse.ts";
@@ -16,6 +16,7 @@ const KEEPALIVE_MS = 25_000;
 
 export function registerSseRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, securityRedis } = deps;
+  const authenticate = makeAuthenticate(db);
   const now = deps.now ?? Date.now;
 
   app.post("/api/sse/ticket", { preHandler: authenticate }, async (req, reply) => {

@@ -1,6 +1,6 @@
 ---
 title: "refactor: authenticate 去 singletonDb 耦合 — db 注入对齐 requireProjectRole"
-status: draft
+status: completed
 date: 2026-05-31
 type: refactor
 depth: minimal

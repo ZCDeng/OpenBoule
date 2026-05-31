@@ -220,6 +220,28 @@ test("撤销后经 HTTP authenticate → 401（不只是 service 层 null）", a
   await app.close();
 });
 
+// ── #5 根因回归：authenticate 用注入的 db，不是进程单例 ──
+
+test("authenticate 走注入 db：注入一个查不到 key 的 db → 真 key 也 401", async () => {
+  const u = await registerUser(makeApp());
+  createdUsers.push(u.userId);
+  // key 建在真实单例 db 里——若 authenticate 仍 import 单例，会在单例里查到它而放行。
+  const key = await createApiKey(db, { userId: u.userId, name: "probe", scope: "write", projectIds: null });
+
+  // 注入一个 execute 永远返回空 rows 的 db：authenticate 若用注入 db，查不到 key → 401。
+  const emptyDb = { execute: async () => ({ rows: [] }) } as unknown as typeof db;
+  const app = makeApp({ db: emptyDb });
+  const res = await app.inject({ method: "GET", url: "/api/projects", headers: auth(key.plaintext) });
+  assert.equal(res.statusCode, 401, "注入 db 查不到 → 拒；证明没旁路打单例");
+  await app.close();
+
+  // 对照：注入真实 db，同一 key → 200（auth 命中注入的真实库）
+  const ok = makeApp();
+  const res2 = await ok.inject({ method: "GET", url: "/api/projects", headers: auth(key.plaintext) });
+  assert.equal(res2.statusCode, 200, "注入真实 db → 命中");
+  await ok.close();
+});
+
 // ── code-review #4：Redis 失败降级（注入抛错的 redis stub）──
 
 test("active-context：Redis 抛错时 read 返回 null、write 不抛（降级）", async () => {

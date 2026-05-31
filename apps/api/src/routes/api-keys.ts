@@ -5,11 +5,12 @@
 
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.ts";
-import { authenticate, getUser, rejectApiKeyAuth } from "../middleware/auth.ts";
+import { makeAuthenticate, getUser, rejectApiKeyAuth } from "../middleware/auth.ts";
 import { createApiKey, listApiKeys, revokeApiKey, type ApiKeyScope } from "../services/api-keys.ts";
 
 export function registerApiKeyRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
+  const authenticate = makeAuthenticate(db);
   // key 管理仅限 Web 会话：API-key 认证的请求被拒（防 key mint key 提权，code-review #1）。
   const webOnly = [authenticate, rejectApiKeyAuth];
 
