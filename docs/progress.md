@@ -3,6 +3,7 @@
 > 更新：2026-05-31
 > Plan：`docs/plans/2026-05-30-001-feat-boule-architecture-plan.md`
 > 后续：`docs/plans/2026-05-31-002-feat-web-cli-bridge-plan.md`（Web-CLI 协同层 — MCP 桥 + 本地模式 + Thin CLI + Git-linked）
+> └ 2026-05-31 ce-doc-review（product/security/scope 三 persona，24 findings）→ 8 簇回写 plan：A 本地 active-context 降级本地 JSON（消 Redis 矛盾）/ B SQLite 双 schema+列工厂+spike 闸 / C git-linked 本地·团队两路径分离+agent 执行边界（P0 sandbox 逃逸）/ D API Key project-scoped+RBAC / E R5 owner 重映射+tarball 强校验 / F 本地 MCP loopback 认证 / G key 存储收口 / H CLI 价值定位。coherence·adversarial 未跑、feasibility 跑爆 token（留痕未补）
 
 ## 已完成（git 为准）
 

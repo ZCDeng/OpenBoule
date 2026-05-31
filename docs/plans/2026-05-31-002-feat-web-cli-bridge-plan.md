@@ -32,7 +32,7 @@ related: docs/plans/2026-05-30-001-feat-boule-architecture-plan.md
 - **R4** 本地免登录模式：`--local` 标志启动，SQLite 替代 Postgres，跳过 JWT 认证中间件，单用户单机即用。
 - **R5** 本地模式可迁移到团队模式：本地创建的项目/workflow，在登录后可「发布」到团队空间（Postgres + 多成员）。
 - **R6** Thin CLI `boule`：子命令作为 thin client POST 到 API（本地或远程），支持 `workflow status`、`document submit`、`checkpoint create`。
-- **R7** Git-linked Projects：项目可配置 `gitUrl` 或 `localBaseDir`，agent workspace 直接指向真实 git repo，产出物天然可版本控制。
+- **R7** Git-linked Projects：项目可配置 `gitUrl`（团队/本地皆可，clone 到服务端 workspace）或 `localBaseDir`（**仅本地模式**，agent workspace 指向真实 git repo），产出物天然可版本控制。`localBaseDir` 在团队模式被拒——服务端 worker 访问不到成员笔记本路径（见 KTD-7、C 簇）。
 - **R8** 不破坏现有 U0-U10 体系：新增能力是 additive，已有认证/RBAC/workflow 引擎不做 breaking change。
 
 ## Key Technical Decisions
@@ -41,12 +41,12 @@ related: docs/plans/2026-05-30-001-feat-boule-architecture-plan.md
 |---|---|---|---|
 | KTD-1 | MCP 协议 | **Model Context Protocol (MCP) stdio** | 已成事实标准（Claude Code / Cursor / Zed 原生支持）。Boule 作为 MCP server 暴露 tools + resources，不发明新协议 |
 | KTD-2 | MCP 工具代理方式 | ** thin stdio server → HTTP fetch 到 API** | 与 open-design 同模型：MCP server 本身零状态、不碰文件系统，每个 tool 调用都是 `fetch()` 到已运行的 API。server 可独立测试、不依赖 Node 文件权限 |
-| KTD-3 | Active Context 存储 | **Redis 短时键（TTL 5min）+ Web UI 心跳刷新** | Web 前端每次交互刷新 `active_context:{session_id}`；MCP server 读取该键自动定位。比 SSE 推送简单，容错高（断线 5min 内恢复仍有效）|
-| KTD-4 | 本地模式数据库 | **SQLite（文件级）替代 Postgres** | 单机场景不需要 PG 的并发能力。`better-sqlite3` 或 `libsql`（Turso）。schema 用同一套 Drizzle，切换通过 env `DATABASE_URL` 前缀（`postgres://` vs `file://`）|
-| KTD-5 | 本地→团队迁移 | **项目级 export/import（JSON + 附件 tarball）** | 不追求「实时同步双写」的复杂度。用户在本地模式点「发布到团队」→ 打包 → 上传 → 服务端 import。简单、可审计、可回滚 |
+| KTD-3 | Active Context 存储 | **团队模式 Redis 短时键（TTL 5min）；本地模式降级为单文件 `~/.boule/local/active-context.json`** | Web 前端每次交互刷新 `active_context:{user_id}:{session_id}`（key 带 user_id 前缀，MCP 读取时校验 API key 所属用户匹配，防越权——见 F 簇/安全）；MCP server 读该键自动定位。**本地模式不起 Redis**：active context 直接读写本地 JSON 文件（单进程无并发，文件级足够），消解「本地零依赖 vs Active Context 需 Redis」矛盾（A 簇）|
+| KTD-4 | 本地模式数据库 | **SQLite（`better-sqlite3`）替代 Postgres，维护双 schema 文件 + 公用列工厂** | 单机场景不需要 PG 并发。**「同一套 Drizzle schema 切 `DATABASE_URL` 前缀」经核实不成立**（B 簇）：现有 `db/schema.ts` 用 `drizzle-orm/pg-core` 的 `pgTable`/`pgEnum`/`bigserial`，SQLite 无原生 enum/bigserial。决策：抽出 `schema/columns.ts` 列定义工厂（dialect 无关的 id/timestamp/json 辅助），`schema.pg.ts` 与 `schema.sqlite.ts` 各自 `pgTable`/`sqliteTable` 引用工厂；pgEnum → SQLite `text` + CHECK 约束。U2 第一步先做 schema 兼容 spike 验证（退出条件：12 表在 SQLite 全建成 + 一条 happy 路径跑通），spike 不过则 U2 退回「本地模式仍用 PG（docker）」|
+| KTD-5 | 本地→团队迁移 | **项目级 export/import（JSON + 附件 tarball），import 强校验 + owner 重映射** | 不追求实时双写。本地点「发布到团队」→ 打包 → 上传 → 服务端 import。**owner 重映射（E 簇）**：本地记录 `userId='local'`，import 时全部归因给执行发布的已登录用户（创建 `project_members` owner 行），不保留 ghost owner。**import 安全**：tarball 文件路径白名单（拒 `../`、绝对路径、symlink）+ 大小上限 + 沙箱解压 + JSON schema 校验 + 上传需有效 JWT 且具建项目权限。可审计、可回滚 |
 | KTD-6 | Thin CLI 与 MCP 的关系 | **CLI 是面向人的 convenience layer，MCP 是面向 agent 的协议层** | 两者都 POST 到同一 API，但 CLI 做参数解析/错误提示/进度条；MCP 做 JSON schema + tool annotation。不合并（人机接口 ≠ 机机接口）|
-| KTD-7 | Git-linked 的 workspace 形态 | **symbolic link / bind mount 到 `.boule/workspaces/{projectId}/`** | 不直接在用户 repo 里写隐藏文件（避免污染）。agent 的 cwd 指向该链接，产出物通过 `submit_artifact` 显式回传，而非自动同步 |
-| KTD-8 | 认证分层 | **API 层支持两种 auth 模式：JWT cookie（Web）+ API Key header（MCP/CLI）** | MCP server 和 Thin CLI 不方便走 cookie 流程。新增 `api_keys` 表（user-scoped, 可撤销），MCP/CLI 用 `Authorization: Bearer <api_key>`。本地模式跳过两者 |
+| KTD-7 | Git-linked 的 workspace 形态 + agent 执行边界 | **本地模式：cwd 指向 `localBaseDir`；团队模式：clone `gitUrl` 到服务端 `.boule/workspaces/{projectId}/`。两者 agent 执行均受 SDK 工具白名单 + 目录约束** | agent 直接在真实 repo 里运行 = 任意代码可读写删 repo 全文件（C 簇/安全 P0）。约束三层：①工具白名单沿用 `rolePolicy`（纯推理 role 禁 Bash/Write）②可执行 role（researcher）的 cwd 锁死在 `localBaseDir` 子树，SDK `additionalDirectories` 不外放③首次链接弹「agent 将在此目录执行代码」显式风险确认。产出物经 `submit_artifact` 显式回传，**不做自动 `git commit`**（与 Deferred 一致，删除原 U4 的「同步到 git」hook） |
+| KTD-8 | 认证分层 + API Key scope | **JWT cookie（Web）+ API Key header（MCP/CLI），key 为 project-scoped + read/write，默认最小权限** | MCP/CLI 不走 cookie。`api_keys` 表（可撤销，只存 hash）增列 `scope`（`read`/`write`）+ `project_ids`（null=全账户，需显式授权）。**MCP 写操作（submit/checkpoint）仍过 RBAC**：认证后校验 key 所属用户在目标项目的角色，viewer 拒写（D 簇）。**本地模式 MCP 认证（F 簇）**：API 仅监听 `127.0.0.1`，本地模式注入 dummy local key，MCP 检测到 local 跳过 Bearer、中间件接受无凭证 loopback 请求（非本机来源拒绝）|
 
 ## High-Level Technical Design
 
@@ -116,22 +116,24 @@ graph TB
 - `apps/api/src/mcp/server.ts`（新建：MCP stdio server，tool 注册）
 - `apps/api/src/mcp/tools.ts`（新建：8 个 tool 的实现，都是 fetch wrapper）
 - `apps/api/src/mcp/resources.ts`（新建：resources 注册）
-- `apps/api/src/mcp/active-context.ts`（新建：Redis 读写 active context）
-- `apps/api/src/routes/api-keys.ts`（新建：API key CRUD）
-- `apps/api/src/db/schema.ts`（加 `api_keys` 表）
+- `apps/api/src/mcp/active-context.ts`（新建：active context 读写，按 mode 走 Redis 或本地 JSON）
+- `apps/api/src/routes/api-keys.ts`（新建：API key CRUD，含 scope/project_ids）
+- `apps/api/src/db/schema.ts`（加 `api_keys` 表：hash + `scope` + `project_ids`）
 - `apps/api/tests/mcp/...`（新建）
 
 **Approach**：
 1. 用 `@modelcontextprotocol/sdk` 建 stdio server
 2. 每个 tool handler 内部 `fetch()` 到 `BOULE_API_URL`（默认 `http://localhost:3100`）
-3. API key 从 env `BOULE_API_KEY` 或 `--api-key` 参数取，走 `Authorization: Bearer` 头
-4. Active context：Web 前端在 `useEffect` 里每 30s 心跳写 Redis；MCP server 读 Redis 自动补全缺省的 project/workflow
+3. API key 取值优先级 env `BOULE_API_KEY` > `~/.boule/config.json`（写入设 600）> `--api-key`（标 deprecated，警告会进 shell history / `ps`）；走 `Authorization: Bearer` 头。写操作过 RBAC（viewer 拒写 403）
+4. Active context：团队模式 Web 前端每 30s 心跳写 Redis（key `active_context:{user_id}:{session_id}`）；本地模式写 `~/.boule/local/active-context.json`。MCP server 按 mode 读对应源补全缺省 project/workflow，并校验 API key user 与 key 前缀匹配（防越权）
 
 **Test scenarios**：
 - MCP server 无 daemon 运行时，tool 调用返回清晰错误
 - `list_projects` 返回与 REST `/api/projects` 一致
-- 不传 project 时 `get_workflow` 自动命中 active context
+- 不传 project 时 `get_workflow` 自动命中 active context（团队 Redis / 本地 JSON 各测一路）
 - `submit_artifact` 后 Web UI 刷新出现新 artifact
+- viewer 角色 key 调 `submit_artifact` 被 RBAC 拒（403）
+- 跨 user 的 session_id 读不到他人 active context
 
 ### U2. 本地免登录模式
 
@@ -139,22 +141,32 @@ graph TB
 **Requirements**：R4, R5
 **Dependencies**：U1（MCP 在本地模式下也要工作）
 **Files**：
-- `apps/api/src/db/client.ts`（改：支持 SQLite 连接）
+- `apps/api/src/db/schema/columns.ts`（新建：dialect 无关列工厂——id/timestamp/json/enum-as-text）
+- `apps/api/src/db/schema.pg.ts` / `schema.sqlite.ts`（双 schema，各引用 columns 工厂）
+- `apps/api/src/db/client.ts`（改：按 mode 选 `better-sqlite3` 或 `pg` + 对应 schema）
 - `apps/api/src/config.ts`（加：`MODE=local|team`，`DATABASE_URL` 前缀路由）
-- `apps/api/src/middleware/auth.ts`（改：local 模式短路 `authenticate`）
-- `apps/api/src/app.ts`（改：条件注册 auth routes）
+- `apps/api/src/middleware/auth.ts`（改：local 模式短路 `authenticate` + loopback-only 守卫）
+- `apps/api/src/app.ts`（改：条件注册 auth routes；local 仅监听 `127.0.0.1`）
 - `apps/api/src/local/migrate.ts`（新建：SQLite schema 迁移）
+- `apps/api/src/local/active-context.ts`（新建：本地 JSON active context 读写）
+- `apps/api/src/services/project-export.ts`（新建：R5 打包 project→JSON+tarball）
+- `apps/api/src/routes/projects-import.ts`（新建：R5 POST `/api/projects/import`，强校验+owner 重映射）
 
 **Approach**：
-1. `MODE=local` 时，`db/client.ts` 用 `better-sqlite3` 替代 `pg`
-2. Drizzle schema 需验证 SQLite 兼容性（pgEnum → 文本检查约束）
-3. Auth 中间件短路：local 模式所有请求附 `userId='local'`、`role='owner'`
-4. 本地项目存储在 `~/.boule/local/projects/`（文件系统）+ `~/.boule/local/db.sqlite`
+0. **前置 schema spike**（KTD-4，U2 第一步）：验证双 schema + columns 工厂能在 SQLite 建全 12 表 + 跑通一条 happy 路径；不过则 U2 退回「本地模式仍用 docker PG」，停止 SQLite 路线
+1. `MODE=local` 时 `db/client.ts` 用 `better-sqlite3` + `schema.sqlite.ts`
+2. pgEnum → SQLite `text` + CHECK；bigserial → `integer` autoincrement（列工厂统一）
+3. Auth 中间件短路：local 模式所有请求附 `userId='local'`、`role='owner'`；**仅接受 loopback 来源**，非本机请求拒绝
+4. 本地存储 `~/.boule/local/`：`db.sqlite` + `projects/` + `active-context.json`（目录 700、文件 600）
+5. **R5 迁移（KTD-5）**：export 打包本地 project；import 时 tarball 路径白名单（拒 `../`/绝对/symlink）+ 大小上限 + 沙箱解压 + JSON schema 校验，`userId='local'` 重映射为发布者
 
 **Test scenarios**：
-- `MODE=local` 启动，不报错、不连 PG/Redis
+- schema spike：12 表在 SQLite 全建成 + 一条 workflow happy 路径跑通（退出条件）
+- `MODE=local` 启动，不报错、不连 PG/Redis（active context 走本地 JSON）
 - 匿名创建 project → workflow → phase0 审批，全程无登录
+- 非 loopback 请求打到 local API 被拒
 - 本地 SQLite 数据文件可独立备份/删除
+- R5：本地 project export → import 到团队，owner 归属发布者；恶意 tarball（`../` 路径/超大）被拒
 
 ### U3. Thin CLI `boule`
 
@@ -169,8 +181,10 @@ graph TB
 - `packages/cli/src/commands/checkpoint.ts`
 - `packages/cli/src/commands/mcp.ts`（包装 `apps/api/src/mcp/server.ts`）
 
+**目标用户（H 簇）**：不在 Claude Code/Cursor 里、但要脚本化/CI 调 Boule 的人（裸终端、shell pipeline、cron）。用 Claude Code 的人直接走 MCP 工具，不需要 CLI——CLI 与 MCP 功能重叠是有意的（同一 API 的人/机两个面），但 CLI 仅在「无 agent 宿主」场景有独立价值。若该场景验证不足，U3 可降级或推迟。
+
 **Approach**：
-- 用 `commander` 或纯 `process.argv` 解析（零依赖优先）
+- 纯 `process.argv` 解析，零依赖（不引 `commander`，保持全局安装信任面最小）
 - 每个子命令都是 `fetch()` 到 `BOULE_API_URL`
 - `boule mcp` 子命令直接启动 U1 的 MCP server（复用同一模块）
 - 配置来源优先级：`--daemon-url` > env `BOULE_API_URL` > `~/.boule/config.json` > default `http://localhost:3100`
@@ -195,26 +209,28 @@ boule mcp [--api-key <key>]
 - `apps/api/src/workflow/engine.ts`（改：支持 `baseDir` workspace）
 - `apps/web/src/pages/ProjectDetail.tsx`（加：git 链接配置 UI）
 
-**Approach**：
-1. `projects` 表加 `git_url` / `local_base_dir` 可空列
-2. 链接时验证：文件夹存在、可写、含 `.git`
-3. Agent runner 的 `cwd` 从「默认 `.boule/workspaces/{id}`」改为「`local_base_dir` 若存在」
-4. 产出物仍通过 `writeArtifactIdempotent` 落库，但可选「同步到 git」钩子（`git add && commit`）
+**Approach**（C 簇——本地/团队两路径分离）：
+1. `projects` 表加 `git_url` / `local_base_dir` 可空列 + `link_mode`（`gitUrl`/`localDir`）
+2. **路由层强制分流**：团队项目仅允许 `git_url`（clone 到服务端 `.boule/workspaces/{id}`）；`local_base_dir` 仅本地模式接受。团队请求带 `local_base_dir` → 400
+3. 链接验证：`local_base_dir` 校验存在/可写/含 `.git`；`git_url` 校验可 clone
+4. Agent runner 的 `cwd`：本地模式指向 `local_base_dir`，团队模式指向 clone 后的 server workspace
+5. 产出物经 `writeArtifactIdempotent` 落库；**不做自动 `git commit`/`push`**（与 Deferred 一致，原「同步到 git」hook 删除）
 
 **安全控制**：
-- `local_base_dir` 必须绝对路径，拒绝 `..` / `~` 展开由服务端做
-- 路径穿越检查：解析后必须在允许列表内（或用户 home 下）
+- **agent 执行边界（C 簇 P0）**：cwd 锁死在目标目录子树，SDK `additionalDirectories` 不外放；纯推理 role 沿用 `rolePolicy` 禁 Bash/Write；首次链接弹「agent 将在此目录执行代码」风险确认
+- `local_base_dir` 必须绝对路径，`realpath` 规范化后必须落在用户 home 子树内；拒 `..`/`~`/symlink 跳出（防 TOCTOU：执行前再校验一次）
 - 仅 owner 可设/改 git link
 
 ## Scope Boundaries
 
 ### In Scope
 - MCP stdio server（tools + resources）
-- Active context Redis 缓存 + Web UI 心跳
-- API Key 认证（与现有 JWT cookie 并行）
-- SQLite 本地模式（schema 兼容层）
+- Active context：团队 Redis（user 前缀 key）/ 本地 JSON 文件双源 + Web UI 心跳
+- API Key 认证（project-scoped + read/write，与现有 JWT cookie 并行）
+- SQLite 本地模式（双 schema + 列工厂；先过 spike）+ loopback-only 守卫
+- R5 本地→团队 export/import（owner 重映射 + tarball 强校验）
 - Thin CLI 4 个子命令
-- Git-linked project 的链接/验证/agent workspace 重定向
+- Git-linked project：本地/团队两路径分离 + agent 执行边界约束
 
 ### Deferred
 - MCP 的 **binary 文件传输**（图片/PDF）：当前只传文本，binary 走 URL 签名链接
@@ -229,22 +245,27 @@ boule mcp [--api-key <key>]
 
 ## Open Questions
 
-1. **SQLite schema 兼容性**：Drizzle 的 `pgEnum` 在 SQLite 下如何映射？是改 schema 用 `text` + check constraint，还是维护两套 schema？
-2. **API Key 权限粒度**：一个 API key 能否限制为只读/只写特定 project？还是全账户权限？
-3. **Active context 的 session 边界**：用户同时开两个浏览器标签页看不同 project，以哪个为准？（建议：以最近交互的为准，显式冲突时 MCP server 要求明确指定）
-4. **Git-linked 的权限模型**：如果团队项目链接到某成员的本地文件夹，其他成员无法访问——这是否 acceptable？（建议：团队项目只允许链接到共享存储 / git URL，本地 baseDir 仅限个人项目）
+> 2026-05-31 ce-doc-review（product/security/scope 三 persona，24 findings）后，Q1–Q4 已在上方 KTD/U 章节给出决策，留作追溯。Q5 + 新增 Q6 仍待定。
+
+1. ~~**SQLite schema 兼容性**~~ → **已决（KTD-4/U2）**：双 schema 文件 + dialect 无关列工厂，pgEnum→text+CHECK；U2 第一步先 spike，不过则退回 docker PG。
+2. ~~**API Key 权限粒度**~~ → **已决（KTD-8）**：project-scoped + read/write，默认最小权限，全账户需显式授权；MCP 写操作仍过 RBAC。
+3. ~~**Active context session 边界**~~ → **已决（KTD-3/U1）**：key 带 `user_id` 前缀防越权；多标签以最近心跳为准，写操作回显命中项目名供 agent 确认。
+4. ~~**Git-linked 权限模型**~~ → **已决（KTD-7/R7/U4）**：`local_base_dir` 仅本地模式；团队项目只允许 `git_url`（clone 到服务端），路由层强制分流。
 5. **Thin CLI 的发布方式**：npm 公开包（`@boule/cli`）还是本 repo pnpm workspace 本地 link？
+6. **Thin CLI 是否值得做（H 簇）**：CLI 与 MCP 功能重叠，独立价值仅在「无 agent 宿主」场景。是否先做 MCP+本地模式，CLI 视真实需求再上？
 
 ## Risks
 
 | 风险 | 严重度 | 缓解 |
 |---|---|---|
+| **Git-linked agent 在真实 repo 任意代码执行（C 簇）** | **高** | cwd 锁子树 + SDK `additionalDirectories` 不外放 + 纯推理 role 禁 Bash/Write（`rolePolicy`）+ 首次链接风险确认弹窗 |
 | MCP SDK 版本快速迭代 | 中 | pin 版本；MCP server 逻辑极薄（全是 fetch），SDK 变更容易隔离 |
-| SQLite 与 Postgres 行为分叉 | 中 | Drizzle 抽象层覆盖大部分差异；jsonb/enum 用兼容性写法；CI 双库跑测试 |
-| API Key 泄露 | 中 | 短前缀（`bk_`）+ 只存 hash、不存明文；支持撤销；日志脱敏 |
-| Git-linked 路径穿越 | 高 | 绝对路径规范化 + `realpath` 校验 + 禁止符号链接跳出允许目录 |
+| SQLite 与 Postgres 行为分叉 | 中 | 双 schema + 列工厂统一；U2 先 spike 验证；CI 双库跑测试；不过则退回 PG |
+| API Key 泄露 | 中 | 短前缀（`bk_`）+ 只存 hash + project-scoped 缩小爆炸半径；`--api-key` deprecated（防进 shell history）；config.json 600；支持撤销；日志脱敏 |
+| 本地→团队 import 恶意 tarball（E 簇） | 中 | 路径白名单（拒 `../`/绝对/symlink）+ 大小上限 + 沙箱解压 + JSON schema 校验 + 需有效 JWT |
 | Local 模式数据丢失 | 中 | 显式「未备份」警告；发布到团队前弹确认；定期提醒导出 |
-| Active context 过期导致 MCP 操作错项目 | 低 | 每次写操作（submit/create）回显命中项目名，agent 可确认 |
+| 本地 API 被局域网/容器访问（无认证 owner 权限） | 中 | local 模式仅监听 `127.0.0.1`，非 loopback 来源拒绝 |
+| Active context 过期/越权导致 MCP 操作错项目 | 低 | key 带 user 前缀校验；每次写操作回显命中项目名，agent 可确认 |
 
 ## Sources
 
