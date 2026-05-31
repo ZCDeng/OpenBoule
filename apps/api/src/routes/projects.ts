@@ -5,7 +5,7 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
-import { authenticate, getUser, requireProjectRole, rejectScopedApiKey } from "../middleware/auth.ts";
+import { makeAuthenticate, getUser, requireProjectRole, rejectScopedApiKey } from "../middleware/auth.ts";
 import type { Role } from "../services/rbac.ts";
 import { config } from "../config.ts";
 import { validateGitUrl, validateLocalDir, type LinkMode } from "../services/git-link.ts";
@@ -13,6 +13,7 @@ import { exportProject, importProject, validateBundle, MAX_BUNDLE_BYTES } from "
 
 export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
+  const authenticate = makeAuthenticate(db);
 
   app.post("/api/projects", { preHandler: [authenticate, rejectScopedApiKey] }, async (req, reply) => {
     const user = getUser(req)!;

@@ -5,7 +5,7 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole, getProjectRoleFromReq } from "../middleware/auth.ts";
+import { makeAuthenticate, requireProjectRole, getProjectRoleFromReq } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { computeCost } from "../pm/cost-calc.ts";
 import { listStalePhases } from "../services/lineage.ts";
@@ -13,6 +13,7 @@ import { checkPublication } from "../artifacts/publication-guard.ts";
 
 export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
+  const authenticate = makeAuthenticate(db);
 
   app.post(
     "/api/workflows",

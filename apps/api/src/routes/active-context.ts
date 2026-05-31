@@ -5,11 +5,12 @@
 
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.ts";
-import { authenticate, getUser } from "../middleware/auth.ts";
+import { makeAuthenticate, getUser } from "../middleware/auth.ts";
 import { readActiveContext, writeActiveContext } from "../mcp/active-context.ts";
 
 export function registerActiveContextRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { securityRedis } = deps;
+  const authenticate = makeAuthenticate(deps.db);
 
   // 心跳写：Web 前端每 ~30s 调一次，附当前打开的 project/workflow/phase。
   app.post("/api/active-context", { preHandler: authenticate }, async (req, reply) => {

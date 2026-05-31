@@ -10,7 +10,6 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { verifyJwt, JwtError } from "../auth/jwt.ts";
 import { config } from "../config.ts";
 import { getProjectRole, hasMinRole, type Role } from "../services/rbac.ts";
-import { db as singletonDb } from "../db/client.ts";
 import {
   isApiKeyToken,
   isReadOnlyMethod,
@@ -45,40 +44,45 @@ function extractToken(req: FastifyRequest): string | null {
 }
 
 /**
- * preHandler：校验 access token，挂 req.user；缺失/无效/过期 → 401。
+ * preHandler 工厂：校验 access token，挂 req.user；缺失/无效/过期 → 401。
  *
  * 双路径（additive，KTD-8）：`bk_` 前缀 → API key（MCP/CLI），否则 → JWT（Web cookie/Bearer）。
- * API key 走 db 单例查 hash（与测试注入的同一实例）。read scope 的 key 拒非只读方法 → 403。
+ * db 经注入（对齐 requireProjectRole 范式，#5）——不再 import 进程单例，避免测试注入别的 db 时
+ * API-key 校验静默打错库。read scope 的 key 拒非只读方法 → 403。
+ *
+ * 各路由在 register*Routes 顶部 `const authenticate = makeAuthenticate(deps.db)` 复用，调用点不变。
  */
-export async function authenticate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
-  // 本地模式（U2）：localModeHook 已在 onRequest 注入 req.user，此处直接放行（免登录）。
-  if (getUser(req)) return;
-  const token = extractToken(req);
-  if (!token) {
-    await reply.code(401).send({ error: "UNAUTHENTICATED", message: "缺少凭证" });
-    return;
-  }
-  if (isApiKeyToken(token)) {
-    const auth = await verifyApiKey(singletonDb, token);
-    if (!auth) {
-      await reply.code(401).send({ error: "UNAUTHENTICATED", message: "无效或已撤销的 API key" });
+export function makeAuthenticate(db: DB) {
+  return async function authenticate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    // 本地模式（U2）：localModeHook 已在 onRequest 注入 req.user，此处直接放行（免登录）。
+    if (getUser(req)) return;
+    const token = extractToken(req);
+    if (!token) {
+      await reply.code(401).send({ error: "UNAUTHENTICATED", message: "缺少凭证" });
       return;
     }
-    if (auth.scope === "read" && !isReadOnlyMethod(req.method)) {
-      await reply.code(403).send({ error: "FORBIDDEN", message: "只读 API key 不可写" });
+    if (isApiKeyToken(token)) {
+      const auth = await verifyApiKey(db, token);
+      if (!auth) {
+        await reply.code(401).send({ error: "UNAUTHENTICATED", message: "无效或已撤销的 API key" });
+        return;
+      }
+      if (auth.scope === "read" && !isReadOnlyMethod(req.method)) {
+        await reply.code(403).send({ error: "FORBIDDEN", message: "只读 API key 不可写" });
+        return;
+      }
+      setUser(req, { userId: auth.userId, apiKey: auth });
       return;
     }
-    setUser(req, { userId: auth.userId, apiKey: auth });
-    return;
-  }
-  try {
-    const payload = verifyJwt(token, config.jwt.secret, Math.floor(Date.now() / 1000));
-    if (payload.type !== "access") throw new JwtError("非 access token");
-    setUser(req, { userId: payload.sub });
-  } catch (err) {
-    const message = err instanceof JwtError ? err.message : "无效 token";
-    await reply.code(401).send({ error: "UNAUTHENTICATED", message });
-  }
+    try {
+      const payload = verifyJwt(token, config.jwt.secret, Math.floor(Date.now() / 1000));
+      if (payload.type !== "access") throw new JwtError("非 access token");
+      setUser(req, { userId: payload.sub });
+    } catch (err) {
+      const message = err instanceof JwtError ? err.message : "无效 token";
+      await reply.code(401).send({ error: "UNAUTHENTICATED", message });
+    }
+  };
 }
 
 /** projectId 解析器（按路由不同：直接取 param、或经 workflow/artifact 反查）。 */

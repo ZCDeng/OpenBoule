@@ -6,12 +6,13 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole, getUser, getProjectRoleFromReq } from "../middleware/auth.ts";
+import { makeAuthenticate, requireProjectRole, getUser, getProjectRoleFromReq } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { listPendingSurfaces, resolvedDigests, respondSurface } from "../services/surface-cache.ts";
 
 export function registerSurfaceRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
+  const authenticate = makeAuthenticate(db);
 
   // 列 pending surface + 已 resolved 的 schema_digest（run 作用域，客户端据此不重复弹出）
   app.get(

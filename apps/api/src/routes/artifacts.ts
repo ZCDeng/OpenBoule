@@ -5,7 +5,7 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
-import { authenticate, requireProjectRole } from "../middleware/auth.ts";
+import { makeAuthenticate, requireProjectRole } from "../middleware/auth.ts";
 import { getArtifactContext } from "../services/rbac.ts";
 import { checkPublication } from "../artifacts/publication-guard.ts";
 import { checkStub, type StubMode } from "../artifacts/stub-guard.ts";
@@ -23,6 +23,7 @@ interface ArtifactRow {
 
 export function registerArtifactRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
+  const authenticate = makeAuthenticate(db);
   const artifactProject = async (req: { params: unknown }) => {
     const ctx = await getArtifactContext(db, (req.params as { id: string }).id);
     return ctx?.projectId ?? null;
