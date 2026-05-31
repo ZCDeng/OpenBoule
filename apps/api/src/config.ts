@@ -45,5 +45,10 @@ export const config = {
   agent: {
     model: optional("AGENT_MODEL", "claude-opus-4-8"),
     workerId: optional("WORKER_ID", "boule-worker-1"),
+    // 无事件 watchdog（ms）。120s 对联网 researcher 过紧（一次 web 抓取可能 >120s），默认调大到 300s。
+    watchdogMs: Number(optional("AGENT_WATCHDOG_MS", "300000")),
+    // researcher 多步检索需更多回合；纯推理 role 回合少。
+    researcherMaxTurns: Number(optional("AGENT_RESEARCHER_MAX_TURNS", "12")),
+    reasoningMaxTurns: Number(optional("AGENT_REASONING_MAX_TURNS", "6")),
   },
 } as const;

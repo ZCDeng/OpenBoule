@@ -83,6 +83,8 @@ export class ClaudeSdkRuntime implements BouleRoleRuntime {
       options: {
         systemPrompt: ctx.systemPrompt,
         allowedTools: ctx.allowedTools ?? [],
+        // allowedTools 默认=全部工具；纯推理 role 靠 disallowedTools 显式禁文件系统工具（KTD-3/R-2）
+        ...(ctx.disallowedTools && ctx.disallowedTools.length > 0 ? { disallowedTools: ctx.disallowedTools } : {}),
         includePartialMessages: true,
         maxTurns: ctx.maxTurns ?? 6,
         permissionMode: ctx.allowToolExecution ? "bypassPermissions" : "default",

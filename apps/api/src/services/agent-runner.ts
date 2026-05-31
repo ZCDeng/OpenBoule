@@ -20,6 +20,41 @@ import { createDbCostHook } from "../agents/hooks.ts";
 import { config } from "../config.ts";
 import type { AgentRunner } from "../workflow/phases/index.ts";
 
+/** 纯推理 role 禁用的文件系统/执行工具——止 sandbox 空转（R-2）。 */
+const FS_TOOLS = ["Bash", "Glob", "Grep", "Read", "Write", "Edit", "NotebookEdit"];
+
+export interface RolePolicy {
+  allowedTools: string[];
+  disallowedTools: string[];
+  allowToolExecution: boolean;
+  maxTurns: number;
+  watchdogMs: number;
+}
+
+/**
+ * role 运行策略（web 场景）：researcher 拿 web 工具白名单 + 高回合 + 大 watchdog 且真实执行；
+ * 纯推理 role 禁文件系统工具、不执行工具、回合少。具体 web 工具白名单 + mcpServers 由 U4 填充。
+ * KTD：路由/超时让代码答（确定性映射），不交给模型。
+ */
+export function rolePolicy(roleFile: string): RolePolicy {
+  if (roleFile === "industry-researcher") {
+    return {
+      allowedTools: [], // U4：mcp__aditly__* web 工具
+      disallowedTools: [],
+      allowToolExecution: true,
+      maxTurns: config.agent.researcherMaxTurns,
+      watchdogMs: config.agent.watchdogMs,
+    };
+  }
+  return {
+    allowedTools: [],
+    disallowedTools: FS_TOOLS,
+    allowToolExecution: false,
+    maxTurns: config.agent.reasoningMaxTurns,
+    watchdogMs: config.agent.watchdogMs,
+  };
+}
+
 /** spec.role / phase → 真值源 role 文件名（临时映射，真实 dispatch matrix 待接入）。 */
 export function mapRoleToFile(role: string, phase: string): string {
   if (role.startsWith("researcher-")) return "industry-researcher";
@@ -75,6 +110,7 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
     const snapshot = await loadSnapshot(db, spec.workflowId);
     const roleFile = mapRoleToFile(spec.role, spec.phase);
     const systemPrompt = loadRolePrompt(snapshot, roleFile);
+    const policy = rolePolicy(roleFile);
 
     const result = await runRole(
       {
@@ -83,9 +119,14 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
         systemPrompt,
         task: spec.task || spec.phase,
         model: config.agent.model,
+        allowedTools: policy.allowedTools,
+        disallowedTools: policy.disallowedTools,
+        maxTurns: policy.maxTurns,
+        allowToolExecution: policy.allowToolExecution,
       },
       {
         hooks: createDbCostHook(insertCost(db, spec.workflowId), { workflowId: spec.workflowId, phase: spec.phase }),
+        timeoutMs: policy.watchdogMs,
       },
     );
 

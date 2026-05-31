@@ -12,7 +12,7 @@ import type { RoleContext, RoleResult, RuntimeKind } from "./types.ts";
 export interface RunRoleOptions {
   runtime?: RuntimeKind; // 默认 claude-sdk
   hooks?: RuntimeHooks;
-  timeoutMs?: number; // 无事件 watchdog（默认 120s）
+  timeoutMs?: number; // 无事件 watchdog（默认 300s；生产由 agent-runner 按 role 策略覆盖）
   /** 注入 runtime（测试用 mock；省略则按 runtime kind 选）。 */
   runtimeImpl?: BouleRoleRuntime;
 }
@@ -37,7 +37,7 @@ function raceNext<T>(p: Promise<T>, ms: number): Promise<T | typeof TIMEOUT> {
 
 export async function runRole(ctx: RoleContext, opts: RunRoleOptions = {}): Promise<RoleResult> {
   const runtime = opts.runtimeImpl ?? (await selectRuntime(opts.runtime ?? "claude-sdk"));
-  const timeoutMs = opts.timeoutMs ?? 120_000;
+  const timeoutMs = opts.timeoutMs ?? 300_000;
 
   const counts = emptyCounts();
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
