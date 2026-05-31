@@ -24,6 +24,7 @@ const SRC = join(here, "..", "..", "src");
 //  - app.ts / routes/workflows.ts：创建 workflow 时持久化快照——值经注入的 snapshotProvider
 //    取自 createFrozenSnapshot，路由本身不构造 snapshot（缺 provider 即 503，已 review，U6）
 //  - services/agent-runner.ts：**只读** workflow 快照取 role prompt（loadSnapshot SELECT），不写不构造（已 review，组合根）
+//  - workflow/engine.ts：**只读** truth_snapshot->'manifest' 算 phase0 确定性脚手架（processScaffold SELECT），不写不构造（已 review，U2 去 agent 化）
 const ALLOWLIST = new Set([
   "db/schema.ts",
   "truth/sync.ts",
@@ -33,6 +34,7 @@ const ALLOWLIST = new Set([
   "app.ts",
   "routes/workflows.ts",
   "services/agent-runner.ts",
+  "workflow/engine.ts",
 ]);
 
 const PATTERN = /truthSnapshot|truth_snapshot/;
