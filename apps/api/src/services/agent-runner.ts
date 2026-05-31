@@ -137,6 +137,11 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
     if (policy.webEnabled === false) {
       systemPrompt += "\n\n[运行时] 无可用 web 检索工具：基于已有知识作答，并在产出中显式标注「未联网检索」。";
     }
+    // phase1.5 轴分解：约定末尾输出结构化 axes 块，供系统解析持久化并透传给 phase2 researcher（task-threading）。
+    if (spec.phase === "phase1_5_axis") {
+      systemPrompt +=
+        '\n\n[运行时] 在产出末尾追加一个 ```json 代码块，形如 {"axes":[{"axis":"轴名","frame":"可选视角","lanes":["可选lane"]}]}，逐条列出本次分解的调研轴，供系统解析。';
+    }
 
     const result = await runRole(
       {

@@ -57,6 +57,7 @@ import {
   type AgentRunner,
 } from "./phases/index.ts";
 import { buildScaffoldArtifact, manifestPaths } from "./scaffold.ts";
+import { parseAxes, researcherTask, type AxisItem } from "./axes.ts";
 import {
   PHASE_QUEUE,
   createConnection,
@@ -267,11 +268,13 @@ export class WorkflowEngine {
   private async enqueuePhase(workflowId: string, phase: PhaseId, attemptNumber: number): Promise<void> {
     const kind = PHASES[phase].kind;
     if (kind === "fanout") {
-      const n = await this.resolveResearcherCount(workflowId);
+      const axes = await this.resolveAxes(workflowId);
+      const n = this.researcherCountFn ? await this.researcherCountFn(workflowId) : axes.length > 0 ? axes.length : 3;
       const children = Array.from({ length: n }, (_, i) => ({
         name: JOB_RESEARCH_CHILD,
         queueName: this.queueName,
-        data: { workflowId, phase, role: `researcher-${i + 1}`, childIndex: i + 1 },
+        // task-threading：第 i 个 researcher 拿第 i 个 axis 当具体研究问题（越界退化 phase id）。
+        data: { workflowId, phase, role: `researcher-${i + 1}`, childIndex: i + 1, task: researcherTask(axes, i + 1, phase) },
         opts: { ignoreDependencyOnFailure: true, attempts: 3, backoff: { type: "fixed", delay: 50 } },
       }));
       await this.flow!.add({
@@ -287,11 +290,14 @@ export class WorkflowEngine {
     }
   }
 
-  private async resolveResearcherCount(workflowId: string): Promise<number> {
-    if (this.researcherCountFn) return this.researcherCountFn(workflowId);
+  /** 读 workflows.axes 归一化为 AxisItem[]（fan-out 数量 + researcher task 透传共用）。 */
+  private async resolveAxes(workflowId: string): Promise<AxisItem[]> {
     const res = await this.db.execute(sql`SELECT axes FROM workflows WHERE id = ${workflowId}`);
-    const axes = (res as unknown as { rows?: { axes?: unknown }[] }).rows?.[0]?.axes;
-    return Array.isArray(axes) && axes.length > 0 ? axes.length : 3;
+    const raw = (res as unknown as { rows?: { axes?: unknown }[] }).rows?.[0]?.axes;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((a) => (typeof a === "string" ? { axis: a } : a))
+      .filter((a): a is AxisItem => !!a && typeof (a as AxisItem).axis === "string" && (a as AxisItem).axis !== "");
   }
 
   // ── worker 处理 ──
@@ -314,13 +320,15 @@ export class WorkflowEngine {
 
   /** 子 researcher job：失败抛错让 BullMQ 重试/标失败（ignoreDependencyOnFailure 保 aggregator 仍跑）。 */
   private async processResearchChild(job: Job): Promise<unknown> {
-    const { workflowId, phase, role, childIndex } = job.data as {
+    const { workflowId, phase, role, childIndex, task } = job.data as {
       workflowId: string;
       phase: string;
       role: string;
       childIndex: number;
+      task?: string;
     };
-    const r = await runResearchChild(this.agentRunner, { workflowId, phase, role, task: phase, childIndex });
+    // task 由 fan-out 用 researcherTask(axes) 透传；缺省（旧 job / 无 axis）退化到 phase id。
+    const r = await runResearchChild(this.agentRunner, { workflowId, phase, role, task: task ?? phase, childIndex });
     if (!r.ok) throw new Error(`researcher ${role} 失败`);
     return r;
   }
@@ -395,6 +403,16 @@ export class WorkflowEngine {
         status: artifact.status,
         idempotencyKey: idempotencyKey(workflowId, phase, attemptNumber),
       });
+      // phase1.5 轴分解：把 agent 产出的结构化 axes 持久化到 workflows.axes，
+      // 供 phase2 fan-out 决定 researcher 数量并透传 axis 为各自 task（task-threading）。
+      // 解析不出（无 json 块）→ 保留既有 axes，不覆盖（fail-loud：不臆造）。
+      if (phase === "phase1_5_axis") {
+        const axes = parseAxes(artifact.body);
+        if (axes.length > 0) {
+          await this.db.execute(sql`UPDATE workflows SET axes = ${JSON.stringify(axes)}::jsonb WHERE id = ${workflowId}`);
+          await this.emit(workflowId, "axes-resolved", { phase, count: axes.length });
+        }
+      }
     });
   }
 
