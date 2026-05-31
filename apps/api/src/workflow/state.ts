@@ -38,9 +38,12 @@ export interface PhaseDescriptor {
   kind: PhaseKind;
 }
 
-const SCAFFOLD: Set<PhaseId> = new Set(["phase0_init"]);
-const FANOUT: Set<PhaseId> = new Set(["phase2_research"]);
-const SERIAL: Set<PhaseId> = new Set(["phase4_review"]);
+/** 非 single 形态的 phase 覆盖表（其余 phase 默认 single）。 */
+const KIND_OVERRIDE: Partial<Record<PhaseId, PhaseKind>> = {
+  phase0_init: "scaffold",
+  phase2_research: "fanout",
+  phase4_review: "serial",
+};
 
 export const PHASES: Record<PhaseId, PhaseDescriptor> = Object.fromEntries(
   PHASE_IDS.map((id, i) => [
@@ -48,13 +51,7 @@ export const PHASES: Record<PhaseId, PhaseDescriptor> = Object.fromEntries(
     {
       id,
       next: (PHASE_IDS[i + 1] ?? null) as PhaseId | null,
-      kind: SCAFFOLD.has(id)
-        ? "scaffold"
-        : FANOUT.has(id)
-          ? "fanout"
-          : SERIAL.has(id)
-            ? "serial"
-            : "single",
+      kind: KIND_OVERRIDE[id] ?? "single",
     },
   ]),
 ) as Record<PhaseId, PhaseDescriptor>;

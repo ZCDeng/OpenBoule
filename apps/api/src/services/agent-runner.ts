@@ -20,8 +20,12 @@ import { createDbCostHook } from "../agents/hooks.ts";
 import { config } from "../config.ts";
 import type { AgentRunner } from "../workflow/phases/index.ts";
 
-/** 纯推理 role 禁用的文件系统/执行工具——止 sandbox 空转（R-2）。 */
-const FS_TOOLS = ["Bash", "Glob", "Grep", "Read", "Write", "Edit", "NotebookEdit"];
+// 纯推理 role 禁用的内建工具——止 sandbox 空转（R-2）。
+// 注：本 SDK「空 allowedTools = 全部工具」，故必须显式 deny（非冗余）；覆盖 文件系统/执行/联网/子代理。
+const FS_TOOLS = ["Bash", "Glob", "Grep", "Read", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch", "Task"];
+
+/** 需要 web 检索能力的 role（接 Aditly）。新增 web role 在此加一行即可。 */
+const WEB_ROLES = new Set(["industry-researcher"]);
 
 /** Aditly MCP server 名 + researcher 的 web 工具白名单（README always-on 工具，无需平台凭证）。 */
 const ADITLY_SERVER = "aditly";
@@ -49,11 +53,11 @@ export interface RolePolicy {
  * 纯推理 role 禁文件系统工具、不执行工具、回合少。KTD：路由/超时让代码答（确定性映射），不交给模型。
  */
 export function rolePolicy(roleFile: string): RolePolicy {
-  if (roleFile === "industry-researcher") {
+  if (WEB_ROLES.has(roleFile)) {
     const url = config.agent.aditlyMcpUrl.trim();
     const webEnabled = url !== "" && url.toLowerCase() !== "off"; // "off" 显式关闭（optional 不接受空值）
     return {
-      allowedTools: webEnabled ? [...ADITLY_WEB_TOOLS] : [],
+      allowedTools: webEnabled ? ADITLY_WEB_TOOLS : [],
       disallowedTools: [],
       allowToolExecution: true,
       maxTurns: config.agent.researcherMaxTurns,
@@ -127,9 +131,10 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
     const roleFile = mapRoleToFile(spec.role, spec.phase);
     const policy = rolePolicy(roleFile);
 
-    // researcher 无可用 web 工具时 fail-loud：让 agent 在产出里显式标注未联网，不静默假装检索（KTD-5）。
+    // web role 无可用检索工具时 fail-loud：让 agent 在产出里显式标注未联网，不静默假装检索（KTD-5）。
+    // webEnabled 仅 web role 才置（reasoning role 为 undefined），故 === false 精确命中「web role 且关闭」。
     let systemPrompt = loadRolePrompt(snapshot, roleFile);
-    if (roleFile === "industry-researcher" && policy.webEnabled === false) {
+    if (policy.webEnabled === false) {
       systemPrompt += "\n\n[运行时] 无可用 web 检索工具：基于已有知识作答，并在产出中显式标注「未联网检索」。";
     }
 
