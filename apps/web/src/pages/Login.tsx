@@ -37,7 +37,7 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto mt-24 max-w-sm px-6">
-      <h1 className="mb-6 text-center text-2xl">Boule · 咨询工作台</h1>
+      <h1 className="mb-6 text-center text-2xl">OpenConsult · 咨询工作台</h1>
       {error && <div className="mb-4"><ErrorBanner severity="P0" message={error} /></div>}
       <form onSubmit={submit} className="space-y-3">
         {mode === "register" && (

@@ -11,8 +11,9 @@ export function Navigation() {
   const logout = useAuth((s) => s.logout);
   return (
     <nav className="flex items-center gap-6 border-b border-neutral-200 bg-white px-6 py-3">
-      <Link to="/projects" className="font-serif text-lg font-semibold">
-        Boule
+      <Link to="/projects" className="flex items-baseline gap-2">
+        <span className="font-serif text-lg font-semibold">OpenConsult</span>
+        <span className="text-[10px] uppercase tracking-wider text-neutral-400">代号 Boule</span>
       </Link>
       <div className="flex gap-4 text-sm">
         {NAV.map((n) => (

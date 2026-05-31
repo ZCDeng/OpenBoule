@@ -74,15 +74,28 @@ export function normalizeSdkMessage(msg: any): NormalizedEvent[] {
   return out;
 }
 
+/** `query` 的最小签名（便于注入 spy 单测 options 透传，仿 executor 注入 runtimeImpl）。 */
+export type QueryFn = (args: { prompt: unknown; options: unknown }) => AsyncIterable<unknown>;
+
 export class ClaudeSdkRuntime implements BouleRoleRuntime {
   readonly kind: RuntimeKind = "claude-sdk";
+  private readonly queryImpl: QueryFn;
+
+  /** 默认用 SDK 的 query；测试可注入 spy。 */
+  constructor(queryImpl?: QueryFn) {
+    this.queryImpl = queryImpl ?? (query as unknown as QueryFn);
+  }
 
   async *run(ctx: RoleContext): AsyncIterable<NormalizedEvent> {
-    const response = query({
+    const response = this.queryImpl({
       prompt: ctx.task,
       options: {
         systemPrompt: ctx.systemPrompt,
         allowedTools: ctx.allowedTools ?? [],
+        // allowedTools 默认=全部工具；纯推理 role 靠 disallowedTools 显式禁文件系统工具（KTD-3/R-2）
+        ...(ctx.disallowedTools && ctx.disallowedTools.length > 0 ? { disallowedTools: ctx.disallowedTools } : {}),
+        // MCP server 注入（U4：researcher 接 Aditly web 工具网关；mcp__<server>__<tool>）
+        ...(ctx.mcpServers ? { mcpServers: ctx.mcpServers } : {}),
         includePartialMessages: true,
         maxTurns: ctx.maxTurns ?? 6,
         permissionMode: ctx.allowToolExecution ? "bypassPermissions" : "default",

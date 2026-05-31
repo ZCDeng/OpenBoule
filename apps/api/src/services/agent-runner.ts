@@ -20,6 +20,61 @@ import { createDbCostHook } from "../agents/hooks.ts";
 import { config } from "../config.ts";
 import type { AgentRunner } from "../workflow/phases/index.ts";
 
+// 纯推理 role 禁用的内建工具——止 sandbox 空转（R-2）。
+// 注：本 SDK「空 allowedTools = 全部工具」，故必须显式 deny（非冗余）；覆盖 文件系统/执行/联网/子代理。
+const FS_TOOLS = ["Bash", "Glob", "Grep", "Read", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch", "Task"];
+
+/** 需要 web 检索能力的 role（接 Aditly）。新增 web role 在此加一行即可。 */
+const WEB_ROLES = new Set(["industry-researcher"]);
+
+/** Aditly MCP server 名 + researcher 的 web 工具白名单（README always-on 工具，无需平台凭证）。 */
+const ADITLY_SERVER = "aditly";
+const ADITLY_WEB_TOOLS = [
+  `mcp__${ADITLY_SERVER}__anspire_web_search`,
+  `mcp__${ADITLY_SERVER}__bocha_web_search`,
+  `mcp__${ADITLY_SERVER}__jina_read_url`,
+  `mcp__${ADITLY_SERVER}__reach_read_url`,
+];
+
+export interface RolePolicy {
+  allowedTools: string[];
+  disallowedTools: string[];
+  allowToolExecution: boolean;
+  maxTurns: number;
+  watchdogMs: number;
+  /** researcher 接 Aditly 时的 MCP server 配置；缺省 undefined。 */
+  mcpServers?: Record<string, unknown>;
+  /** researcher web 检索是否可用（false → 降级 + fail-loud 标注）。 */
+  webEnabled?: boolean;
+}
+
+/**
+ * role 运行策略（web 场景）：researcher 拿 Aditly web 工具白名单 + 高回合 + 大 watchdog 且真实执行；
+ * 纯推理 role 禁文件系统工具、不执行工具、回合少。KTD：路由/超时让代码答（确定性映射），不交给模型。
+ */
+export function rolePolicy(roleFile: string): RolePolicy {
+  if (WEB_ROLES.has(roleFile)) {
+    const url = config.agent.aditlyMcpUrl.trim();
+    const webEnabled = url !== "" && url.toLowerCase() !== "off"; // "off" 显式关闭（optional 不接受空值）
+    return {
+      allowedTools: webEnabled ? ADITLY_WEB_TOOLS : [],
+      disallowedTools: [],
+      allowToolExecution: true,
+      maxTurns: config.agent.researcherMaxTurns,
+      watchdogMs: config.agent.watchdogMs,
+      mcpServers: webEnabled ? { [ADITLY_SERVER]: { type: "http", url } } : undefined,
+      webEnabled,
+    };
+  }
+  return {
+    allowedTools: [],
+    disallowedTools: FS_TOOLS,
+    allowToolExecution: false,
+    maxTurns: config.agent.reasoningMaxTurns,
+    watchdogMs: config.agent.watchdogMs,
+  };
+}
+
 /** spec.role / phase → 真值源 role 文件名（临时映射，真实 dispatch matrix 待接入）。 */
 export function mapRoleToFile(role: string, phase: string): string {
   if (role.startsWith("researcher-")) return "industry-researcher";
@@ -74,7 +129,19 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
   return async (spec) => {
     const snapshot = await loadSnapshot(db, spec.workflowId);
     const roleFile = mapRoleToFile(spec.role, spec.phase);
-    const systemPrompt = loadRolePrompt(snapshot, roleFile);
+    const policy = rolePolicy(roleFile);
+
+    // web role 无可用检索工具时 fail-loud：让 agent 在产出里显式标注未联网，不静默假装检索（KTD-5）。
+    // webEnabled 仅 web role 才置（reasoning role 为 undefined），故 === false 精确命中「web role 且关闭」。
+    let systemPrompt = loadRolePrompt(snapshot, roleFile);
+    if (policy.webEnabled === false) {
+      systemPrompt += "\n\n[运行时] 无可用 web 检索工具：基于已有知识作答，并在产出中显式标注「未联网检索」。";
+    }
+    // phase1.5 轴分解：约定末尾输出结构化 axes 块，供系统解析持久化并透传给 phase2 researcher（task-threading）。
+    if (spec.phase === "phase1_5_axis") {
+      systemPrompt +=
+        '\n\n[运行时] 在产出末尾追加一个 ```json 代码块，形如 {"axes":[{"axis":"轴名","frame":"可选视角","lanes":["可选lane"]}]}，逐条列出本次分解的调研轴，供系统解析。';
+    }
 
     const result = await runRole(
       {
@@ -83,9 +150,15 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
         systemPrompt,
         task: spec.task || spec.phase,
         model: config.agent.model,
+        allowedTools: policy.allowedTools,
+        disallowedTools: policy.disallowedTools,
+        mcpServers: policy.mcpServers,
+        maxTurns: policy.maxTurns,
+        allowToolExecution: policy.allowToolExecution,
       },
       {
         hooks: createDbCostHook(insertCost(db, spec.workflowId), { workflowId: spec.workflowId, phase: spec.phase }),
+        timeoutMs: policy.watchdogMs,
       },
     );
 

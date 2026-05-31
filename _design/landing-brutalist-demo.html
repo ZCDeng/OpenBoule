@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Boule — Brutalist Landing Demo</title>
+<style>
+  /* ============================================================
+     Boule · 野性现代 / 实验先锋 (Brutalist neo-grotesque) demo
+     这是方向探索稿,非生产代码。定稿后移植进 React。
+     设计语言:超大粗体 grotesque · 高对比 · 单一电光蓝 accent ·
+     原始边框 (无圆角) · 非对称网格 · 巨号编号 · 宣言式口吻。
+     反 slop:无渐变 · 无 emoji · 无圆角卡片+左 border · 无 SVG 画物。
+     ============================================================ */
+  :root{
+    --paper:#F1F0EB;       /* 中性骨白,刻意冷于上一版宣纸 */
+    --ink:#0B0B0B;         /* 近黑 */
+    --blue:#1A18EE;        /* 电光钴蓝 · 唯一 accent */
+    --line:#0B0B0B;        /* 原始黑边 */
+    --mut:#6A6A63;         /* 中性灰 · meta */
+    --disp:"Helvetica Neue","Arial Black","PingFang SC","Source Han Sans SC",sans-serif;
+    --body:-apple-system,"PingFang SC","Source Han Sans SC","Segoe UI",sans-serif;
+    --mono:"SF Mono","JetBrains Mono",ui-monospace,"Menlo",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-font-smoothing:antialiased}
+  body{background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.5}
+  ::selection{background:var(--blue);color:#fff}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 40px}
+  .mono{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+
+  /* ---------- nav ---------- */
+  nav{border-bottom:2px solid var(--line);position:sticky;top:0;background:var(--paper);z-index:50}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .logo{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.02em}
+  .logo span{color:var(--blue)}
+  .nav-r{display:flex;align-items:center;gap:28px}
+  .nav-r a{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+  .nav-cta{border:2px solid var(--line);padding:8px 18px;background:var(--ink);color:var(--paper)!important}
+
+  /* ---------- hero ---------- */
+  .hero{border-bottom:2px solid var(--line);padding:72px 0 56px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--mut);margin-bottom:28px;display:flex;gap:14px;align-items:center}
+  .eyebrow b{color:var(--ink);font-weight:600}
+  .h1{font-family:var(--disp);font-weight:800;font-size:clamp(54px,9vw,128px);line-height:.92;letter-spacing:-.045em}
+  .h1 .blk{background:var(--blue);color:var(--paper);padding:0 .12em;display:inline-block;transform:rotate(-1deg)}
+  .h1 .out{color:var(--blue)}
+  .hero-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:48px;align-items:end;margin-top:48px}
+  .lede{font-size:19px;max-width:46ch;color:#1c1c1a}
+  .lede b{font-weight:600}
+  .tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .tag{border:2px solid var(--line);padding:6px 12px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .tag.fill{background:var(--ink);color:var(--paper)}
+  .cta-row{display:flex;gap:14px;margin-top:34px;align-items:center}
+  .btn{font-family:var(--disp);font-weight:700;font-size:18px;border:2px solid var(--line);padding:14px 26px;display:inline-flex;align-items:center;gap:10px;cursor:pointer;background:var(--blue);color:#fff}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn .arr{font-family:var(--body)}
+
+  /* hero right: login slab */
+  .login{border:2px solid var(--line);background:var(--paper)}
+  .login-h{border-bottom:2px solid var(--line);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:var(--paper)}
+  .login-h .n{font-family:var(--mono);font-size:11px;letter-spacing:.14em}
+  .login-b{padding:22px 18px}
+  .login-b label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);display:block;margin:0 0 6px}
+  .login-b input{width:100%;border:2px solid var(--line);background:transparent;padding:12px 12px;font-family:var(--body);font-size:15px;margin-bottom:16px;border-radius:0}
+  .login-b input:focus{outline:3px solid var(--blue);outline-offset:-2px}
+  .login-b .go{width:100%;border:2px solid var(--line);background:var(--blue);color:#fff;font-family:var(--disp);font-weight:700;font-size:16px;padding:13px;cursor:pointer}
+  .login-b .alt{margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:center}
+  .login-b .alt a{color:var(--blue);border-bottom:1px solid var(--blue)}
+
+  /* ---------- marquee strip ---------- */
+  .strip{border-bottom:2px solid var(--line);background:var(--ink);color:var(--paper);overflow:hidden}
+  .strip .run{display:flex;gap:48px;white-space:nowrap;padding:14px 0;font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:-.01em;animation:slide 26s linear infinite}
+  .strip .run span{display:flex;gap:48px}
+  .strip .run i{color:var(--blue);font-style:normal}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* ---------- capabilities ---------- */
+  section{border-bottom:2px solid var(--line)}
+  .sec-h{display:flex;align-items:baseline;gap:18px;padding:34px 0 8px}
+  .sec-h .k{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--blue)}
+  .sec-h h2{font-family:var(--disp);font-weight:800;font-size:clamp(28px,4vw,46px);letter-spacing:-.03em;line-height:1}
+  .caps{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--line);margin-top:24px}
+  .cap{padding:28px 24px 34px;border-right:2px solid var(--line)}
+  .cap:last-child{border-right:0}
+  .cap .no{font-family:var(--disp);font-weight:800;font-size:42px;color:var(--blue);letter-spacing:-.04em;line-height:1}
+  .cap h3{font-family:var(--disp);font-weight:700;font-size:21px;margin:16px 0 10px;letter-spacing:-.01em}
+  .cap p{font-size:14px;color:#33332e}
+
+  /* ---------- crew (角色编队) ---------- */
+  .crew{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--line);margin-top:24px}
+  .role{padding:24px 22px 28px;border-right:2px solid var(--line);border-bottom:2px solid var(--line)}
+  .role:nth-child(4n){border-right:0}
+  .role .rid{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--blue)}
+  .role h3{font-family:var(--disp);font-weight:700;font-size:19px;margin:12px 0 4px;letter-spacing:-.01em}
+  .role .en{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+  .role p{font-size:13px;color:#33332e;margin-top:10px}
+  .extend{display:flex;align-items:center;gap:16px;padding:22px 0 32px;flex-wrap:wrap}
+  .extend .pill{border:2px solid var(--line);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:7px 13px}
+  .extend p{font-size:14px;color:#33332e;max-width:62ch}
+  .extend code{font-family:var(--mono);background:var(--blue);color:#fff;padding:1px 6px;font-size:12px}
+
+  /* ---------- runtime (底层协作) ---------- */
+  .rt{display:grid;grid-template-columns:repeat(3,1fr);border-top:2px solid var(--line);margin-top:24px}
+  .rt-c{padding:26px 22px 30px;border-right:2px solid var(--line)}
+  .rt-c:last-child{border-right:0}
+  .rt-c .rk{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--blue);text-transform:uppercase}
+  .rt-c h3{font-family:var(--disp);font-weight:700;font-size:20px;margin:12px 0 12px;letter-spacing:-.01em}
+  .rt-c p{font-size:14px;color:#33332e}
+  .rt-c .ev{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+  .rt-c .ev span{font-family:var(--mono);font-size:10px;letter-spacing:.05em;border:1.5px solid var(--line);padding:4px 8px}
+  .rt-lead{font-family:var(--disp);font-weight:800;font-size:clamp(22px,3vw,34px);letter-spacing:-.02em;padding:30px 0 0;line-height:1.05}
+  .rt-lead b{background:var(--blue);color:var(--paper);padding:0 .1em}
+  .rt-switch{display:flex;align-items:center;gap:14px;margin-top:14px;font-family:var(--mono);font-size:13px;flex-wrap:wrap}
+  .rt-switch .sw{border:2px solid var(--line);padding:8px 14px;font-weight:600}
+  .rt-switch .arr{color:var(--blue);font-weight:800}
+
+  /* ---------- github strip ---------- */
+  .gh{border-bottom:2px solid var(--line);background:var(--blue);color:#fff}
+  .gh-in{display:flex;align-items:center;justify-content:space-between;padding:26px 0;flex-wrap:wrap;gap:16px}
+  .gh-in .l{font-family:var(--disp);font-weight:800;font-size:clamp(20px,2.6vw,30px);letter-spacing:-.02em}
+  .gh-in .l small{display:block;font-family:var(--mono);font-weight:400;font-size:12px;letter-spacing:.08em;opacity:.85;margin-top:6px;text-transform:none}
+  .gh-in .b{border:2px solid #fff;color:#fff;background:transparent;font-family:var(--disp);font-weight:700;font-size:16px;padding:12px 22px;display:inline-flex;gap:10px}
+
+  /* ---------- methodology ---------- */
+  .method{padding-bottom:8px}
+  .ph{display:grid;grid-template-columns:96px 1fr 1.1fr;align-items:center;border-top:2px solid var(--line);padding:18px 0;transition:background .12s}
+  .ph:first-of-type{border-top:0}
+  .ph:hover{background:var(--ink);color:var(--paper)}
+  .ph:hover .ph-note{color:#c9c9c2}
+  .ph:hover .ph-no{color:var(--blue)}
+  .ph-no{font-family:var(--disp);font-weight:800;font-size:34px;letter-spacing:-.04em;color:var(--ink)}
+  .ph-name{font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em}
+  .ph-name small{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.1em;color:var(--mut);display:block;margin-top:2px;text-transform:uppercase}
+  .ph:hover .ph-name small{color:#9a9a93}
+  .ph-note{font-size:14px;color:#44443e}
+
+  /* ---------- footer ---------- */
+  footer{padding:56px 0 40px}
+  .foot-big{font-family:var(--disp);font-weight:800;font-size:clamp(60px,13vw,180px);letter-spacing:-.05em;line-height:.85}
+  .foot-big span{color:var(--blue)}
+  .foot-r{display:flex;justify-content:space-between;align-items:flex-end;margin-top:30px;flex-wrap:wrap;gap:20px}
+  .foot-links{display:flex;gap:22px}
+  .foot-links a{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  .stamp{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--mut);text-align:right}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap nav-in">
+  <div class="logo">OpenConsult<span>///</span></div>
+  <div class="nav-r">
+    <a href="#crew">角色</a>
+    <a href="#runtime">运行时</a>
+    <a href="#method">方法论</a>
+    <a href="https://github.com/ZCDeng/OpenBoule" target="_blank" rel="noopener">GitHub ↗</a>
+    <a href="#login" class="nav-cta">登录</a>
+  </div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow"><span>EDITION 2026</span>—<b>AI CONSULTING WORKBENCH</b></div>
+
+  <h1 class="h1">把咨询做成<br>一条<span class="blk">流水线</span>。</h1>
+
+  <div class="hero-grid">
+    <div>
+      <p class="lede">9 个阶段,一支不睡觉的<b>多角色创作团队</b>。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。</p>
+      <div class="tags">
+        <span class="tag fill">9 阶段流水线</span>
+        <span class="tag">真联网调研</span>
+        <span class="tag">对抗验证三票</span>
+        <span class="tag">确定性脚手架</span>
+      </div>
+      <div class="cta-row">
+        <a class="btn" href="#login">开始 <span class="arr">▸</span></a>
+        <a class="btn ghost" href="#method">看方法论</a>
+      </div>
+    </div>
+
+    <div class="login" id="login">
+      <div class="login-h"><span class="n">Nº 00 — 进入工作台</span><span class="n">↵</span></div>
+      <div class="login-b">
+        <label>邮箱</label>
+        <input type="email" placeholder="you@studio.com" />
+        <label>密码</label>
+        <input type="password" placeholder="••••••••" />
+        <button class="go">登录</button>
+        <div class="alt">没有账号? <a href="#">注册 →</a></div>
+      </div>
+    </div>
+  </div>
+</div></header>
+
+<div class="strip"><div class="run">
+  <span><i>///</i> 确定性脚手架 <i>///</i> 多角色 AGENT 编排 <i>///</i> 真实联网检索带来源 <i>///</i> 对抗验证三票裁决 <i>///</i> 单写者锁 <i>///</i> LINEAGE 溯源 <i>///</i> 确定性脚手架 <i>///</i> 多角色 AGENT 编排 <i>///</i> 真实联网检索带来源 <i>///</i> 对抗验证三票裁决 <i>///</i> 单写者锁 <i>///</i> LINEAGE 溯源 <i>///</i></span>
+</div></div>
+
+<section id="caps"><div class="wrap">
+  <div class="sec-h"><span class="k">Nº 01 — CAPABILITIES</span><h2>引擎做什么</h2></div>
+  <div class="caps">
+    <div class="cap"><div class="no">01</div><h3>确定性脚手架</h3><p>Phase 0 秒级生成项目骨架与目录,不调模型、不耗 token。该用代码答的判断,绝不空转 agent。</p></div>
+    <div class="cap"><div class="no">02</div><h3>多角色 agent 编排</h3><p>researcher / strategy / editor / designer 按 7+2 阶段 DAG 分工 fan-out 并发、串行放行闸,合议交付。</p></div>
+    <div class="cap"><div class="no">03</div><h3>真实联网检索</h3><p>researcher 接 Aditly web 工具真检索,带来源 URL 落进报告,不靠模型记忆编造,可超训练截止时点。</p></div>
+    <div class="cap"><div class="no">04</div><h3>对抗验证三票</h3><p>source-verifier 对每条断言独立三票裁决,refute 优先。站不住的论据当场出局,不让似是而非过关。</p></div>
+  </div>
+</div></section>
+
+<section id="crew"><div class="wrap">
+  <div class="sec-h"><span class="k">Nº 02 — CREW / SKILLS</span><h2>7 个角色,各是一份 skill</h2></div>
+  <div class="crew">
+    <div class="role"><div class="rid">R1</div><h3>行业研究员</h3><div class="en">industry-researcher</div><p>接 Aditly web 工具按轴真检索,带来源 URL 落进报告。Phase 2 并发 fan-out。</p></div>
+    <div class="role"><div class="rid">R2</div><h3>对抗声称验证</h3><div class="en">source-verifier · v2.4</div><p>对每条断言独立三票裁决,refute 优先。站不住的论据当场出局。</p></div>
+    <div class="role"><div class="rid">R3</div><h3>战略顾问</h3><div class="en">strategy-advisor</div><p>把验证过的发现合成报告,Phase 3 出结构化结论与建议。</p></div>
+    <div class="role"><div class="rid">R4</div><h3>审稿编辑</h3><div class="en">editor</div><p>Phase 4 串行三筛 + 语言闸门,代码裁决放行,不靠模型自评。</p></div>
+    <div class="role"><div class="rid">R5</div><h3>设计师</h3><div class="en">designer</div><p>Phase 5 把报告排版交付,生成可分享的文档与方法论图。</p></div>
+    <div class="role"><div class="rid">R6</div><h3>市场扫描员</h3><div class="en">market-scanner</div><p>Phase 6 增益,扫描热点与新增信号,回灌可追加的调研轴。</p></div>
+    <div class="role"><div class="rid">R7</div><h3>信息架构师</h3><div class="en">information-architect</div><p>梳理目录与产物结构,为后续阶段提供可追溯的组织骨架。</p></div>
+    <div class="role" style="background:var(--ink);color:var(--paper)"><div class="rid">+N</div><h3 style="color:#fff">下一个角色</h3><div class="en" style="color:#9a9a93">your-role.md</div><p style="color:#c9c9c2">加一份角色 prompt 就多一种专长。引擎自动接管编排。</p></div>
+  </div>
+  <div class="extend">
+    <span class="pill">可扩展性</span>
+    <p>新增一个角色 = 一份 <code>roles/your-role.md</code> 提示词 + 一条 dispatch 映射(<code>mapRoleToFile</code>)。不改引擎核心,fan-out 并发、串行放行、成本与事件流自动接上。</p>
+  </div>
+</div></section>
+
+<section id="runtime"><div class="wrap">
+  <div class="sec-h"><span class="k">Nº 03 — RUNTIME</span><h2>底层怎么跑 agent</h2></div>
+  <div class="rt-lead">每个角色 = 一次 <b>Claude Agent SDK</b> <code style="font-family:var(--mono);font-size:.7em">query()</code> spawn。</div>
+  <div class="rt-switch">
+    <span class="sw">Claude CLI 订阅会话</span>
+    <span class="arr">⇄ apiKeySource 自动识别 ⇄</span>
+    <span class="sw">ANTHROPIC_API_KEY</span>
+  </div>
+  <div class="rt">
+    <div class="rt-c"><div class="rk">认证 · AUTH</div><h3>CLI 会话 或 API key</h3><p>没配 API key 时走 Claude CLI 订阅会话,配了就走 key。引擎读 init 的 apiKeySource 自动切换,零改码。</p></div>
+    <div class="rt-c"><div class="rk">事件流 · STREAM</div><h3>SDK 流归一成 6 类</h3><p>逐条 SDK 消息归一,前端实时看到 agent 的思考、工具调用与 token 成本。</p><div class="ev"><span>status</span><span>text_delta</span><span>thinking_delta</span><span>tool_use</span><span>tool_result</span><span>usage</span></div></div>
+    <div class="rt-c"><div class="rk">编排 · ORCHESTRATION</div><h3>BullMQ 串 HITL 流水线</h3><p>Worker + FlowProducer 串 7 阶段人机协同流水线,MCP 工具联网,lineage 溯源 + 单写者锁挡并发写。</p></div>
+  </div>
+</div></section>
+
+<section id="method" class="method"><div class="wrap">
+  <div class="sec-h"><span class="k">Nº 04 — METHOD LOOP</span><h2>从接案到交付的 7+2 阶段</h2></div>
+  <div style="margin-top:20px">
+    <div class="ph"><div class="ph-no">01</div><div class="ph-name">Phase 0 · 初始化<small>SCAFFOLD</small></div><div class="ph-note">骨架生成、目录创建</div></div>
+    <div class="ph"><div class="ph-no">02</div><div class="ph-name">Phase 1 · 接案<small>INTAKE</small></div><div class="ph-note">Subject/Mode/Substance gate + brief</div></div>
+    <div class="ph"><div class="ph-no">03</div><div class="ph-name">Phase 1.5 · 轴分解<small>AXIS</small></div><div class="ph-note">按 mode 出 3–5 个 axis</div></div>
+    <div class="ph"><div class="ph-no">04</div><div class="ph-name">Phase 2 · 调研<small>RESEARCH</small></div><div class="ph-note">并发 researcher fan-out</div></div>
+    <div class="ph"><div class="ph-no">05</div><div class="ph-name">Phase 2.5 · 对抗验证<small>VERIFY</small></div><div class="ph-note">source-verifier 三票裁决</div></div>
+    <div class="ph"><div class="ph-no">06</div><div class="ph-name">Phase 3 · 综合<small>SYNTHESIS</small></div><div class="ph-note">strategy 合成报告</div></div>
+    <div class="ph"><div class="ph-no">07</div><div class="ph-name">Phase 4 · 三筛<small>REVIEW</small></div><div class="ph-note">editor 串行 + 放行闸</div></div>
+    <div class="ph"><div class="ph-no">08</div><div class="ph-name">Phase 5 · 交付<small>DELIVERY</small></div><div class="ph-note">designer 排版</div></div>
+    <div class="ph"><div class="ph-no">09</div><div class="ph-name">Phase 6 · 增益<small>ENRICHMENT</small></div><div class="ph-note">market-scanner 热点扫描</div></div>
+  </div>
+</div></section>
+
+<div class="gh"><div class="wrap gh-in">
+  <div class="l">源码开放在 GitHub<small>github.com/ZCDeng/OpenBoule · 引擎 / 工作流 / 角色 prompt 全在仓库</small></div>
+  <a class="b" href="https://github.com/ZCDeng/OpenBoule" target="_blank" rel="noopener">Star on GitHub ↗</a>
+</div></div>
+
+<footer><div class="wrap">
+  <div class="foot-big">OpenConsult<span>///</span></div>
+  <div class="foot-r">
+    <div class="foot-links">
+      <a href="#crew">角色</a>
+      <a href="#runtime">运行时</a>
+      <a href="#method">方法论</a>
+      <a href="https://github.com/ZCDeng/OpenBoule" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="#login">登录</a>
+    </div>
+    <div class="stamp">EDITION 2026 · v1 · 31.2306° N, 121.4737° E</div>
+  </div>
+</div></footer>
+
+</body>
+</html>

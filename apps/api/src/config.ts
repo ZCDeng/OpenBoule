@@ -15,6 +15,15 @@ function optional(name: string, fallback: string): string {
   return v && v.trim() !== "" ? v : fallback;
 }
 
+/** 数字 env，非有限数即 fail loud（避免 NaN 静默传到 setTimeout(NaN)→0 等隐患）。 */
+function numeric(name: string, fallback: string): number {
+  const n = Number(optional(name, fallback));
+  if (!Number.isFinite(n)) {
+    throw new Error(`环境变量 ${name} 必须是数字（当前 "${process.env[name]}"，见 .env.example）`);
+  }
+  return n;
+}
+
 export const config = {
   nodeEnv: optional("NODE_ENV", "development"),
   apiPort: Number(optional("API_PORT", "3000")),
@@ -45,5 +54,12 @@ export const config = {
   agent: {
     model: optional("AGENT_MODEL", "claude-opus-4-8"),
     workerId: optional("WORKER_ID", "boule-worker-1"),
+    // 无事件 watchdog（ms）。120s 对联网 researcher 过紧（一次 web 抓取可能 >120s），默认调大到 300s。
+    watchdogMs: numeric("AGENT_WATCHDOG_MS", "300000"),
+    // researcher 多步检索需更多回合；纯推理 role 回合少。
+    researcherMaxTurns: numeric("AGENT_RESEARCHER_MAX_TURNS", "12"),
+    reasoningMaxTurns: numeric("AGENT_REASONING_MAX_TURNS", "6"),
+    // Aditly 自托管 MCP（web 检索网关，外部依赖）。设为 "off" 关闭 → researcher 降级 + fail-loud 标注。
+    aditlyMcpUrl: optional("ADITLY_MCP_URL", "http://127.0.0.1:8643/mcp/"),
   },
 } as const;

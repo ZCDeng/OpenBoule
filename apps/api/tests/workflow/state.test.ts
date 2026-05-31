@@ -15,11 +15,13 @@ import {
 
 test("phase 图：顺序衔接，末 phase next=null", () => {
   assert.equal(PHASES.phase0_init.next, "phase1_intake");
+  assert.equal(PHASES.phase0_init.kind, "scaffold"); // U1：phase0 去 agent 化
   assert.equal(PHASES.phase2_research.kind, "fanout");
   assert.equal(PHASES.phase4_review.kind, "serial");
   assert.equal(PHASES.phase6_enrichment.next, null);
-  // 除 fanout/serial 外均 single
+  // 除 scaffold/fanout/serial 外均 single
   assert.equal(PHASES.phase1_intake.kind, "single");
+  assert.equal(PHASES.phase1_5_axis.kind, "single"); // 只动 phase0，phase1.5 仍 agent
 });
 
 test("continue → 下一 phase；末 phase continue → null", () => {

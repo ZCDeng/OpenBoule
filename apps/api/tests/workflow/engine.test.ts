@@ -22,9 +22,21 @@ import { seedWorkflow, cleanup, db } from "./_helpers.ts";
 const createdIds: { userId: string; projectId: string }[] = [];
 /** `${workflowId}:${role}` → 该角色在该 run 内强制失败。 */
 const failKeys = new Set<string>();
+/** opt-in：这些 workflow 的 phase1.5 mock 返回结构化 axes 块（测持久化+透传，不扰其它 test）。 */
+const emitAxesFor = new Set<string>();
+/** 记录每个 researcher 收到的 task（测 threading）：workflowId → {role: task}。 */
+const researcherTaskLog = new Map<string, Record<string, string>>();
 
 const runner: AgentRunner = async (spec) => {
   if (failKeys.has(`${spec.workflowId}:${spec.role}`)) return { ok: false, text: "" };
+  if (spec.phase === "phase1_5_axis" && emitAxesFor.has(spec.workflowId)) {
+    return { ok: true, text: '轴分解：\n```json\n{"axes":[{"axis":"轴甲"},{"axis":"轴乙"}]}\n```' };
+  }
+  if (spec.role.startsWith("researcher-")) {
+    const m = researcherTaskLog.get(spec.workflowId) ?? {};
+    m[spec.role] = spec.task;
+    researcherTaskLog.set(spec.workflowId, m);
+  }
   if (spec.role.startsWith("editor-")) {
     return { ok: true, text: `edited-by-${spec.role}`, score: { composite: 0.9, mustFix: 0, languageGateFailed: false } };
   }
@@ -94,6 +106,56 @@ test("happy path：9 phase 顺序跑通，每 phase checkpoint 暂停，审批�
 
   assert.equal(done, true);
   assert.deepEqual(visited, [...PHASE_IDS]); // 9 phase 全部按序经过且各自暂停
+});
+
+test("U2 scaffold：phase0 走确定性路径（type=scaffold），不调 agent", async () => {
+  const wf = await seed();
+  await engine.startWorkflow(wf);
+  await waitForStatus(wf, "paused_for_approval");
+
+  assert.equal(await currentPhase(wf), "phase0_init"); // 暂停在 phase0
+  // agent 路径会产 type=phase0_init；scaffold 路径产 type=scaffold —— 据此区分
+  const art = await db.execute(
+    sql`SELECT type AS "t" FROM artifacts WHERE workflow_id = ${wf} AND phase = 'phase0_init' ORDER BY version DESC LIMIT 1`,
+  );
+  assert.equal((art as unknown as { rows: { t: string }[] }).rows[0]!.t, "scaffold");
+  // 有 phase-scaffolded 事件，且无任何 agent 成本（mock runner 未被 phase0 触发）
+  const ev = await db.execute(
+    sql`SELECT count(*)::int AS "n" FROM workflow_events WHERE run_id = ${wf} AND event = 'phase-scaffolded'`,
+  );
+  assert.equal((ev as unknown as { rows: { n: number }[] }).rows[0]!.n, 1);
+  const cost = await db.execute(
+    sql`SELECT count(*)::int AS "n" FROM workflow_costs WHERE workflow_id = ${wf} AND phase = 'phase0_init'`,
+  );
+  assert.equal((cost as unknown as { rows: { n: number }[] }).rows[0]!.n, 0); // 零 token
+});
+
+test("task-threading：phase1.5 持久化 axes → phase2 researcher 拿对应 axis task", { timeout: 30000 }, async () => {
+  const wf = await seed();
+  emitAxesFor.add(wf);
+  await engine.startWorkflow(wf);
+
+  await waitForStatus(wf, "paused_for_approval"); // phase0 scaffold
+  assert.equal(await currentPhase(wf), "phase0_init");
+  await engine.approve(wf);
+
+  await waitForStatus(wf, "paused_for_approval"); // phase1
+  assert.equal(await currentPhase(wf), "phase1_intake");
+  await engine.approve(wf);
+
+  await waitForStatus(wf, "paused_for_approval"); // phase1.5：应已把 axes 落库
+  assert.equal(await currentPhase(wf), "phase1_5_axis");
+  const axesRow = await db.execute(sql`SELECT axes FROM workflows WHERE id = ${wf}`);
+  assert.deepEqual((axesRow as unknown as { rows: { axes: unknown }[] }).rows[0]!.axes, [{ axis: "轴甲" }, { axis: "轴乙" }]);
+  await engine.approve(wf);
+
+  await waitForStatus(wf, "paused_for_approval"); // phase2 fan-out（axes.length=2 → 2 researcher）
+  assert.equal(await currentPhase(wf), "phase2_research");
+  const tasks = researcherTaskLog.get(wf) ?? {};
+  assert.equal(Object.keys(tasks).length, 2); // researcher 数 = axis 数
+  assert.ok(tasks["researcher-1"]!.includes("轴甲"), `researcher-1 task 应含轴甲：${tasks["researcher-1"]}`);
+  assert.ok(tasks["researcher-2"]!.includes("轴乙"), `researcher-2 task 应含轴乙：${tasks["researcher-2"]}`);
+  assert.ok(tasks["researcher-1"]!.includes("web 搜索工具")); // 含检索指令
 });
 
 test("并发双 approve：只 1 个赢，另一个 → 409（CAS 防重复 enqueue）", async () => {
