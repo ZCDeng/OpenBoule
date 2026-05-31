@@ -2,6 +2,7 @@
 
 > 更新：2026-05-31
 > Plan：`docs/plans/2026-05-30-001-feat-boule-architecture-plan.md`
+> 后续：`docs/plans/2026-05-31-002-feat-web-cli-bridge-plan.md`（Web-CLI 协同层 — MCP 桥 + 本地模式 + Thin CLI + Git-linked）
 
 ## 已完成（git 为准）
 
