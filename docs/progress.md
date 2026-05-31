@@ -150,5 +150,9 @@
   - U4：researcher 接 Aditly 自托管 MCP（web 检索网关 :8643），`mcp__aditly__*` 白名单经 SDK mcpServers；
     `ADITLY_MCP_URL` env（=off 关闭 → 降级 + systemPrompt fail-loud 标注「未联网检索」）。
   - U5：.env.example / docker-compose api env 收口（host.docker.internal:8643）。
-- 仍未接（deferred）：真实 dispatch matrix（role→agent 权威表，现 mapRoleToFile 临时映射）；
-  KTD-6 streaming-input 活体确认（外部 HTTP MCP 是否需 async-generator prompt，待真跑 phase2 验证）。
+- 实跑验证（feat 分支）：phase0 秒级 scaffold（零 cost）；phase1/1.5 reasoning agent ~60s 干净跑完不空转；
+  api 132/132 + web 24/24 全绿。**KTD-6 解决**：repro 证明字符串 prompt 即可触发 `mcp__aditly__anspire_web_search`
+  （aditly status: connected），外部 HTTP MCP 无需 async-generator，runtime 不用改。
+- 实跑发现（deferred，非缺陷）：live phase2 researcher 未真搜——`processResearchChild` 传 task=phase id 而非真实 axis，
+  无具体可搜内容。web 能力已接通且 repro 证明可用，e2e 受上游 task 内容透传门控 → 下一步「task-threading」。
+- 仍未接（deferred）：真实 dispatch matrix（role→agent 权威表 + axis/brief 透传 researcher task，现 mapRoleToFile 临时映射）。

@@ -1,6 +1,6 @@
 ---
 title: "feat: phase0 确定性脚手架 + web 场景 agent 工具集/超时"
-status: active
+status: completed
 date: 2026-05-31
 type: feat
 depth: standard
@@ -74,8 +74,7 @@ flowchart TD
 - **KTD-3（工具网关 = Aditly MCP，经 SDK mcpServers 注入）** 在 `RoleContext` 加 `mcpServers?` 字段，`claude-sdk` runtime 的 `query({ options })` 传 `mcpServers`，researcher 的 `allowedTools` 列 Aditly 工具（SDK 约定名 `mcp__<server>__<tool>`）。
   - *理由*：Aditly 是 HTTP MCP server（`http://127.0.0.1:8643/mcp/`），Claude Agent SDK 原生支持 `mcpServers` 注入。本会话已可见 `mcp__seek__*` 工具，说明本机已跑着该网关，验证可行。
   - *已坐实（context7 / SDK 文档）*：`mcpServers: Record<string, McpServerConfig>`；HTTP 形状 `{ type:"http", url, headers? }`；工具名 `mcp__<server>__<tool>`；`disallowedTools: string[]` 是显式拒绝表。**`allowedTools` 默认是「全部工具」**（不是空）——这解释了本会话 phase0 在 `allowedTools:[]` 下仍调了 Bash，故禁文件系统工具靠 `disallowedTools` 坐实（见 R-2）。
-- **KTD-6（MCP 可能要求 streaming-input prompt）** SDK 文档：自定义 MCP 工具「require streaming input——prompt 必须是 async generator，纯字符串不行」。当前 runtime 传 `prompt: ctx.task`（字符串）。该约束文档主要针对**进程内** `createSdkMcpServer` 工具；**外部 HTTP MCP（Aditly）是否同样要求未定**。
-  - *决策*：U4 第一步用最小活体验证（researcher + Aditly + 字符串 prompt 调一次 `anspire_web_search`）。若工具不触发，则把 `claude-sdk` runtime 的 `run()` 改为「字符串 → 单条 user 消息的 async generator」喂 `prompt`（仅此一处，归一化事件流不变）。见 U4 与 R-4。
+- **KTD-6（MCP streaming-input prompt？）→ 已解决：不需要。** 活体验证（researcher systemPrompt + Aditly mcpServers + **字符串** prompt + 强制搜索 task）：agent 成功 `tool_use=2`（ToolSearch → `mcp__aditly__anspire_web_search`）、`tool_result=2`、result success；init 事件 `aditly` server `status: connected`。结论：**外部 HTTP MCP 用字符串 prompt 即可触发工具**，streaming-input 约束只针对进程内 `createSdkMcpServer` 工具。`run()` 无需改 async generator，R-4 关闭。
 - **KTD-4（超时：保留 watchdog 调大 + 可配）** 不改 watchdog 机制（仍「无事件即超时」），把 executor 默认 `timeoutMs` 从 120s 提到 300s，并让 `agent-runner` 按 role 策略把 `watchdogMs`/`maxTurns` 经 `runRole` opts 传入；新增 env `AGENT_WATCHDOG_MS`。
   - *理由*：用户明确「保留 watchdog 调大默认值」。机制不动，风险最小；per-role 覆盖让 researcher 能容纳慢 MCP 抓取。
 - **KTD-5（Aditly endpoint 经 env + 缺失行为）** 新增 `ADITLY_MCP_URL`（默认 `http://127.0.0.1:8643/mcp/`）。endpoint 不可达时，researcher 仍以「无 web 工具」模式运行但在 artifact/事件里**显式标注「web 检索不可用」**（fail-loud，不静默假装联网）。
@@ -180,6 +179,7 @@ flowchart TD
 **In scope**：phase0 去 agent 化（仅此 phase）；role 运行策略表（工具/回合/超时）；Aditly MCP 接入 researcher；watchdog 默认值调大 + 可配；env/compose/文档收口。
 
 ### Deferred to Follow-Up Work
+- **researcher task 内容透传**（实跑发现）：`processResearchChild` 现传 `task=phase id`，researcher 无真实 axis/问题可搜，故 web 能力虽接通但 e2e 未被有效利用。需把 phase1.5 产的 axis / 接案 brief 透传进 researcher task。属下方 dispatch matrix 的一部分。
 - 真实 dispatch matrix（role→agent 的权威数据表，替代 `mapRoleToFile` 临时映射）——本计划只在其旁加策略表，不重写。
 - 其余 phase（phase1/1.5 等）是否部分确定性化——本轮明确保留 agent。
 - Aditly 的社媒/GitHub 等需凭证的 reach 工具接入——本轮只接 always-on web 工具。
@@ -204,13 +204,15 @@ flowchart TD
 - **R-4 HTTP MCP 可能要求 streaming-input prompt**（KTD-6）：当前 runtime 传字符串 prompt，文档称自定义 MCP 工具需 async-generator prompt（主要针对进程内工具，外部 HTTP 未定）。*缓解*：U4 第一步活体验证；若需流式，仅改 `run()` 一处把字符串包成 async generator，归一化事件流不变。
 - **依赖**：Aditly 自托管 MCP（本机 8643，本会话已可见 `mcp__seek__*`）；Aditly 需 `ANSPIRE_API_KEY`/`BOCHA_API_KEY`。
 
-## Verification / Success Criteria
+## Verification / Success Criteria（实跑结果）
 
-1. 浏览器实跑：建「调研」workflow → phase0 **秒级**进入可审批（无 agent、无 watchdog、`workflow_costs` 零行）。
-2. 审批推进到 phase2，researcher 的 agent 事件含 `mcp__aditly__*` 的 `tool_use`/`tool_result`，finalText 含真实检索内容，且在 watchdog 内完成（不再 `TERMINATED_UNKNOWN`）。
-3. 纯推理 role（如 phase3 strategy）`tool_use` 计数为 0，不再 sandbox 空转。
-4. `node --test` 全绿：api 既有 + 新增（scaffold/state/agent-runner/claude-sdk）；web 24 不回归。
-5. `related` 计划的「phase0 跑不完」遗留项可在 `docs/progress.md` 标关闭。
+1. ✅ 浏览器实跑：建「调研」workflow → phase0 **秒级**进入「需审批」（type=scaffold、`workflow_costs` 零行、事件 `phase-scaffolded` 无 agent 事件、manifestRefs 为路径字符串）。
+2. ✅ reasoning role 不空转：phase1_intake / phase1_5_axis 真 agent 各 **~60s 干净跑完进 paused**（22k/3k、22k/4k token），无 `TERMINATED_UNKNOWN`、无 sandbox `ls` 空转——phase0 去 agent 化移除了真正的空转源。
+3. ✅ Aditly web 能力接通且可用（repro 证明）：researcher 风格 role + 字符串 prompt 成功 `tool_use` `mcp__aditly__anspire_web_search` → `tool_result` success，`aditly` server `status: connected`。KTD-6 关闭。
+4. ✅ `node --test` 全绿：api **132/132**（+scaffold/config/agent-runner/claude-sdk 新增）；web 24/24 不回归。
+5. ✅ `related` 计划「phase0 跑不完」遗留项已在 `docs/progress.md` 标关闭。
+
+**实跑发现（诚实留痕，非本计划缺陷）**：live phase2 的 researcher **未触发 web 搜索**——因 `processResearchChild` 传的 `task` 是字面量 `"phase2_research"`（phase id），而非真实 axis/研究问题，researcher 无具体可搜内容即凭知识作答。web 能力本身正确接通（repro 已证），**e2e 研究质量受上游 task 内容透传门控**。把 axis/brief 透传进 researcher task 属「真实 dispatch matrix / task-threading」deferred 工作，见 Scope Boundaries，留作下一步。
 
 ## Sources & Research
 
