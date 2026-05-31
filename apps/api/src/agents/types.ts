@@ -23,6 +23,10 @@ export interface RoleContext {
   maxTurns?: number;
   /** 是否允许真实执行工具（live 验 tool_use/tool_result；生产由 phase 配置决定）。 */
   allowToolExecution?: boolean;
+  /** U4 Git-linked：agent 工作目录（指向真实 repo）。仅本地模式 + 执行型 role 设。 */
+  cwd?: string;
+  /** U4 执行边界：SDK 允许访问的额外目录（锁死在 cwd 子树，不外放，C 簇）。 */
+  additionalDirectories?: string[];
 }
 
 /** 一次 role 执行的归一化结果（executor 消费事件流后汇总）。 */

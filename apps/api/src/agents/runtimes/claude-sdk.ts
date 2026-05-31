@@ -96,6 +96,9 @@ export class ClaudeSdkRuntime implements BouleRoleRuntime {
         ...(ctx.disallowedTools && ctx.disallowedTools.length > 0 ? { disallowedTools: ctx.disallowedTools } : {}),
         // MCP server 注入（U4：researcher 接 Aditly web 工具网关；mcp__<server>__<tool>）
         ...(ctx.mcpServers ? { mcpServers: ctx.mcpServers } : {}),
+        // U4 Git-linked：cwd 指向真实 repo；additionalDirectories 锁死子树（不外放，C 簇执行边界）
+        ...(ctx.cwd ? { cwd: ctx.cwd } : {}),
+        ...(ctx.additionalDirectories ? { additionalDirectories: ctx.additionalDirectories } : {}),
         includePartialMessages: true,
         maxTurns: ctx.maxTurns ?? 6,
         permissionMode: ctx.allowToolExecution ? "bypassPermissions" : "default",

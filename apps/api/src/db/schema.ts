@@ -65,12 +65,17 @@ export const users = pgTable("users", {
 });
 
 // ── 2. projects ──
+// U4 Git-linked：link_mode 决定 workspace 来源。gitUrl=clone 到服务端（团队/本地皆可）；
+// localDir=agent cwd 直指用户真实 repo（**仅本地模式**，团队拒——服务端 worker 访问不到成员笔记本）。
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.id),
+  gitUrl: text("git_url"),
+  localBaseDir: text("local_base_dir"),
+  linkMode: text("link_mode"), // null（未链接）/ gitUrl / localDir
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

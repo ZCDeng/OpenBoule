@@ -18,6 +18,7 @@ import { languageGate } from "../pm/language-gate.ts";
 import { runRole } from "../agents/executor.ts";
 import { createDbCostHook } from "../agents/hooks.ts";
 import { config } from "../config.ts";
+import { resolveSafeCwd } from "./git-link.ts";
 import type { AgentRunner } from "../workflow/phases/index.ts";
 
 // 纯推理 role 禁用的内建工具——止 sandbox 空转（R-2）。
@@ -108,6 +109,14 @@ async function loadSnapshot(db: DB, workflowId: string): Promise<TruthSnapshot> 
   return snap;
 }
 
+/** U4：查 workflow 所属 project 的 git-linked localDir（未链接返回 null）。 */
+async function loadLinkedBaseDir(db: DB, workflowId: string): Promise<string | null> {
+  const res = await db.execute(sql`
+    SELECT p.local_base_dir AS "dir" FROM workflows w JOIN projects p ON p.id = w.project_id
+     WHERE w.id = ${workflowId} AND p.link_mode = 'localDir'`);
+  return (res as unknown as { rows?: { dir: string | null }[] }).rows?.[0]?.dir ?? null;
+}
+
 /** 落一行 workflow_costs（U3 cost hook 的 insert 实现）。 */
 function insertCost(db: DB, workflowId: string) {
   return async (row: {
@@ -143,6 +152,14 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
         '\n\n[运行时] 在产出末尾追加一个 ```json 代码块，形如 {"axes":[{"axis":"轴名","frame":"可选视角","lanes":["可选lane"]}]}，逐条列出本次分解的调研轴，供系统解析。';
     }
 
+    // U4 Git-linked：执行型 role 且项目链接了本地 repo 时，cwd 指向真实目录 + 锁子树。
+    // 执行前再校验（resolveSafeCwd，防 TOCTOU）；校验失败即抛，不在不安全目录里跑。
+    let cwd: string | undefined;
+    if (policy.allowToolExecution) {
+      const baseDir = await loadLinkedBaseDir(db, spec.workflowId);
+      if (baseDir) cwd = await resolveSafeCwd(baseDir);
+    }
+
     const result = await runRole(
       {
         jobId: `${spec.workflowId}:${spec.phase}:${spec.role}`,
@@ -155,6 +172,7 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
         mcpServers: policy.mcpServers,
         maxTurns: policy.maxTurns,
         allowToolExecution: policy.allowToolExecution,
+        ...(cwd ? { cwd, additionalDirectories: [cwd] } : {}),
       },
       {
         hooks: createDbCostHook(insertCost(db, spec.workflowId), { workflowId: spec.workflowId, phase: spec.phase }),
