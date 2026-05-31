@@ -134,8 +134,9 @@ export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): voi
         INSERT INTO artifacts (workflow_id, phase, type, version, body, status)
         VALUES (${id}, ${ph}, ${type}, ${nextVersion}, ${body}, 'draft')
         RETURNING id`);
-      const artifactId = (ins as unknown as { rows: { id: string }[] }).rows[0]!.id;
-      return reply.code(201).send({ artifactId, phase: ph, type, version: nextVersion, status: "draft" });
+      const newId = (ins as unknown as { rows: { id: string }[] }).rows[0]!.id;
+      // 主键字段统一用 id（与 GET /api/artifacts/:id 一致，code-review #10）。
+      return reply.code(201).send({ id: newId, phase: ph, type, version: nextVersion, status: "draft" });
     },
   );
 

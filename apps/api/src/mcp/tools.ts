@@ -183,21 +183,27 @@ export function makeTools(client: BouleClient): ToolDef[] {
         const docs = (await call(client, "GET", `/api/workflows/${wid}/artifacts`)) as {
           artifacts?: { id: string; type: string; phase: string }[];
         };
-        const hits = (docs.artifacts ?? []).filter(
+        // 上限 20，防 N+1 失控（code-review #6）；正文拉取并行而非串行。
+        const MAX_HITS = 20;
+        const all = (docs.artifacts ?? []).filter(
           (a) => a.type.toLowerCase().includes("research") || a.phase.toLowerCase().includes("research"),
         );
-        // 拉命中 artifact 正文做关键词过滤（thin：复用 GET /api/artifacts/:id）。
+        const hits = all.slice(0, MAX_HITS);
+        const fetched = await Promise.all(
+          hits.map(async (h) => {
+            const full = (await call(client, "GET", `/api/artifacts/${h.id}`)) as { body?: string };
+            return { h, body: full.body ?? "" };
+          }),
+        );
         const matched: { id: string; type: string; phase: string; excerpt: string }[] = [];
-        for (const h of hits) {
-          const full = (await call(client, "GET", `/api/artifacts/${h.id}`)) as { body?: string };
-          const body = full.body ?? "";
+        for (const { h, body } of fetched) {
           const idx = body.toLowerCase().indexOf(query);
           if (!query || idx >= 0) {
             const start = Math.max(0, idx - 80);
             matched.push({ id: h.id, type: h.type, phase: h.phase, excerpt: body.slice(start, start + 240) });
           }
         }
-        return { findings: matched };
+        return { findings: matched, truncated: all.length > MAX_HITS ? all.length - MAX_HITS : 0 };
       },
     },
   ];

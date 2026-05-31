@@ -90,18 +90,39 @@ test("get_workflow 无显式且无 active context → 清晰错误", async () =>
 test("submit_artifact → POST 正确路径与 body", async () => {
   const rec: Recorded[] = [];
   const tools = makeTools(
-    client({ "/api/workflows/wf-1/artifacts": { artifactId: "a1", status: "draft" } }, rec),
+    client({ "/api/workflows/wf-1/artifacts": { id: "a1", status: "draft" } }, rec),
   );
   const out = (await tools.find((t) => t.name === "submit_artifact")!.handler({
     workflow: "wf-1",
     type: "research",
     body: "结论…",
-  })) as { artifactId: string };
-  assert.equal(out.artifactId, "a1");
+  })) as { id: string };
+  assert.equal(out.id, "a1");
   const call = rec.find((r) => r.method === "POST")!;
   assert.equal(call.url, "http://test/api/workflows/wf-1/artifacts");
   // phase 未传 → JSON.stringify 丢弃 undefined 键，body 不含 phase。
   assert.deepEqual(call.body, { type: "research", body: "结论…" });
+});
+
+test("search_research：按 type 过滤 + 关键词命中 + 上限截断（code-review #6）", async () => {
+  const rec: Recorded[] = [];
+  // 25 个 research artifact（超 20 上限）+ 1 个非 research
+  const artifacts = [
+    ...Array.from({ length: 25 }, (_, i) => ({ id: `r${i}`, type: "research", phase: "phase2", version: 1 })),
+    { id: "x", type: "report", phase: "phase5", version: 1 },
+  ];
+  const routes: Record<string, unknown> = { "/api/workflows/wf-1/artifacts": { artifacts } };
+  for (let i = 0; i < 25; i++) routes[`/api/artifacts/r${i}`] = { body: i === 3 ? "含关键词 boule 的正文" : "无关内容" };
+  const tools = makeTools(client(routes, rec));
+  const out = (await tools.find((t) => t.name === "search_research")!.handler({
+    workflow: "wf-1",
+    query: "boule",
+  })) as { findings: { id: string }[]; truncated: number };
+  assert.equal(out.findings.length, 1, "只命中含关键词的");
+  assert.equal(out.findings[0]!.id, "r3");
+  assert.equal(out.truncated, 5, "25 个 research 截断到 20，多 5");
+  // report 类未被拉取（只 fetch research 命中项）
+  assert.ok(!rec.some((r) => r.url.endsWith("/api/artifacts/x")), "非 research 不拉正文");
 });
 
 test("daemon 不可达 → 清晰错误（含 baseUrl）", async () => {

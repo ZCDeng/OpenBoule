@@ -41,14 +41,15 @@ export function isApiKeyToken(token: string): boolean {
  */
 export async function verifyApiKey(db: DB, plaintext: string): Promise<ApiKeyAuth | null> {
   const keyHash = hashApiKey(plaintext);
+  // 单条 UPDATE…RETURNING 原子化（code-review #8）：命中即刷 last_used_at 并返身份；0 行 = 无效/已撤销。
+  // 省一次往返，消除 SELECT 与 UPDATE 间的竞态。
   const res = await db.execute(sql`
-    SELECT user_id AS "userId", scope, project_ids AS "projectIds"
-      FROM api_keys WHERE key_hash = ${keyHash} AND revoked_at IS NULL`);
+    UPDATE api_keys SET last_used_at = now()
+     WHERE key_hash = ${keyHash} AND revoked_at IS NULL
+    RETURNING user_id AS "userId", scope, project_ids AS "projectIds"`);
   const row = (res as unknown as { rows?: { userId: string; scope: ApiKeyScope; projectIds: string[] | null }[] })
     .rows?.[0];
-  if (!row) return null;
-  await db.execute(sql`UPDATE api_keys SET last_used_at = now() WHERE key_hash = ${keyHash}`);
-  return { userId: row.userId, scope: row.scope, projectIds: row.projectIds };
+  return row ? { userId: row.userId, scope: row.scope, projectIds: row.projectIds } : null;
 }
 
 /** 创建一行 api_key（明文不落库；调用方负责把 generateApiKey 的明文回显给用户一次）。 */

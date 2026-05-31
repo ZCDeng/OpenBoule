@@ -12,6 +12,9 @@ import type { DB } from "../db/client.ts";
 export const EXPORT_VERSION = 1;
 /** import 体积上限（防 OOM/DoS）。 */
 export const MAX_BUNDLE_BYTES = 10 * 1024 * 1024; // 10MB
+/** 行数上限（code-review #9）：防 10MB 内塞数万行 → 单事务长时持锁 + 连接占用。 */
+export const MAX_WORKFLOWS = 500;
+export const MAX_ARTIFACTS_PER_WORKFLOW = 1000;
 
 const WORKFLOW_STATUS = new Set(["running", "paused_for_approval", "approved", "rejected"]);
 const ARTIFACT_STATUS = new Set(["draft", "below_threshold", "published"]);
@@ -91,6 +94,7 @@ export function validateBundle(raw: unknown, rawByteLength: number): ValidationR
     return { ok: false, error: "project.name 缺失或非法" };
   }
   if (!Array.isArray(b.workflows)) return { ok: false, error: "workflows 需为数组" };
+  if (b.workflows.length > MAX_WORKFLOWS) return { ok: false, error: `workflows 超过 ${MAX_WORKFLOWS} 上限` };
   for (const [i, w] of b.workflows.entries()) {
     if (!w || typeof w !== "object") return { ok: false, error: `workflows[${i}] 非对象` };
     if (typeof w.currentPhase !== "string") return { ok: false, error: `workflows[${i}].currentPhase 非法` };
@@ -99,6 +103,9 @@ export function validateBundle(raw: unknown, rawByteLength: number): ValidationR
       return { ok: false, error: `workflows[${i}].truthSnapshot 缺失` };
     }
     if (!Array.isArray(w.artifacts)) return { ok: false, error: `workflows[${i}].artifacts 需为数组` };
+    if (w.artifacts.length > MAX_ARTIFACTS_PER_WORKFLOW) {
+      return { ok: false, error: `workflows[${i}].artifacts 超过 ${MAX_ARTIFACTS_PER_WORKFLOW} 上限` };
+    }
     for (const [j, a] of w.artifacts.entries()) {
       if (!a || typeof a.phase !== "string" || typeof a.type !== "string" || typeof a.body !== "string") {
         return { ok: false, error: `workflows[${i}].artifacts[${j}] 字段非法` };

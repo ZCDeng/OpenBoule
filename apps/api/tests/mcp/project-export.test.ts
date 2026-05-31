@@ -57,6 +57,25 @@ test("validateBundle：合法通过；版本/结构/枚举非法拒", () => {
   assert.equal(validateBundle(minimalBundle(), MAX_BUNDLE_BYTES + 1).ok, false, "超大拒");
 });
 
+test("validateBundle：行数上限拒（code-review #9）", () => {
+  const tooManyWf = minimalBundle();
+  const w = tooManyWf.workflows[0]!;
+  tooManyWf.workflows = Array.from({ length: 501 }, () => ({ ...w, artifacts: [] }));
+  assert.equal(validateBundle(tooManyWf, 500).ok, false, "workflows 超 500 拒");
+
+  const tooManyArt = minimalBundle();
+  tooManyArt.workflows[0]!.artifacts = Array.from({ length: 1001 }, () => ({
+    phase: "p",
+    type: "t",
+    version: 1,
+    body: "x",
+    status: "draft",
+    stale: false,
+    inputArtifactVersions: null,
+  }));
+  assert.equal(validateBundle(tooManyArt, 500).ok, false, "artifacts 超 1000 拒");
+});
+
 test("export → import round-trip + owner 重映射", async () => {
   const app = makeApp();
   const author = await registerUser(app);
