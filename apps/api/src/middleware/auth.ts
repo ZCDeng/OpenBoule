@@ -51,6 +51,8 @@ function extractToken(req: FastifyRequest): string | null {
  * API key 走 db 单例查 hash（与测试注入的同一实例）。read scope 的 key 拒非只读方法 → 403。
  */
 export async function authenticate(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  // 本地模式（U2）：localModeHook 已在 onRequest 注入 req.user，此处直接放行（免登录）。
+  if (getUser(req)) return;
   const token = extractToken(req);
   if (!token) {
     await reply.code(401).send({ error: "UNAUTHENTICATED", message: "缺少凭证" });
@@ -120,4 +122,31 @@ export function requireProjectRole(db: DB, minRole: Role, resolve: ProjectResolv
 export function getProjectRoleFromReq(req: FastifyRequest): { role?: Role; projectId?: string } {
   const r = req as FastifyRequest & { projectRole?: Role; projectId?: string };
   return { role: r.projectRole, projectId: r.projectId };
+}
+
+/** 回环地址判定（U2 本地模式 loopback-only 守卫，纯函数便于测试）。 */
+export function isLoopbackAddress(ip: string | undefined): boolean {
+  if (!ip) return false;
+  const a = ip.trim().toLowerCase();
+  return (
+    a === "127.0.0.1" ||
+    a === "::1" ||
+    a === "::ffff:127.0.0.1" ||
+    a === "localhost" ||
+    a.startsWith("127.")
+  );
+}
+
+/**
+ * 本地模式 onRequest 钩子（U2）：①拒非回环来源（403，防局域网/容器以 owner 身份访问，F/安全簇）
+ * ②注入固定本地用户（免登录，下游 authenticate 见 req.user 已设即放行）。
+ */
+export function localModeHook(localUserId: string) {
+  return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    if (!isLoopbackAddress(req.ip)) {
+      await reply.code(403).send({ error: "FORBIDDEN", message: "本地模式仅接受本机（loopback）请求" });
+      return;
+    }
+    setUser(req, { userId: localUserId });
+  };
 }
