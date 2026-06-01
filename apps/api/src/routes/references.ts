@@ -5,13 +5,13 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { sql } from "drizzle-orm";
 import type { AppDeps } from "../app.ts";
 import { makeAuthenticate, requireProjectRole } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import {
   MAX_REFERENCE_BYTES,
   createProjectReference,
+  deleteProjectReference,
   listProjectReferences,
   listWorkflowReferences,
   validateReferenceUpload,
@@ -63,9 +63,8 @@ export function registerReferenceRoutes(app: FastifyInstance, deps: AppDeps): vo
     },
     async (req, reply) => {
       const { id: projectId, referenceId } = req.params as { id: string; referenceId: string };
-      const res = await db.execute(sql`
-        DELETE FROM project_references WHERE project_id = ${projectId} AND id = ${referenceId}`);
-      if ((res as unknown as { rowCount?: number }).rowCount === 0) return reply.code(404).send({ error: "NOT_FOUND" });
+      const deleted = await deleteProjectReference(db, projectId, referenceId);
+      if (!deleted) return reply.code(404).send({ error: "NOT_FOUND" });
       return reply.code(204).send();
     },
   );

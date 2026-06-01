@@ -78,6 +78,12 @@ export async function createProjectReference(
   return (res as unknown as { rows: Omit<ProjectReferenceRow, "projectId" | "body">[] }).rows[0]!;
 }
 
+export async function deleteProjectReference(db: DB, projectId: string, referenceId: string): Promise<boolean> {
+  const res = await db.execute(sql`
+    DELETE FROM project_references WHERE project_id = ${projectId} AND id = ${referenceId}`);
+  return ((res as unknown as { rowCount?: number }).rowCount ?? 0) > 0;
+}
+
 export async function loadProjectReferences(db: DB, projectId: string, ids: string[]): Promise<ProjectReferenceRow[]> {
   if (ids.length === 0) return [];
   const idList = sql.join(ids.map((id) => sql`${id}`), sql`, `);
