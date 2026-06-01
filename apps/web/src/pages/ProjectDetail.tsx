@@ -14,14 +14,21 @@ export function ProjectDetailPage() {
   const api = useAuth((s) => s.api);
   const nav = useNavigate();
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
+  const [skippedReferences, setSkippedReferences] = useState<{ id: string; filename: string | null; parseStatus: string }[]>([]);
+  const [createdWorkflowId, setCreatedWorkflowId] = useState<string | null>(null);
 
   const start = useMutation({
     mutationFn: (mode: string) =>
-      api.json<{ workflowId: string }>("/api/workflows", {
+      api.json<{ workflowId: string; skippedReferences?: { id: string; filename: string | null; parseStatus: string }[] }>("/api/workflows", {
         method: "POST",
         body: JSON.stringify({ projectId: id, mode, referenceIds: selectedReferenceIds }),
       }),
-    onSuccess: (r) => nav(`/workflows/${r.workflowId}`),
+    onSuccess: (r) => {
+      const skipped = r.skippedReferences ?? [];
+      setSkippedReferences(skipped);
+      setCreatedWorkflowId(r.workflowId);
+      if (skipped.length === 0) nav(`/workflows/${r.workflowId}`);
+    },
   });
 
   // U4 Git-linked 配置（thin 表单：写入即用 PATCH 回显，无单项目 GET）。
@@ -54,6 +61,19 @@ export function ProjectDetailPage() {
           选择 mode 启动一次新的咨询工作流（仅 Owner 可启动）。已勾选 {selectedReferenceIds.length} 个 reference。
         </p>
         {start.isError && <ErrorBanner severity="P0" message="启动工作流失败（可能权限不足或真值源未配置）" />}
+        {skippedReferences.length > 0 && (
+          <div className="space-y-2">
+            <ErrorBanner severity="P1" message={`${skippedReferences.length} 个 reference 因解析失败或不存在未纳入本次 workflow。`} />
+            {createdWorkflowId && (
+              <button
+                onClick={() => nav(`/workflows/${createdWorkflowId}`)}
+                className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+              >
+                继续查看已创建 workflow
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {MODES.map((m) => (
             <button

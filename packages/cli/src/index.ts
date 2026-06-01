@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import { loadConfig, flag } from "./config.ts";
-import { get, post, CliError } from "./client.ts";
+import { get, post, del, postFile, CliError } from "./client.ts";
 
 const USAGE = `boule — Boule Thin CLI
 
@@ -18,6 +18,9 @@ const USAGE = `boule — Boule Thin CLI
   boule workflow <id>                             查 workflow 状态/axes
   boule documents --workflow <id>                 列出 workflow 的 artifact
   boule submit --workflow <id> --type <t> --file <path>   提交一份产出
+  boule references list --project <id>              列出项目 reference（含解析状态）
+  boule references upload --project <id> --file <path> 上传本地文件 reference
+  boule references delete --project <id> --id <refId> 删除 reference
   boule mcp [--api-key <k>] [--daemon-url <u>]    启动 MCP stdio server（给 Claude Code 等）
   boule help                                      显示本帮助
 
@@ -61,6 +64,29 @@ async function run(argv: string[]): Promise<number> {
       if (!wid) throw new CliError("用法：boule documents --workflow <id>");
       print(await get(cfg, `/api/workflows/${wid}/artifacts`));
       return 0;
+    }
+
+    case "references": {
+      const sub = argv[1];
+      const projectId = flag(argv, "project");
+      if (!projectId) throw new CliError("用法：boule references <list|upload|delete> --project <id> ...");
+      if (sub === "list") {
+        print(await get(cfg, `/api/projects/${projectId}/references`));
+        return 0;
+      }
+      if (sub === "upload") {
+        const file = flag(argv, "file");
+        if (!file) throw new CliError("用法：boule references upload --project <id> --file <path>");
+        print(await postFile(cfg, `/api/projects/${projectId}/references`, file));
+        return 0;
+      }
+      if (sub === "delete") {
+        const referenceId = flag(argv, "id");
+        if (!referenceId) throw new CliError("用法：boule references delete --project <id> --id <refId>");
+        print(await del(cfg, `/api/projects/${projectId}/references/${referenceId}`));
+        return 0;
+      }
+      throw new CliError("用法：boule references <list|upload|delete> --project <id> ...");
     }
     case "submit": {
       const wid = flag(argv, "workflow");

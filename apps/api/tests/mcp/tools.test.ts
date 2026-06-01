@@ -5,12 +5,16 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { createBouleClient, makeTools } from "../../src/mcp/tools.ts";
 
 interface Recorded {
   url: string;
   method: string;
   auth: string | undefined;
+  contentType: string | undefined;
   body: unknown;
 }
 
@@ -23,7 +27,8 @@ function fakeFetch(routes: Record<string, unknown>, rec: Recorded[]): typeof fet
       url,
       method: init?.method ?? "GET",
       auth: headers.authorization,
-      body: init?.body ? JSON.parse(init.body as string) : undefined,
+      contentType: headers["content-type"],
+      body: init?.body instanceof FormData ? init.body : init?.body ? JSON.parse(init.body as string) : undefined,
     });
     const path = url.replace("http://test", "");
     const match = Object.keys(routes).find((k) => path === k);
@@ -39,17 +44,20 @@ function client(routes: Record<string, unknown>, rec: Recorded[]) {
   return createBouleClient({ baseUrl: "http://test", apiKey: "bk_test", fetchImpl: fakeFetch(routes, rec) });
 }
 
-test("工具集恰好 7 个，命名稳定", () => {
+test("工具集恰好 10 个，命名稳定", () => {
   const tools = makeTools(client({}, []));
   const names = tools.map((t) => t.name).sort();
   assert.deepEqual(names, [
+    "delete_reference",
     "get_active_context",
     "get_documents",
     "get_workflow",
     "list_axes",
     "list_projects",
+    "list_reference",
     "search_research",
     "submit_artifact",
+    "upload_reference",
   ]);
 });
 
@@ -85,6 +93,47 @@ test("get_workflow 无显式且无 active context → 清晰错误", async () =>
     () => tools.find((t) => t.name === "get_workflow")!.handler({}),
     /未指定 workflow.*active context/,
   );
+});
+
+
+test("upload_reference → multipart POST，不声明 JSON content-type", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "boule-ref-"));
+  const filePath = join(dir, "brief.txt");
+  writeFileSync(filePath, "客户 brief");
+  const rec: Recorded[] = [];
+  const tools = makeTools(client({ "/api/projects/p1/references": { reference: { id: "r1", parseStatus: "parsed", parseSource: "local-js", parseError: null } } }, rec));
+  const out = (await tools.find((t) => t.name === "upload_reference")!.handler({ projectId: "p1", filePath })) as { reference: { id: string } };
+  assert.equal(out.reference.id, "r1");
+  assert.equal(rec[0]!.method, "POST");
+  assert.equal(rec[0]!.url, "http://test/api/projects/p1/references");
+  assert.equal(rec[0]!.contentType, undefined);
+  assert.ok(rec[0]!.body instanceof FormData);
+});
+
+test("list_reference returns parse status fields", async () => {
+  const rec: Recorded[] = [];
+  const tools = makeTools(client({ "/api/projects/p1/references": { references: [{ id: "r1", parseStatus: "failed", parseSource: null, parseError: "EMPTY" }] } }, rec));
+  const out = (await tools.find((t) => t.name === "list_reference")!.handler({ projectId: "p1" })) as { references: { parseStatus: string; parseError: string | null }[] };
+  assert.equal(out.references[0]!.parseStatus, "failed");
+  assert.equal(out.references[0]!.parseError, "EMPTY");
+});
+
+test("delete_reference → DELETE endpoint and propagates 404", async () => {
+  const rec: Recorded[] = [];
+  const tools = makeTools(client({ "/api/projects/p1/references/r1": null }, rec));
+  await tools.find((t) => t.name === "delete_reference")!.handler({ projectId: "p1", referenceId: "r1" });
+  assert.equal(rec[0]!.method, "DELETE");
+  assert.equal(rec[0]!.url, "http://test/api/projects/p1/references/r1");
+
+  const missing = makeTools(client({}, []));
+  await assert.rejects(() => missing.find((t) => t.name === "delete_reference")!.handler({ projectId: "p1", referenceId: "missing" }), /404/);
+});
+
+test("upload_reference missing file fails before request", async () => {
+  const rec: Recorded[] = [];
+  const tools = makeTools(client({}, rec));
+  await assert.rejects(() => tools.find((t) => t.name === "upload_reference")!.handler({ projectId: "p1", filePath: "/no/such/file" }), /读取 reference 文件失败/);
+  assert.equal(rec.length, 0);
 });
 
 test("submit_artifact → POST 正确路径与 body", async () => {

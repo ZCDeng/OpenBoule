@@ -3,9 +3,6 @@ import type { DB } from "../db/client.ts";
 import { config } from "../config.ts";
 import { isTextLikeMime, parseReferenceDocument, type ParseSource, type ParseStatus } from "./document-parsing.ts";
 
-/** 项目 reference 总量超额（替代字符串匹配，路由层据此映射 400）。 */
-export class ReferenceStorageLimitError extends Error {}
-
 export const MAX_REFERENCE_BYTES = config.references.textMaxBytes;
 export const MAX_REFERENCES_PER_WORKFLOW = 20;
 export const MAX_PDF_REFERENCE_BYTES = config.references.pdfMaxBytes;
@@ -28,6 +25,22 @@ export interface ProjectReferenceRow {
 }
 
 export interface ProjectReferenceListRow extends Omit<ProjectReferenceRow, "body" | "projectId"> {}
+
+export interface SkippedReferenceRow {
+  id: string;
+  filename: string | null;
+  parseStatus: ParseStatus | "missing";
+}
+
+export interface LoadedReferencesResult {
+  loaded: ProjectReferenceRow[];
+  skipped: SkippedReferenceRow[];
+}
+
+/** 项目 reference 总量超额（替代字符串匹配，路由层据此映射 400）。 */
+export class ReferenceStorageLimitError extends Error {
+  override readonly name = "ReferenceStorageLimitError";
+}
 
 export interface WorkflowReferenceRow {
   id: string;
@@ -100,7 +113,9 @@ function maxBytesForMime(mimeType: string): number {
   return MAX_REFERENCE_BYTES;
 }
 
-export async function assertProjectReferenceStorageBudget(db: DB, projectId: string, incomingBytes: number): Promise<{ ok: true } | { ok: false; error: string }> {
+type SqlExecutor = Pick<DB, "execute">;
+
+export async function assertProjectReferenceStorageBudget(db: SqlExecutor, projectId: string, incomingBytes: number): Promise<{ ok: true } | { ok: false; error: string }> {
   const res = await db.execute(sql`SELECT COALESCE(SUM(size_bytes), 0)::int AS "used" FROM project_references WHERE project_id = ${projectId}`);
   const used = Number((res as unknown as { rows: { used: number }[] }).rows[0]?.used ?? 0);
   if (used + incomingBytes > MAX_PROJECT_REFERENCE_BYTES) return { ok: false, error: `项目 reference 总量超过 ${MAX_PROJECT_REFERENCE_BYTES} bytes` };
@@ -124,18 +139,21 @@ export async function createProjectReference(
     | { filename: string; mimeType: string; sizeBytes: number; body: string }
     | { filename: string; mimeType: string; sizeBytes: number; buffer: Buffer },
 ): Promise<ProjectReferenceListRow> {
-  const budget = await assertProjectReferenceStorageBudget(db, projectId, input.sizeBytes);
-  if (!budget.ok) throw new ReferenceStorageLimitError(budget.error);
   const parsed = "body" in input
     ? { body: input.body, parseStatus: "parsed" as ParseStatus, parseSource: "local-js" as ParseSource, shouldStoreOriginal: false, error: null }
     : await parseReferenceDocument({ buffer: input.buffer, mimeType: input.mimeType, filename: input.filename });
   const originalBinary = "buffer" in input && parsed.shouldStoreOriginal ? input.buffer : null;
-  const res = await db.execute(sql`
-    INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, original_binary, parse_status, parse_source, parse_error)
-    VALUES (${projectId}, ${input.filename}, ${input.mimeType}, ${input.sizeBytes}, ${parsed.body}, ${originalBinary}, ${parsed.parseStatus}, ${parsed.parseSource}, ${parsed.error ?? null})
-    RETURNING id, filename, mime_type AS "mimeType", size_bytes AS "sizeBytes", parse_status AS "parseStatus",
-              parse_source AS "parseSource", parse_error AS "parseError", created_at AS "createdAt"`);
-  return (res as unknown as { rows: ProjectReferenceListRow[] }).rows[0]!;
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`);
+    const budget = await assertProjectReferenceStorageBudget(tx, projectId, input.sizeBytes);
+    if (!budget.ok) throw new ReferenceStorageLimitError(budget.error);
+    const res = await tx.execute(sql`
+      INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, original_binary, parse_status, parse_source, parse_error)
+      VALUES (${projectId}, ${input.filename}, ${input.mimeType}, ${input.sizeBytes}, ${parsed.body}, ${originalBinary}, ${parsed.parseStatus}, ${parsed.parseSource}, ${parsed.error ?? null})
+      RETURNING id, filename, mime_type AS "mimeType", size_bytes AS "sizeBytes", parse_status AS "parseStatus",
+                parse_source AS "parseSource", parse_error AS "parseError", created_at AS "createdAt"`);
+    return (res as unknown as { rows: ProjectReferenceListRow[] }).rows[0]!;
+  });
 }
 
 export async function deleteProjectReference(db: DB, projectId: string, referenceId: string): Promise<boolean> {
@@ -144,16 +162,32 @@ export async function deleteProjectReference(db: DB, projectId: string, referenc
 }
 
 export async function loadProjectReferences(db: DB, projectId: string, ids: string[]): Promise<ProjectReferenceRow[]> {
-  if (ids.length === 0) return [];
+  return (await loadProjectReferencesPartitioned(db, projectId, ids)).loaded;
+}
+
+export async function loadProjectReferencesPartitioned(db: DB, projectId: string, ids: string[]): Promise<LoadedReferencesResult> {
+  if (ids.length === 0) return { loaded: [], skipped: [] };
   const idList = sql.join(ids.map((id) => sql`${id}`), sql`, `);
   const res = await db.execute(sql`
     SELECT id, project_id AS "projectId", filename, mime_type AS "mimeType", size_bytes AS "sizeBytes",
            body, parse_status AS "parseStatus", parse_source AS "parseSource", parse_error AS "parseError", created_at AS "createdAt"
       FROM project_references
-     WHERE project_id = ${projectId} AND parse_status <> 'failed' AND id IN (${idList})`);
+     WHERE project_id = ${projectId} AND id IN (${idList})`);
   const rows = (res as unknown as { rows: ProjectReferenceRow[] }).rows;
   const byId = new Map(rows.map((row) => [row.id, row]));
-  return ids.map((id) => byId.get(id)).filter((row): row is ProjectReferenceRow => !!row);
+  const loaded: ProjectReferenceRow[] = [];
+  const skipped: SkippedReferenceRow[] = [];
+  for (const id of ids) {
+    const row = byId.get(id);
+    if (!row) {
+      skipped.push({ id, filename: null, parseStatus: "missing" });
+    } else if (row.parseStatus === "failed") {
+      skipped.push({ id, filename: row.filename, parseStatus: row.parseStatus });
+    } else {
+      loaded.push(row);
+    }
+  }
+  return { loaded, skipped };
 }
 
 export async function freezeWorkflowReferences(db: DB, workflowId: string, references: ProjectReferenceRow[]): Promise<void> {

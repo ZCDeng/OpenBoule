@@ -3,6 +3,8 @@
  * 与 MCP tools 同一 REST 面，但这是人用层（KTD-6：人机接口分离）。
  */
 
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 import type { CliConfig } from "./config.ts";
 
 export class CliError extends Error {}
@@ -22,6 +24,38 @@ async function request(cfg: CliConfig, method: string, path: string, body?: unkn
   } catch (err) {
     throw new CliError(`无法连接 Boule（${cfg.daemonUrl}）：daemon 在运行吗？(${(err as Error).message})`);
   }
+  return parseResponse(method, path, res);
+}
+
+function fileForm(filePath: string): FormData {
+  let buf: Buffer;
+  try {
+    buf = readFileSync(filePath);
+  } catch (err) {
+    throw new CliError(`读取 reference 文件失败：${filePath}（${(err as Error).message}）`);
+  }
+  const form = new FormData();
+  form.append("file", new Blob([new Uint8Array(buf)]), basename(filePath));
+  return form;
+}
+
+export async function postFile(cfg: CliConfig, path: string, filePath: string): Promise<unknown> {
+  let res: Response;
+  try {
+    res = await fetch(`${cfg.daemonUrl.replace(/\/$/, "")}${path}`, {
+      method: "POST",
+      headers: { ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}) },
+      body: fileForm(filePath),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (err) {
+    if (err instanceof CliError) throw err;
+    throw new CliError(`无法连接 Boule（${cfg.daemonUrl}）：daemon 在运行吗？(${(err as Error).message})`);
+  }
+  return parseResponse("POST", path, res);
+}
+
+async function parseResponse(method: string, path: string, res: Response): Promise<unknown> {
   const text = await res.text();
   const parsed = text ? safeJson(text) : null;
   if (!res.ok) {
@@ -44,3 +78,4 @@ function safeJson(text: string): unknown {
 
 export const get = (cfg: CliConfig, path: string) => request(cfg, "GET", path);
 export const post = (cfg: CliConfig, path: string, body: unknown) => request(cfg, "POST", path, body);
+export const del = (cfg: CliConfig, path: string) => request(cfg, "DELETE", path);

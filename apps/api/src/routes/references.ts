@@ -19,6 +19,7 @@ import {
   validateReferenceUpload,
 } from "../services/references.ts";
 
+// 单进程内防重复解析；多副本部署须改为 Redis SETNX+TTL 分布式锁（见 plan 002 Deferred）。
 const activeProjectUploads = new Set<string>();
 
 export function registerReferenceRoutes(app: FastifyInstance, deps: AppDeps): void {

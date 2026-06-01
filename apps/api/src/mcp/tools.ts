@@ -4,9 +4,12 @@
  *
  * Active Context（R2）：不传 workflow/project 时，先 GET /api/active-context 补全。
  *
- * 落地范围（fail loud）：7 个工具映射到**真实**端点。plan 列的 `create_checkpoint` 不在此——
+ * 落地范围（fail loud）：核心工具映射到**真实**端点。plan 列的 `create_checkpoint` 不在此——
  * checkpoint 由引擎在 phase 边界创建，外部创建语义与现有状态机冲突，挂 Deferred 待设计。
  */
+
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 
 export interface BouleClient {
   baseUrl: string;
@@ -68,6 +71,52 @@ async function call(
     throw new Error(`Boule API ${method} ${path} → ${res.status}：${msg}`);
   }
   return parsed;
+}
+
+
+/** multipart 请求：用于本地文件 reference 上传。不要手写 content-type，让 fetch/undici 自动带 boundary。 */
+async function callMultipart(
+  client: BouleClient,
+  method: string,
+  path: string,
+  form: FormData,
+): Promise<unknown> {
+  let res: Response;
+  try {
+    res = await client.fetchImpl(`${client.baseUrl}${path}`, {
+      method,
+      headers: { authorization: `Bearer ${client.apiKey}` },
+      body: form,
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (err) {
+    throw new Error(
+      `无法连接 Boule API（${client.baseUrl}）：daemon 是否在运行？原始错误：${(err as Error).message}`,
+    );
+  }
+  const text = await res.text();
+  const parsed = text ? safeJson(text) : null;
+  if (!res.ok) {
+    const msg = (parsed as { message?: string; error?: string } | null)?.message
+      ?? (parsed as { error?: string } | null)?.error
+      ?? text
+      ?? `HTTP ${res.status}`;
+    throw new Error(`Boule API ${method} ${path} → ${res.status}：${msg}`);
+  }
+  return parsed;
+}
+
+function fileForm(filePath: string): FormData {
+  if (!filePath) throw new Error("filePath 必填");
+  let buf: Buffer;
+  try {
+    buf = readFileSync(filePath);
+  } catch (err) {
+    throw new Error(`读取 reference 文件失败：${filePath}（${(err as Error).message}）`);
+  }
+  const form = new FormData();
+  form.append("file", new Blob([new Uint8Array(buf)]), basename(filePath));
+  return form;
 }
 
 function safeJson(text: string): unknown {
@@ -142,6 +191,55 @@ export function makeTools(client: BouleClient): ToolDef[] {
         const wid = await resolveWorkflow(client, str(args.workflow));
         const wf = (await call(client, "GET", `/api/workflows/${wid}`)) as { axes?: unknown };
         return { axes: wf.axes ?? null };
+      },
+    },
+    {
+      name: "list_reference",
+      description: "列出项目 reference/source 输入材料，含 parseStatus/parseSource/parseError。",
+      inputSchema: {
+        type: "object",
+        properties: { projectId: { type: "string", description: "project id" } },
+        required: ["projectId"],
+      },
+      handler: (args) => {
+        const projectId = str(args.projectId);
+        if (!projectId) throw new Error("projectId 必填");
+        return call(client, "GET", `/api/projects/${projectId}/references`);
+      },
+    },
+    {
+      name: "upload_reference",
+      description: "上传本地文件作为项目 reference/source。接受 filePath，走 multipart，不走 base64 JSON。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          projectId: { type: "string", description: "project id" },
+          filePath: { type: "string", description: "本地文件路径" },
+        },
+        required: ["projectId", "filePath"],
+      },
+      handler: async (args) => {
+        const projectId = str(args.projectId);
+        if (!projectId) throw new Error("projectId 必填");
+        return callMultipart(client, "POST", `/api/projects/${projectId}/references`, fileForm(str(args.filePath) ?? ""));
+      },
+    },
+    {
+      name: "delete_reference",
+      description: "删除项目 reference/source 输入材料。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          projectId: { type: "string", description: "project id" },
+          referenceId: { type: "string", description: "reference id" },
+        },
+        required: ["projectId", "referenceId"],
+      },
+      handler: (args) => {
+        const projectId = str(args.projectId);
+        const referenceId = str(args.referenceId);
+        if (!projectId || !referenceId) throw new Error("projectId + referenceId 必填");
+        return call(client, "DELETE", `/api/projects/${projectId}/references/${referenceId}`);
       },
     },
     {

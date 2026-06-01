@@ -201,3 +201,40 @@ test("HTTP rerun：editor 在 checkpoint 重跑某 phase → 200；非法 phase 
   assert.equal((ok.json() as { rerunFrom: string }).rerunFrom, "phase0_init");
   await waitPaused(wf); // 重跑后再次暂停
 });
+
+test("workflow start reports skipped failed references instead of silently dropping them", async () => {
+  const owner = await registerUser(app);
+  users.push(owner.userId);
+
+  const projRes = await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "SkipRefs" } });
+  assert.equal(projRes.statusCode, 201);
+  const projectId = (projRes.json() as { projectId: string }).projectId;
+  projects.push(projectId);
+
+  const okRef = await app.inject({
+    method: "POST",
+    url: `/api/projects/${projectId}/references`,
+    headers: auth(owner.token),
+    payload: { filename: "ok.md", mimeType: "text/markdown", body: "可用 reference" },
+  });
+  assert.equal(okRef.statusCode, 201);
+  const okId = (okRef.json() as { reference: { id: string } }).reference.id;
+
+  const failed = await db.execute(sql`
+    INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, parse_status, parse_error)
+    VALUES (${projectId}, 'bad.pdf', 'application/pdf', 10, '', 'failed', 'OCR_DISABLED') RETURNING id`);
+  const failedId = (failed as unknown as { rows: { id: string }[] }).rows[0]!.id;
+
+  const wfRes = await app.inject({
+    method: "POST",
+    url: "/api/workflows",
+    headers: auth(owner.token),
+    payload: { projectId, mode: "调研", referenceIds: [okId, failedId] },
+  });
+  assert.equal(wfRes.statusCode, 201);
+  const body = wfRes.json() as { referenceCount: number; skippedReferences: { id: string; filename: string; parseStatus: string }[] };
+  assert.equal(body.referenceCount, 1);
+  assert.equal(body.skippedReferences.length, 1);
+  assert.equal(body.skippedReferences[0]!.id, failedId);
+  assert.equal(body.skippedReferences[0]!.parseStatus, "failed");
+});
