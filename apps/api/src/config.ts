@@ -15,6 +15,11 @@ function optional(name: string, fallback: string): string {
   return v && v.trim() !== "" ? v : fallback;
 }
 
+function optionalSecret(name: string): string | null {
+  const v = process.env[name];
+  return v && v.trim() !== "" ? v.trim() : null;
+}
+
 /** 数字 env，非有限数即 fail loud（避免 NaN 静默传到 setTimeout(NaN)→0 等隐患）。 */
 function numeric(name: string, fallback: string): number {
   const n = Number(optional(name, fallback));
@@ -22,6 +27,26 @@ function numeric(name: string, fallback: string): number {
     throw new Error(`环境变量 ${name} 必须是数字（当前 "${process.env[name]}"，见 .env.example）`);
   }
   return n;
+}
+
+function searchOrder(): ("aditly" | "anysearch")[] {
+  const raw = optional("SEARCH_PROVIDER_ORDER", "aditly,anysearch");
+  const out = raw.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const allowed = new Set(["aditly", "anysearch"]);
+  const filtered = out.filter((x): x is "aditly" | "anysearch" => allowed.has(x));
+  return filtered.length ? [...new Set(filtered)] : ["aditly", "anysearch"];
+}
+
+function publicHttpsUrl(name: string, fallback: string): string {
+  const value = optional(name, fallback).trim();
+  if (value === "" || value.toLowerCase() === "off") return value;
+  const url = new URL(value);
+  if (url.protocol !== "https:") throw new Error(`环境变量 ${name} 必须是 HTTPS URL 或 off`);
+  const host = url.hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.startsWith("10.") || host.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) {
+    throw new Error(`环境变量 ${name} 不允许指向环回或内网地址`);
+  }
+  return value;
 }
 
 export const config = {
@@ -62,7 +87,23 @@ export const config = {
     // researcher 多步检索需更多回合；纯推理 role 回合少。
     researcherMaxTurns: numeric("AGENT_RESEARCHER_MAX_TURNS", "12"),
     reasoningMaxTurns: numeric("AGENT_REASONING_MAX_TURNS", "6"),
-    // Aditly 自托管 MCP（web 检索网关，外部依赖）。设为 "off" 关闭 → researcher 降级 + fail-loud 标注。
+  },
+
+  references: {
+    textMaxBytes: numeric("REFERENCE_TEXT_MAX_BYTES", "262144"),
+    pdfMaxBytes: numeric("REFERENCE_PDF_MAX_BYTES", "31457280"),
+    officeMaxBytes: numeric("REFERENCE_OFFICE_MAX_BYTES", "5242880"),
+    projectMaxBytes: numeric("REFERENCE_PROJECT_MAX_BYTES", "104857600"),
+    parseTimeoutMs: numeric("REFERENCE_PARSE_TIMEOUT_MS", "120000"),
+  },
+
+  search: {
+    providerOrder: searchOrder(),
+    // Aditly 自托管 MCP（兼容本机开发默认值）。设为 "off" 关闭 → researcher 降级 + fail-loud 标注。
     aditlyMcpUrl: optional("ADITLY_MCP_URL", "http://127.0.0.1:8643/mcp/"),
+    // anysearch 是外部备用 provider：必须 HTTPS 且非内网/环回，key 只在服务端 env。
+    anysearchMcpUrl: publicHttpsUrl("ANYSEARCH_MCP_URL", "off"),
+    anysearchApiKey: optionalSecret("ANYSEARCH_API_KEY"),
+    probeTimeoutMs: numeric("SEARCH_PROVIDER_PROBE_TIMEOUT_MS", "1500"),
   },
 } as const;

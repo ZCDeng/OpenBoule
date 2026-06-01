@@ -5,6 +5,7 @@ import { ErrorBanner, Skeleton } from "../components/States.tsx";
 
 interface RuntimeSettings {
   mode: "local" | "team";
+  claudeOnly: boolean;
   agent: {
     model: string;
     runtime: string;
@@ -20,6 +21,7 @@ interface RuntimeSettings {
     url: string | null;
     tools: string[];
     disabledBehavior: string;
+    providers: { id: string; label: string; enabled: boolean; url: string | null; tools: string[]; selected: boolean }[];
   };
   cli: {
     mcpCommand: string;
@@ -100,7 +102,7 @@ export function SettingsPage() {
               <Row label="调用方式" value={data.agent.invocationMode} />
             </dl>
             <p className="mt-3 text-xs text-neutral-500">
-              Web 端当前不提供“CLI 或 API 调模型”的用户级选择；模型调用由服务端环境和 Agent SDK 认证状态决定。
+              OpenConsult/Boule 是 Claude-only 工作台：不支持其它模型；需要服务端具备 Claude CLI 会话或 Anthropic Key。Web 端当前不提供“CLI 或 API 调模型”的用户级选择；模型调用由服务端环境和 Agent SDK 认证状态决定。
             </p>
           </section>
 
@@ -114,8 +116,7 @@ export function SettingsPage() {
             </dl>
             <p className="mt-3 text-xs text-neutral-500">{data.search.disabledBehavior}。</p>
             <p className="mt-2 text-xs text-neutral-500">
-              普通用户使用 Aditly 时，需要先在服务端或本机启动 Aditly MCP，并配置 Anspire/Bocha 等检索服务密钥，再设置
-              <code> ADITLY_MCP_URL </code>。
+              普通用户优先使用 Aditly；当 Aditly 关闭或 pre-flight 不可达时可降级到 anysearch。服务端需配置相应 MCP URL 与检索服务密钥，密钥不会回传到此页。
             </p>
           </section>
 

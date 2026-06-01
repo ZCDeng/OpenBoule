@@ -22,6 +22,7 @@ import {
   numeric,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
 
 // ── 枚举 ──
@@ -56,6 +57,10 @@ export const artifactStatus = pgEnum("artifact_status", [
 ]);
 // U4 Git-linked workspace 来源（code-review #7：DB 层枚举约束，不只靠 app 层 route 守卫）。
 export const projectLinkMode = pgEnum("link_mode", ["gitUrl", "localDir"]);
+export const referenceParseStatus = pgEnum("reference_parse_status", ["parsed", "failed", "partial"]);
+export const referenceParseSource = pgEnum("reference_parse_source", ["local-js", "anthropic"]);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 // ── 1. users ──
 export const users = pgTable("users", {
@@ -112,6 +117,10 @@ export const projectReferences = pgTable(
     mimeType: text("mime_type").notNull().default("text/plain"),
     sizeBytes: integer("size_bytes").notNull(),
     body: text("body").notNull(),
+    originalBinary: bytea("original_binary"),
+    parseStatus: referenceParseStatus("parse_status").notNull().default("parsed"),
+    parseSource: referenceParseSource("parse_source"),
+    parseError: text("parse_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("project_references_project_idx").on(t.projectId)],

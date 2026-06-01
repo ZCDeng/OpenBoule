@@ -86,6 +86,19 @@ test("有 body 时自动声明 JSON content-type", async () => {
   assert.equal(seen?.["content-type"], "application/json");
 });
 
+
+test("FormData body does not get JSON content-type", async () => {
+  let seen: Record<string, string> | undefined;
+  const h = makeClient((_url, init) => {
+    seen = init?.headers as Record<string, string>;
+    return res(200, { ok: true });
+  });
+  const form = new FormData();
+  form.append("file", new Blob(["x"]), "x.txt");
+  await h.client.json("/api/projects/p/references", { method: "POST", body: form });
+  assert.equal(seen?.["content-type"], undefined);
+});
+
 test("auth 端点的 401 不触发刷新（避免递归）", async () => {
   const h = makeClient(() => res(401, { error: "INVALID_CREDENTIALS" }));
   const r = await h.client.request("/api/auth/login", { method: "POST" });

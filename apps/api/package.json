@@ -20,16 +20,20 @@
     "@anthropic-ai/claude-agent-sdk": "^0.3.158",
     "@boule/shared": "workspace:*",
     "@fastify/cookie": "^11.0.2",
+    "@fastify/multipart": "^10.0.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "bullmq": "^5.77.6",
     "drizzle-orm": "^0.38.0",
     "fastify": "^5.8.5",
     "ioredis": "^5.11.0",
-    "pg": "^8.13.0"
+    "pdfjs-dist": "^6.0.227",
+    "pg": "^8.13.0",
+    "yauzl": "^3.3.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.0",
+    "@types/yauzl": "^2.10.3",
     "drizzle-kit": "^0.30.0"
   }
 }

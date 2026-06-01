@@ -7,6 +7,7 @@
 
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
+import multipart from "@fastify/multipart";
 import type { DB } from "./db/client.ts";
 import type { Redis } from "ioredis";
 import type { WorkflowEngine } from "./workflow/engine.ts";
@@ -49,6 +50,7 @@ export interface AppDeps {
 export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: false });
   app.register(cookie);
+  app.register(multipart);
 
   // 本地模式：onRequest 先于所有 preHandler——拒非回环 + 注入本地用户（authenticate 见 user 即放行）。
   if (deps.localMode) {

@@ -7,18 +7,17 @@
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.ts";
 import { config } from "../config.ts";
+import { publicSearchSettings } from "../services/search-providers.ts";
 import { makeAuthenticate, rejectApiKeyAuth } from "../middleware/auth.ts";
 
-const ADITLY_TOOLS = ["anspire_web_search", "bocha_web_search", "jina_read_url", "reach_read_url"];
 
 export function registerSettingsRoutes(app: FastifyInstance, deps: AppDeps): void {
   const authenticate = makeAuthenticate(deps.db);
 
   app.get("/api/settings/runtime", { preHandler: [authenticate, rejectApiKeyAuth] }, async () => {
-    const aditlyUrl = config.agent.aditlyMcpUrl.trim();
-    const aditlyEnabled = aditlyUrl !== "" && aditlyUrl.toLowerCase() !== "off";
     return {
       mode: config.mode,
+      claudeOnly: true,
       agent: {
         model: config.agent.model,
         runtime: "claude-agent-sdk",
@@ -28,13 +27,7 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: AppDeps): voi
         reasoningMaxTurns: config.agent.reasoningMaxTurns,
         watchdogMs: config.agent.watchdogMs,
       },
-      search: {
-        provider: "Aditly MCP",
-        enabled: aditlyEnabled,
-        url: aditlyEnabled ? aditlyUrl : null,
-        tools: aditlyEnabled ? ADITLY_TOOLS : [],
-        disabledBehavior: "researcher 继续运行，但产出必须显式标注未联网检索",
-      },
+      search: publicSearchSettings(),
       cli: {
         mcpCommand: "boule mcp",
         submitExample: "boule submit --workflow <workflowId> --type research --file research.md",

@@ -20,6 +20,7 @@ import { createDbCostHook } from "../agents/hooks.ts";
 import type { NormalizedEvent } from "../agents/event-types.ts";
 import type { RoleContext } from "../agents/types.ts";
 import { config } from "../config.ts";
+import { providerToMcpServers, resolveSearchProviderChain, selectFirstConfiguredSearchProvider } from "./search-providers.ts";
 import { resolveSafeCwd } from "./git-link.ts";
 import type { AgentRunner } from "../workflow/phases/index.ts";
 
@@ -30,45 +31,23 @@ const FS_TOOLS = ["Bash", "Glob", "Grep", "Read", "Write", "Edit", "NotebookEdit
 /** 需要 web 检索能力的 role（接 Aditly）。新增 web role 在此加一行即可。 */
 const WEB_ROLES = new Set(["industry-researcher"]);
 
-/** Aditly MCP server 名 + researcher 的 web 工具白名单（README always-on 工具，无需平台凭证）。 */
-const ADITLY_SERVER = "aditly";
-const ADITLY_WEB_TOOLS = [
-  `mcp__${ADITLY_SERVER}__anspire_web_search`,
-  `mcp__${ADITLY_SERVER}__bocha_web_search`,
-  `mcp__${ADITLY_SERVER}__jina_read_url`,
-  `mcp__${ADITLY_SERVER}__reach_read_url`,
-];
-
 export interface RolePolicy {
   allowedTools: string[];
   disallowedTools: string[];
   allowToolExecution: boolean;
   maxTurns: number;
   watchdogMs: number;
-  /** researcher 接 Aditly 时的 MCP server 配置；缺省 undefined。 */
+  /** researcher 接选中的 web search MCP server 配置；缺省 undefined。 */
   mcpServers?: Record<string, unknown>;
   /** researcher web 检索是否可用（false → 降级 + fail-loud 标注）。 */
   webEnabled?: boolean;
 }
 
 /**
- * role 运行策略（web 场景）：researcher 拿 Aditly web 工具白名单 + 高回合 + 大 watchdog 且真实执行；
+ * role 运行策略（web 场景）：researcher 拿选中 provider 的 web 工具白名单 + 高回合 + 大 watchdog 且真实执行；
  * 纯推理 role 禁文件系统工具、不执行工具、回合少。KTD：路由/超时让代码答（确定性映射），不交给模型。
  */
-export function rolePolicy(roleFile: string): RolePolicy {
-  if (WEB_ROLES.has(roleFile)) {
-    const url = config.agent.aditlyMcpUrl.trim();
-    const webEnabled = url !== "" && url.toLowerCase() !== "off"; // "off" 显式关闭（optional 不接受空值）
-    return {
-      allowedTools: webEnabled ? ADITLY_WEB_TOOLS : [],
-      disallowedTools: [],
-      allowToolExecution: true,
-      maxTurns: config.agent.researcherMaxTurns,
-      watchdogMs: config.agent.watchdogMs,
-      mcpServers: webEnabled ? { [ADITLY_SERVER]: { type: "http", url } } : undefined,
-      webEnabled,
-    };
-  }
+function baseReasoningPolicy(): RolePolicy {
   return {
     allowedTools: [],
     disallowedTools: FS_TOOLS,
@@ -76,6 +55,29 @@ export function rolePolicy(roleFile: string): RolePolicy {
     maxTurns: config.agent.reasoningMaxTurns,
     watchdogMs: config.agent.watchdogMs,
   };
+}
+
+function webRolePolicyFromProvider(provider: ReturnType<typeof selectFirstConfiguredSearchProvider>["selected"]): RolePolicy {
+  const webEnabled = Boolean(provider);
+  return {
+    allowedTools: provider?.tools ?? [],
+    disallowedTools: [],
+    allowToolExecution: true,
+    maxTurns: config.agent.researcherMaxTurns,
+    watchdogMs: config.agent.watchdogMs,
+    mcpServers: providerToMcpServers(provider),
+    webEnabled,
+  };
+}
+
+export function rolePolicy(roleFile: string): RolePolicy {
+  if (!WEB_ROLES.has(roleFile)) return baseReasoningPolicy();
+  return webRolePolicyFromProvider(selectFirstConfiguredSearchProvider().selected);
+}
+
+export async function rolePolicyWithSearchProbe(roleFile: string): Promise<RolePolicy> {
+  if (!WEB_ROLES.has(roleFile)) return baseReasoningPolicy();
+  return webRolePolicyFromProvider((await resolveSearchProviderChain()).selected);
 }
 
 /** spec.role / phase → 真值源 role 文件名（临时映射，真实 dispatch matrix 待接入）。 */
@@ -200,7 +202,7 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
   return async (spec) => {
     const snapshot = await loadSnapshot(db, spec.workflowId);
     const roleFile = mapRoleToFile(spec.role, spec.phase);
-    const policy = rolePolicy(roleFile);
+    const policy = await rolePolicyWithSearchProbe(roleFile);
 
     // web role 无可用检索工具时 fail-loud：让 agent 在产出里显式标注未联网，不静默假装检索（KTD-5）。
     // webEnabled 仅 web role 才置（reasoning role 为 undefined），故 === false 精确命中「web role 且关闭」。

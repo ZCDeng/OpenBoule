@@ -43,6 +43,13 @@
       "when": 1780279352458,
       "tag": "0005_overrated_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780320179845,
+      "tag": "0006_fine_stepford_cuckoos",
+      "breakpoints": true
     }
   ]
 }

@@ -174,7 +174,7 @@ export function LandingPage() {
       <header style={{ borderBottom: `2px solid ${LINE}`, padding: "72px 0 56px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
           <div className="flex items-center" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.18em", color: MUT, gap: 14, marginBottom: 28 }}>
-            <span>EDITION 2026</span>—<b style={{ color: INK, fontWeight: 600 }}>OPENCONSULT · AI CONSULTING WORKBENCH</b>—<span>开发代号 BOULE</span>
+            <span>EDITION 2026</span>—<b style={{ color: INK, fontWeight: 600 }}>OPENCONSULT · CLAUDE-ONLY AI CONSULTING WORKBENCH</b>—<span>开发代号 BOULE</span>
           </div>
 
           <h1 style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(54px,9vw,128px)", lineHeight: 0.92, letterSpacing: "-0.045em" }}>
@@ -188,10 +188,11 @@ export function LandingPage() {
           <div className="boule-hero-grid">
             <div>
               <p style={{ fontSize: 19, maxWidth: "46ch", color: "#1c1c1a" }}>
-                9 个阶段，一支不睡觉的<b style={{ fontWeight: 600 }}>多角色创作团队</b>。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。
+                9 个阶段，一支不睡觉的<b style={{ fontWeight: 600 }}>多角色创作团队</b>。专为 Claude 设计，不支持其它模型；需自带 Claude CLI 会话或 Anthropic Key。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。
               </p>
               <div className="flex flex-wrap" style={{ gap: 10, marginTop: 24 }}>
-                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px", background: INK, color: PAPER }}>9 阶段流水线</span>
+                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px", background: INK, color: PAPER }}>Claude-only</span>
+                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>9 阶段流水线</span>
                 <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>真联网调研</span>
                 <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>对抗验证三票</span>
                 <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>确定性脚手架</span>

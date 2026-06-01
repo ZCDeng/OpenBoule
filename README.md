@@ -1,5 +1,8 @@
 # OpenConsult — AI 驱动的咨询工作台
 
+> **Claude-only**: OpenConsult/Boule 专为 Claude Agent SDK/Claude CLI 工作流设计，不支持其它模型。运行前需服务端具备 Claude CLI 订阅会话或 Anthropic API Key。
+
+
 > **开发代号 Boule。** 把 9 阶段 × 多角色创作团队 Web 化。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。
 
 <p align="center">

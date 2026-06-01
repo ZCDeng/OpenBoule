@@ -93,7 +93,7 @@ export class ApiClient {
     // 仅在有 body 时声明 JSON content-type：空 body 的 POST（如 /api/sse/ticket）
     // 若带 content-type:application/json，Fastify 会以 FST_ERR_CTP_EMPTY_JSON_BODY 拒绝（400）。
     const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
-    if (init.body != null && headers["content-type"] === undefined) {
+    if (init.body != null && headers["content-type"] === undefined && !(init.body instanceof FormData)) {
       headers["content-type"] = "application/json";
     }
     const res = await this.request(path, { ...init, headers });

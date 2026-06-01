@@ -9,13 +9,16 @@ import type { AppDeps } from "../app.ts";
 import { makeAuthenticate, requireProjectRole } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import {
-  MAX_REFERENCE_BYTES,
+  MAX_PDF_REFERENCE_BYTES,
   createProjectReference,
   deleteProjectReference,
   listProjectReferences,
   listWorkflowReferences,
+  validateReferenceFile,
   validateReferenceUpload,
 } from "../services/references.ts";
+
+const activeProjectUploads = new Set<string>();
 
 export function registerReferenceRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
@@ -38,7 +41,7 @@ export function registerReferenceRoutes(app: FastifyInstance, deps: AppDeps): vo
   app.post(
     "/api/projects/:id/references",
     {
-      bodyLimit: MAX_REFERENCE_BYTES + 4096,
+      bodyLimit: MAX_PDF_REFERENCE_BYTES + 4096,
       preHandler: [
         authenticate,
         requireProjectRole(db, "owner", async (req) => (req.params as { id: string }).id),
@@ -46,10 +49,30 @@ export function registerReferenceRoutes(app: FastifyInstance, deps: AppDeps): vo
     },
     async (req, reply) => {
       const projectId = (req.params as { id: string }).id;
-      const input = validateReferenceUpload(req.body);
-      if (!input.ok) return reply.code(400).send({ error: "BAD_REFERENCE", message: input.error });
-      const reference = await createProjectReference(db, projectId, input);
-      return reply.code(201).send({ reference });
+      if (activeProjectUploads.has(projectId)) {
+        return reply.code(409).send({ error: "REFERENCE_UPLOAD_BUSY", message: "该项目已有 reference 正在上传解析，请稍后重试" });
+      }
+      activeProjectUploads.add(projectId);
+      try {
+        let input: ReturnType<typeof validateReferenceUpload> | ReturnType<typeof validateReferenceFile>;
+        if (req.isMultipart()) {
+          const part = await req.file({ limits: { fileSize: MAX_PDF_REFERENCE_BYTES } });
+          if (!part) return reply.code(400).send({ error: "BAD_REFERENCE", message: "file 必填" });
+          const buffer = await part.toBuffer();
+          input = validateReferenceFile({ filename: part.filename, mimeType: part.mimetype, buffer });
+        } else {
+          input = validateReferenceUpload(req.body);
+        }
+        if (!input.ok) return reply.code(400).send({ error: "BAD_REFERENCE", message: input.error });
+        const reference = await createProjectReference(db, projectId, input);
+        return reply.code(201).send({ reference });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("项目 reference 总量超过")) return reply.code(400).send({ error: "BAD_REFERENCE", message });
+        return reply.code(500).send({ error: "REFERENCE_UPLOAD_FAILED", message });
+      } finally {
+        activeProjectUploads.delete(projectId);
+      }
     },
   );
 
