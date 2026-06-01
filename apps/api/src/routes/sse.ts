@@ -13,6 +13,7 @@ import { config } from "../config.ts";
 import { issueSseTicket, consumeSseTicket, authorizeSse, replayEvents } from "../services/sse.ts";
 
 const KEEPALIVE_MS = 25_000;
+const POLL_MS = 1000;
 
 export function registerSseRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, securityRedis } = deps;
@@ -51,7 +52,9 @@ export function registerSseRoutes(app: FastifyInstance, deps: AppDeps): void {
     const authz = await authorizeSse(db, userId, workflowId);
     if (!authz.ok) return reply.code(authz.status).send({ error: authz.status === 403 ? "FORBIDDEN" : "NOT_FOUND" });
 
-    const lastEventId = Number(req.headers["last-event-id"] ?? 0) || 0;
+    const queryLastEventId = Number((req.query as { lastEventId?: string }).lastEventId ?? 0) || 0;
+    const headerLastEventId = Number(req.headers["last-event-id"] ?? 0) || 0;
+    let lastEventId = Math.max(queryLastEventId, headerLastEventId);
     const backlog = await replayEvents(db, workflowId, lastEventId);
 
     // 成功：接管原始响应流（hijack，Fastify 不再托管）
@@ -65,9 +68,32 @@ export function registerSseRoutes(app: FastifyInstance, deps: AppDeps): void {
     });
     for (const ev of backlog) {
       raw.write(`id: ${ev.eventId}\nevent: ${ev.event}\ndata: ${JSON.stringify(ev.data)}\n\n`);
+      lastEventId = Math.max(lastEventId, ev.eventId);
     }
     const keepalive = setInterval(() => raw.write(`: keepalive\n\n`), KEEPALIVE_MS);
     keepalive.unref?.();
-    req.raw.on("close", () => clearInterval(keepalive));
+    let polling = false;
+    const poll = setInterval(() => {
+      if (polling || raw.destroyed || raw.writableEnded) return;
+      polling = true;
+      void replayEvents(db, workflowId, lastEventId)
+        .then((events) => {
+          for (const ev of events) {
+            raw.write(`id: ${ev.eventId}\nevent: ${ev.event}\ndata: ${JSON.stringify(ev.data)}\n\n`);
+            lastEventId = Math.max(lastEventId, ev.eventId);
+          }
+        })
+        .catch(() => {
+          raw.write(`: event poll failed\n\n`);
+        })
+        .finally(() => {
+          polling = false;
+        });
+    }, POLL_MS);
+    poll.unref?.();
+    req.raw.on("close", () => {
+      clearInterval(keepalive);
+      clearInterval(poll);
+    });
   });
 }

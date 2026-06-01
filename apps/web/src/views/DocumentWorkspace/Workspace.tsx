@@ -10,6 +10,7 @@ import { Editor } from "./Editor.tsx";
 import { VersionHistory } from "./VersionHistory.tsx";
 import { Skeleton, EmptyState, ErrorBanner } from "../../components/States.tsx";
 import { PHASE_LABELS } from "../../lib/phases.ts";
+import { isHistoryVersion } from "../../lib/document-artifacts.ts";
 
 interface ArtifactRow extends DocItem {
   version: number;
@@ -45,6 +46,13 @@ export function Workspace({ workflowId }: { workflowId: string }) {
   const stalePhases = new Set(stale.data?.stalePhases ?? []);
   // 最早的 stale phase（按 phase 顺序）——重跑从它起，下游随审批前进自然重跑
   const earliestStale = PHASE_LABELS.map((p) => p.id).find((id) => stalePhases.has(id));
+  const phaseLabel = (phase: string) => PHASE_LABELS.find((p) => p.id === phase)?.label ?? phase;
+  const readOnlyHistory = Boolean(selected.data && isHistoryVersion(arts.data.artifacts, selected.data));
+  const handleSaved = (nextId: string) => {
+    setSelectedId(nextId);
+    void arts.refetch();
+    void stale.refetch();
+  };
 
   const rerun = useMutation({
     mutationFn: (phase: string) =>
@@ -67,27 +75,41 @@ export function Workspace({ workflowId }: { workflowId: string }) {
           {rerun.isError && <span className="text-xs text-red-600">重跑失败（需 Editor 且当前无运行中阶段）</span>}
         </div>
       )}
-      <div className="grid grid-cols-[200px_1fr_180px] gap-4">
-      <aside className="rounded-lg border border-neutral-200 bg-white">
-        <DocumentList docs={arts.data.artifacts} stalePhases={stalePhases} selectedId={selectedId} onSelect={setSelectedId} />
-      </aside>
-      <section>
-        {!selectedId ? (
-          <EmptyState title="选择左侧文档开始编辑" />
-        ) : selected.isLoading ? (
-          <Skeleton rows={6} />
-        ) : selected.data ? (
-          <Editor artifactId={selected.data.id} initialBody={selected.data.body ?? ""} />
-        ) : null}
-      </section>
-      <aside>
-        {selectedId && (
-          <>
-            <h3 className="mb-2 text-xs text-neutral-500">版本历史</h3>
-            <VersionHistory artifactId={selectedId} />
-          </>
-        )}
-      </aside>
+      <div className="grid grid-cols-[220px_1fr_220px] gap-4">
+        <aside className="rounded-lg border border-neutral-200 bg-white">
+          <DocumentList docs={arts.data.artifacts} stalePhases={stalePhases} selectedId={selectedId} onSelect={setSelectedId} />
+        </aside>
+        <section>
+          {!selectedId ? (
+            <EmptyState title="选择左侧文档开始编辑" />
+          ) : selected.isLoading ? (
+            <Skeleton rows={6} />
+          ) : selected.data ? (
+            <Editor
+              key={selected.data.id}
+              artifactId={selected.data.id}
+              initialBody={selected.data.body ?? ""}
+              meta={{
+                phase: selected.data.phase,
+                phaseLabel: phaseLabel(selected.data.phase),
+                type: selected.data.type,
+                version: selected.data.version,
+                status: selected.data.status,
+                stale: selected.data.stale || stalePhases.has(selected.data.phase),
+              }}
+              readOnly={readOnlyHistory}
+              onSaved={handleSaved}
+            />
+          ) : null}
+        </section>
+        <aside>
+          {selectedId && (
+            <>
+              <h3 className="mb-2 text-xs text-neutral-500">版本历史</h3>
+              <VersionHistory artifactId={selectedId} selectedId={selectedId} onOpen={setSelectedId} />
+            </>
+          )}
+        </aside>
       </div>
     </div>
   );

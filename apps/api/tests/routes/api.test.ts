@@ -46,6 +46,21 @@ test("无效 JWT → 401", async () => {
   assert.equal(res.statusCode, 401);
 });
 
+test("配置页运行时总览：Web 会话可读，暴露模型和 Aditly 状态但不暴露密钥", async () => {
+  const owner = await newUser();
+  const res = await app.inject({ method: "GET", url: "/api/settings/runtime", headers: auth(owner.token) });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as {
+    agent: { model: string; runtime: string; cliOrApiSelectableByUser: boolean };
+    search: { provider: string; enabled: boolean; tools: string[] };
+  };
+  assert.ok(body.agent.model);
+  assert.equal(body.agent.runtime, "claude-agent-sdk");
+  assert.equal(body.agent.cliOrApiSelectableByUser, false);
+  assert.equal(body.search.provider, "Aditly MCP");
+  assert.ok(!JSON.stringify(body).includes("API_KEY"));
+});
+
 test("非项目成员访问 workflow → 403；加为 viewer 后 → 200", async () => {
   const owner = await newUser();
   const outsider = await newUser();

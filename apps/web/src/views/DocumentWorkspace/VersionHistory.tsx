@@ -13,7 +13,7 @@ interface Version {
   createdAt: string;
 }
 
-export function VersionHistory({ artifactId, onOpen }: { artifactId: string; onOpen?: (id: string) => void }) {
+export function VersionHistory({ artifactId, selectedId, onOpen }: { artifactId: string; selectedId?: string; onOpen?: (id: string) => void }) {
   const api = useAuth((s) => s.api);
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["versions", artifactId],
@@ -30,6 +30,7 @@ export function VersionHistory({ artifactId, onOpen }: { artifactId: string; onO
           <button onClick={() => onOpen?.(v.id)} className="flex w-full items-center gap-2 rounded px-2 py-1 hover:bg-neutral-50">
             <span className="font-mono text-xs">v{v.version}</span>
             <span className="text-xs text-neutral-400">{v.status}</span>
+            {v.id === selectedId && <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500">当前</span>}
             <span className="ml-auto text-xs text-neutral-400">{new Date(v.createdAt).toLocaleString("zh-CN")}</span>
           </button>
         </li>

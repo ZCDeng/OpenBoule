@@ -58,6 +58,7 @@ import {
 } from "./phases/index.ts";
 import { buildScaffoldArtifact, manifestPaths } from "./scaffold.ts";
 import { parseAxes, researcherTask, type AxisItem } from "./axes.ts";
+import { buildReferenceTaskContext, listWorkflowReferences } from "../services/references.ts";
 import {
   PHASE_QUEUE,
   createConnection,
@@ -300,6 +301,11 @@ export class WorkflowEngine {
       .filter((a): a is AxisItem => !!a && typeof (a as AxisItem).axis === "string" && (a as AxisItem).axis !== "");
   }
 
+  private async intakeTask(workflowId: string, phase: PhaseId): Promise<string> {
+    const context = buildReferenceTaskContext(await listWorkflowReferences(this.db, workflowId));
+    return context ? `${phase}\n\n${context}` : phase;
+  }
+
   // ── worker 处理 ──
 
   private async process(job: Job): Promise<unknown> {
@@ -392,7 +398,8 @@ export class WorkflowEngine {
       attemptNumber: number;
     };
     return this.withAttempt(job, workflowId, phase, attemptNumber, async () => {
-      const { artifact, ok, errorCode } = await runSinglePhase(this.agentRunner, { workflowId, phase });
+      const task = phase === "phase1_intake" ? await this.intakeTask(workflowId, phase) : undefined;
+      const { artifact, ok, errorCode } = await runSinglePhase(this.agentRunner, { workflowId, phase, task });
       if (!ok) throw new Error(`phase ${phase} agent 失败（${errorCode ?? "UNKNOWN"}）`);
       await writeArtifactIdempotent(this.db, {
         workflowId,

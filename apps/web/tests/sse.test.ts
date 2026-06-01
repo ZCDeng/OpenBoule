@@ -11,10 +11,17 @@ class FakeES implements EventSourceLike {
   onopen: ((ev: unknown) => void) | null = null;
   onmessage: ((ev: { data: string; lastEventId?: string }) => void) | null = null;
   onerror: ((ev: unknown) => void) | null = null;
+  listeners = new Map<string, (ev: { data: string; lastEventId?: string; type?: string }) => void>();
   closed = false;
   url: string;
   constructor(url: string) {
     this.url = url;
+  }
+  addEventListener(type: string, listener: (ev: { data: string; lastEventId?: string; type?: string }) => void) {
+    this.listeners.set(type, listener);
+  }
+  emit(type: string, data: unknown, lastEventId?: string) {
+    this.listeners.get(type)?.({ data: JSON.stringify(data), lastEventId, type });
   }
   close() {
     this.closed = true;
@@ -27,7 +34,7 @@ function harness(opts: { maxQueue?: number } = {}) {
   const made: FakeES[] = [];
   let ticketN = 0;
   const scheduled: { fn: () => void; ms: number }[] = [];
-  const events: { eventId: number; data: unknown }[] = [];
+  const events: { eventId: number; event: string; data: unknown }[] = [];
   const states: string[] = [];
   const client = new SseClient({
     baseUrl: "/api/sse/workflows/w1",
@@ -37,7 +44,7 @@ function harness(opts: { maxQueue?: number } = {}) {
       made.push(es);
       return es;
     },
-    onEvent: (e) => events.push({ eventId: e.eventId, data: e.data }),
+    onEvent: (e) => events.push({ eventId: e.eventId, event: e.event, data: e.data }),
     onStateChange: (s) => states.push(s),
     backoffBaseMs: 1000,
     backoffMaxMs: 30000,
@@ -65,6 +72,31 @@ test("首连 url 带 ticket 与 lastEventId=0；收事件后 lastEventId 跟进"
   assert.equal(h.events.length, 1);
   assert.equal(h.events[0]!.eventId, 7);
   assert.equal(h.client.currentLastEventId, 7);
+});
+
+test("具名 SSE 事件通过 addEventListener 接收并保留事件名", async () => {
+  const h = harness();
+  await h.client.connect();
+  await flush();
+
+  h.made[0]!.emit("agent-progress", { phase: "phase1_intake", type: "tool_use" }, "9");
+  assert.equal(h.events.length, 1);
+  assert.equal(h.events[0]!.eventId, 9);
+  assert.equal(h.events[0]!.event, "agent-progress");
+  assert.equal(h.client.currentLastEventId, 9);
+});
+
+test("后端命名事件均已注册，避免 EventSource 静默丢弃", async () => {
+  const h = harness();
+  await h.client.connect();
+  await flush();
+
+  for (const [i, eventName] of ["axes-resolved", "workflow-rerun-requested", "workflow-recovered"].entries()) {
+    h.made[0]!.emit(eventName, { phase: "phase1_5_axis" }, String(10 + i));
+  }
+
+  assert.deepEqual(h.events.map((e) => e.event), ["axes-resolved", "workflow-rerun-requested", "workflow-recovered"]);
+  assert.equal(h.client.currentLastEventId, 12);
 });
 
 test("断线重连：新 ticket + 带上次 lastEventId 续传；退避指数增长", async () => {

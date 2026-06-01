@@ -8,6 +8,9 @@ export interface DocItem {
   id: string;
   phase: string;
   type: string;
+  version?: number;
+  status?: string;
+  stale?: boolean;
 }
 
 export function DocumentList({
@@ -48,15 +51,23 @@ export function DocumentList({
                 </span>
               )}
             </div>
-            {byPhase.get(phase)!.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => onSelect(d.id)}
-                className={`block w-full px-4 py-1.5 text-left ${d.id === selectedId ? "bg-neutral-100" : "hover:bg-neutral-50"}`}
-              >
-                {d.type}
-              </button>
-            ))}
+            {byPhase.get(phase)!.map((d) => {
+              const docStale = d.stale || stalePhases.has(d.phase);
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => onSelect(d.id)}
+                  className={`block w-full px-4 py-2 text-left ${d.id === selectedId ? "bg-neutral-100" : "hover:bg-neutral-50"}`}
+                >
+                  <span className="block truncate text-sm text-neutral-800">{d.type}</span>
+                  <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-400">
+                    {typeof d.version === "number" && <span className="rounded bg-neutral-100 px-1.5 py-0.5">v{d.version}</span>}
+                    {d.status && <span className="rounded bg-neutral-100 px-1.5 py-0.5">{d.status}</span>}
+                    {docStale && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">stale</span>}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         );
       })}

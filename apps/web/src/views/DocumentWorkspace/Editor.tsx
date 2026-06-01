@@ -10,15 +10,49 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useAuth } from "../../stores/auth.ts";
 import { debounce } from "../../lib/debounce.ts";
-import { ApiError } from "../../lib/api.ts";
+import { ApiClient, ApiError } from "../../lib/api.ts";
 import { ErrorBanner } from "../../components/States.tsx";
 
 type LockState = { kind: "acquiring" } | { kind: "held" } | { kind: "locked"; holder: string; ttlSec: number };
 type SaveState = "idle" | "saving" | "saved" | "local-fallback";
 
-export function Editor({ artifactId, initialBody }: { artifactId: string; initialBody: string }) {
+export interface EditorArtifactMeta {
+  phase: string;
+  phaseLabel: string;
+  type: string;
+  version: number;
+  status: string;
+  stale?: boolean;
+}
+
+async function acquireEditorLock(api: ApiClient, artifactId: string): Promise<{ holder: string; ttlSec: number }> {
+  const res = await api.request(`/api/artifacts/${artifactId}/lock`, { method: "POST" });
+  if (res.status === 409) {
+    const body = (await res.json().catch(() => ({}))) as { holder?: string; ttlSec?: number };
+    throw new ApiError(409, "LOCKED", JSON.stringify({ holder: body.holder ?? "他人", ttlSec: body.ttlSec ?? 0 }));
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+    throw new ApiError(res.status, body.error ?? "ERROR", body.message);
+  }
+  return { holder: "self", ttlSec: 0 };
+}
+
+export function Editor({
+  artifactId,
+  initialBody,
+  meta,
+  readOnly = false,
+  onSaved,
+}: {
+  artifactId: string;
+  initialBody: string;
+  meta: EditorArtifactMeta;
+  readOnly?: boolean;
+  onSaved?: (nextId: string) => void;
+}) {
   const api = useAuth((s) => s.api);
-  const [lock, setLock] = useState<LockState>({ kind: "acquiring" });
+  const [lock, setLock] = useState<LockState>(readOnly ? { kind: "locked", holder: "只读模式", ttlSec: 0 } : { kind: "acquiring" });
   const [save, setSave] = useState<SaveState>("idle");
   const lockRef = useRef(false);
 
@@ -33,9 +67,10 @@ export function Editor({ artifactId, initialBody }: { artifactId: string; initia
       debounce(async (html: string) => {
         setSave("saving");
         try {
-          await api.json(`/api/artifacts/${artifactId}`, { method: "PUT", body: JSON.stringify({ body: html }) });
+          const saved = await api.json<{ id: string; version: number }>(`/api/artifacts/${artifactId}`, { method: "PUT", body: JSON.stringify({ body: html }) });
           setSave("saved");
           localStorage.removeItem(`boule.draft.${artifactId}`);
+          onSaved?.(saved.id);
         } catch (err) {
           // 发布/退化护栏的 422 是内容问题，非网络——也提示，但区分
           if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
@@ -46,16 +81,21 @@ export function Editor({ artifactId, initialBody }: { artifactId: string; initia
           }
         }
       }, 2000),
-    [api, artifactId],
+    [api, artifactId, onSaved],
   );
 
   // 获取锁 + 心跳 + 释放
   useEffect(() => {
+    if (readOnly) {
+      editor?.setEditable(false);
+      setLock({ kind: "locked", holder: "只读模式", ttlSec: 0 });
+      return;
+    }
     let hb: ReturnType<typeof setInterval> | null = null;
     let cancelled = false;
     (async () => {
       try {
-        await api.json(`/api/artifacts/${artifactId}/lock`, { method: "POST" });
+        await acquireEditorLock(api, artifactId);
         if (cancelled) return;
         lockRef.current = true;
         setLock({ kind: "held" });
@@ -63,8 +103,8 @@ export function Editor({ artifactId, initialBody }: { artifactId: string; initia
         hb = setInterval(() => void api.json(`/api/artifacts/${artifactId}/lock/heartbeat`, { method: "POST" }).catch(() => {}), 30000);
       } catch (err) {
         if (err instanceof ApiError && err.status === 409) {
-          const body = (err as ApiError & { holder?: string }).holder;
-          setLock({ kind: "locked", holder: body ?? "他人", ttlSec: 0 });
+          const body = JSON.parse(err.message || "{}") as { holder?: string; ttlSec?: number };
+          setLock({ kind: "locked", holder: body.holder ?? "他人", ttlSec: body.ttlSec ?? 0 });
         }
       }
     })();
@@ -74,31 +114,52 @@ export function Editor({ artifactId, initialBody }: { artifactId: string; initia
       if (lockRef.current) void api.request(`/api/artifacts/${artifactId}/lock`, { method: "DELETE" }).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [artifactId, editor]);
+  }, [api, artifactId, editor, readOnly]);
 
   // 编辑触发 autosave
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || readOnly) return;
     const handler = () => persist(editor.getHTML());
     editor.on("update", handler);
     return () => {
       editor.off("update", handler);
     };
-  }, [editor, persist]);
+  }, [editor, persist, readOnly]);
 
   return (
     <div className="space-y-2">
       {lock.kind === "locked" && (
         <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">
-          文档正被 <span className="font-medium">{lock.holder}</span> 编辑。
-          <button className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-xs">只读查看</button>
-          <button className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-xs">排队等编辑</button>
+          {readOnly ? (
+            <span>正在只读查看历史版本或锁定文档。</span>
+          ) : (
+            <>
+              文档正被 <span className="font-medium">{lock.holder}</span> 编辑
+              {lock.ttlSec > 0 ? `，预计 ${lock.ttlSec}s 后过期` : ""}。
+              <button type="button" className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-xs" onClick={() => editor?.setEditable(false)}>
+                只读查看
+              </button>
+              <button type="button" disabled className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-xs opacity-50" title="当前未实现后端排队">
+                排队等编辑
+              </button>
+            </>
+          )}
         </div>
       )}
       {save === "local-fallback" && <ErrorBanner severity="P1" message="保存失败，将保存在本地，恢复后同步" />}
 
+      <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+          <span className="font-medium text-neutral-800">{meta.phaseLabel}</span>
+          <span>{meta.type}</span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5">v{meta.version}</span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5">{meta.status}</span>
+          {meta.stale && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">stale</span>}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between text-xs text-neutral-400">
-        <span>{lock.kind === "held" ? "● 你正在编辑" : lock.kind === "acquiring" ? "获取锁中…" : "只读"}</span>
+        <span>{readOnly ? "只读历史版本" : lock.kind === "held" ? "● 你正在编辑" : lock.kind === "acquiring" ? "获取锁中…" : "只读"}</span>
         <span>{save === "saving" ? "保存中…" : save === "saved" ? "已保存" : ""}</span>
       </div>
 

@@ -4,6 +4,7 @@ import { useAuth } from "../stores/auth.ts";
 const NAV = [
   { to: "/projects", label: "项目" },
   { to: "/methodology", label: "方法论" },
+  { to: "/settings", label: "配置" },
 ];
 
 export function Navigation() {

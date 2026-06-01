@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
 import { ErrorBanner } from "../components/States.tsx";
 import { ApiError } from "../lib/api.ts";
+import { ProjectReferencesPanel } from "../views/ProjectInputs/ProjectReferencesPanel.tsx";
 
 const MODES = ["决策", "培训", "落地", "调研", "诊断"] as const;
 type LinkMode = "gitUrl" | "localDir";
@@ -12,10 +13,14 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const api = useAuth((s) => s.api);
   const nav = useNavigate();
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
 
   const start = useMutation({
     mutationFn: (mode: string) =>
-      api.json<{ workflowId: string }>("/api/workflows", { method: "POST", body: JSON.stringify({ projectId: id, mode }) }),
+      api.json<{ workflowId: string }>("/api/workflows", {
+        method: "POST",
+        body: JSON.stringify({ projectId: id, mode, referenceIds: selectedReferenceIds }),
+      }),
     onSuccess: (r) => nav(`/workflows/${r.workflowId}`),
   });
 
@@ -35,9 +40,19 @@ export function ProjectDetailPage() {
 
   return (
     <div className="space-y-8">
+      {id && (
+        <ProjectReferencesPanel
+          projectId={id}
+          selectedIds={selectedReferenceIds}
+          onSelectedIdsChange={setSelectedReferenceIds}
+        />
+      )}
+
       <section className="space-y-3">
         <h1 className="text-xl">项目工作流</h1>
-        <p className="text-sm text-neutral-500">选择 mode 启动一次新的咨询工作流（仅 Owner 可启动）。</p>
+        <p className="text-sm text-neutral-500">
+          选择 mode 启动一次新的咨询工作流（仅 Owner 可启动）。已勾选 {selectedReferenceIds.length} 个 reference。
+        </p>
         {start.isError && <ErrorBanner severity="P0" message="启动工作流失败（可能权限不足或真值源未配置）" />}
         <div className="flex flex-wrap gap-2">
           {MODES.map((m) => (

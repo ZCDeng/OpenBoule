@@ -20,8 +20,24 @@ export interface EventSourceLike {
   onopen: ((this: unknown, ev: unknown) => void) | null;
   onmessage: ((this: unknown, ev: { data: string; lastEventId?: string }) => void) | null;
   onerror: ((this: unknown, ev: unknown) => void) | null;
+  addEventListener?: (type: string, listener: (ev: { data: string; lastEventId?: string; type?: string }) => void) => void;
   close(): void;
 }
+
+const NAMED_EVENTS = [
+  "workflow-status-changed",
+  "workflow-rerun-requested",
+  "workflow-recovered",
+  "phase-scaffolded",
+  "phase-aggregated",
+  "axes-resolved",
+  "surface_request",
+  "surface_response",
+  "artifact-below-threshold",
+  "workflow-completed",
+  "agent-progress",
+  "sse-warning",
+] as const;
 
 export interface SseClientDeps {
   baseUrl: string; // 形如 /api/sse/workflows/:id
@@ -94,12 +110,12 @@ export class SseClient {
       this.attempt = 0; // 连上即重置退避
       this.deps.onStateChange?.("open");
     };
-    es.onmessage = (ev) => {
+    const handleMessage = (eventName: string, ev: { data: string; lastEventId?: string; type?: string }) => {
       let parsed: SseEvent | null = null;
       try {
         const data = JSON.parse(ev.data) as unknown;
         const eventId = ev.lastEventId ? Number(ev.lastEventId) : this.lastEventId + 1;
-        parsed = { eventId, event: "message", data };
+        parsed = { eventId, event: eventName, data };
       } catch {
         return; // 半帧/坏帧丢弃
       }
@@ -107,6 +123,10 @@ export class SseClient {
       this.push(parsed);
       this.deps.onEvent(parsed);
     };
+    es.onmessage = (ev) => handleMessage("message", ev);
+    for (const eventName of NAMED_EVENTS) {
+      es.addEventListener?.(eventName, (ev) => handleMessage(eventName, ev));
+    }
     es.onerror = () => {
       es.close();
       if (this.es === es) this.es = null;

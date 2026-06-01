@@ -59,9 +59,9 @@ const RUNTIME: { rk: string; title: string; body: string; events?: string[] }[] 
   { rk: "认证 · AUTH", title: "CLI 会话 或 API key", body: "没配 API key 时走 Claude CLI 订阅会话，配了就走 key。引擎读 init 的 apiKeySource 自动切换，零改码。" },
   {
     rk: "事件流 · STREAM",
-    title: "SDK 流归一成 6 类",
-    body: "逐条 SDK 消息归一，前端实时看到 agent 的思考、工具调用与 token 成本。",
-    events: ["status", "text_delta", "thinking_delta", "tool_use", "tool_result", "usage"],
+    title: "SDK 流归一成可审计事件",
+    body: "逐条 SDK 消息归一，前端实时看到 agent 状态、工具调用与 token 成本，不展示模型思考过程。",
+    events: ["status", "text_delta", "tool_use", "tool_result", "usage"],
   },
   { rk: "编排 · ORCHESTRATION", title: "BullMQ 串 HITL 流水线", body: "Worker + FlowProducer 串 7 阶段人机协同流水线，MCP 工具联网，lineage 溯源 + 单写者锁挡并发写。" },
 ];

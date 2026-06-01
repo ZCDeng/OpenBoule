@@ -12,11 +12,23 @@ import { Skeleton, ErrorBanner } from "../../components/States.tsx";
 import { CostChart } from "./CostChart.tsx";
 import { AgentJobList } from "./AgentJobList.tsx";
 import { VerdictView, type ClaimVerdict } from "./VerdictView.tsx";
+import { RealtimeEventFeed } from "../RunTimeline/RealtimeEventFeed.tsx";
+import type { SseEvent } from "../../lib/sse.ts";
 
-export function Dashboard({ workflowId, verdicts = [] }: { workflowId: string; verdicts?: ClaimVerdict[] }) {
+export function Dashboard({
+  workflowId,
+  currentPhase,
+  events = [],
+  verdicts = [],
+}: {
+  workflowId: string;
+  currentPhase?: string;
+  events?: SseEvent[];
+  verdicts?: ClaimVerdict[];
+}) {
   const api = useAuth((s) => s.api);
   const connection = useWorkflow((s) => s.connection);
-  const [tab, setTab] = useState<"progress" | "verify">("progress");
+  const [tab, setTab] = useState<"progress" | "events" | "verify">("progress");
   const frozen = connection === "reconnecting";
 
   const cost = useQuery({
@@ -29,20 +41,22 @@ export function Dashboard({ workflowId, verdicts = [] }: { workflowId: string; v
     <div className="space-y-5">
       <div className="flex items-center gap-2">
         <div className="flex gap-1 rounded-lg bg-neutral-100 p-1 text-sm">
-          {(["progress", "verify"] as const).map((t) => (
+          {(["progress", "events", "verify"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`rounded px-3 py-1 ${tab === t ? "bg-white shadow-sm" : "text-neutral-500"}`}
             >
-              {t === "progress" ? "进度" : "验证"}
+              {{ progress: "进度", events: "事件", verify: "验证" }[t]}
             </button>
           ))}
         </div>
         {frozen && <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">数据暂停更新</span>}
       </div>
 
-      {tab === "progress" ? (
+      {tab === "events" ? (
+        <RealtimeEventFeed events={events} currentPhase={currentPhase} offline={frozen} />
+      ) : tab === "progress" ? (
         cost.isLoading ? (
           <Skeleton rows={4} />
         ) : cost.isError ? (

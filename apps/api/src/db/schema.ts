@@ -100,7 +100,24 @@ export const projectMembers = pgTable(
   ],
 );
 
-// ── 4. workflows（状态机真值源，KTD-3）──
+// ── 4. project_references（项目输入 reference，映射 Skill <项目根>/sources/）──
+export const projectReferences = pgTable(
+  "project_references",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull().default("text/plain"),
+    sizeBytes: integer("size_bytes").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("project_references_project_idx").on(t.projectId)],
+);
+
+// ── 5. workflows（状态机真值源，KTD-3）──
 export const workflows = pgTable(
   "workflows",
   {
@@ -124,7 +141,25 @@ export const workflows = pgTable(
   (t) => [index("workflows_project_idx").on(t.projectId)],
 );
 
-// ── 5. phases ──
+// ── 6. workflow_references（workflow 创建时冻结的 reference 快照）──
+export const workflowReferences = pgTable(
+  "workflow_references",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id, { onDelete: "cascade" }),
+    referenceId: uuid("reference_id").references(() => projectReferences.id, { onDelete: "set null" }),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull().default("text/plain"),
+    sizeBytes: integer("size_bytes").notNull(),
+    bodySnapshot: text("body_snapshot").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("workflow_references_workflow_idx").on(t.workflowId)],
+);
+
+// ── 7. phases ──
 export const phases = pgTable(
   "phases",
   {
@@ -142,7 +177,7 @@ export const phases = pgTable(
   (t) => [index("phases_workflow_idx").on(t.workflowId)],
 );
 
-// ── 6. phase_attempts（可靠性：lease + heartbeat + 幂等 + recovery，U4）──
+// ── 8. phase_attempts（可靠性：lease + heartbeat + 幂等 + recovery，U4）──
 export const phaseAttempts = pgTable(
   "phase_attempts",
   {
@@ -168,7 +203,7 @@ export const phaseAttempts = pgTable(
   ],
 );
 
-// ── 7. workflow_jobs（fan-out 子 job 追踪）──
+// ── 9. workflow_jobs（fan-out 子 job 追踪）──
 export const workflowJobs = pgTable(
   "workflow_jobs",
   {
@@ -185,7 +220,7 @@ export const workflowJobs = pgTable(
   (t) => [index("workflow_jobs_workflow_idx").on(t.workflowId)],
 );
 
-// ── 8. workflow_costs（三层结算真值源 run/phase/job，KTD-22）──
+// ── 10. workflow_costs（三层结算真值源 run/phase/job，KTD-22）──
 export const workflowCosts = pgTable(
   "workflow_costs",
   {
@@ -205,7 +240,7 @@ export const workflowCosts = pgTable(
   (t) => [index("workflow_costs_workflow_idx").on(t.workflowId)],
 );
 
-// ── 9. workflow_events（跨进程 SSE 回放日志，KTD-19）──
+// ── 11. workflow_events（跨进程 SSE 回放日志，KTD-19）──
 // event_id 全局单调 bigserial：worker 写、任意 Fastify 副本按 Last-Event-ID range-scan 补发。
 export const workflowEvents = pgTable(
   "workflow_events",
@@ -221,7 +256,7 @@ export const workflowEvents = pgTable(
   (t) => [index("workflow_events_run_event_idx").on(t.runId, t.eventId)],
 );
 
-// ── 10. artifacts（带版本，支撑 R3 历史版本 + below_threshold 状态）──
+// ── 12. artifacts（带版本，支撑 R3 历史版本 + below_threshold 状态）──
 export const artifacts = pgTable(
   "artifacts",
   {
@@ -246,7 +281,7 @@ export const artifacts = pgTable(
   ],
 );
 
-// ── 11. checkpoint_surfaces（KTD-18；越权防线在写授权，responded_by 留痕）──
+// ── 13. checkpoint_surfaces（KTD-18；越权防线在写授权，responded_by 留痕）──
 export const checkpointSurfaces = pgTable(
   "checkpoint_surfaces",
   {
@@ -264,7 +299,7 @@ export const checkpointSurfaces = pgTable(
   (t) => [index("checkpoint_surfaces_workflow_idx").on(t.workflowId)],
 );
 
-// ── 13. api_keys（MCP/CLI 认证，KTD-8 / U1）──
+// ── 14. api_keys（MCP/CLI 认证，KTD-8 / U1）──
 // JWT cookie 面向 Web；MCP server 和 Thin CLI 不便走 cookie 流程，改用 Bearer <api_key>。
 // 只存 hash 不存明文；scope=read 的 key 拒写；project_ids=null 即全账户（需显式授权），
 // 否则仅限列表内项目（D 簇：缩小泄露爆炸半径）。
@@ -293,7 +328,7 @@ export const apiKeys = pgTable(
   ],
 );
 
-// ── 12. share_links（opaque token + 持久化记录，KTD-13）──
+// ── 15. share_links（opaque token + 持久化记录，KTD-13）──
 export const shareLinks = pgTable(
   "share_links",
   {

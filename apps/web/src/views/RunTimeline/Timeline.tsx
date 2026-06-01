@@ -4,10 +4,13 @@
  */
 
 import { PhaseCard } from "./PhaseCard.tsx";
+import { RealtimeEventFeed } from "./RealtimeEventFeed.tsx";
 import { PHASE_LABELS } from "../../lib/phases.ts";
 import { phaseStatus } from "../../lib/derive.ts";
+import { eventsForPhase, normalizeWorkflowEvents } from "../../lib/workflow-events.ts";
 import { Skeleton, EmptyState, ErrorBanner } from "../../components/States.tsx";
 import type { Decision } from "../../components/CheckpointCard.tsx";
+import type { SseEvent } from "../../lib/sse.ts";
 
 export interface TimelineProps {
   currentPhase?: string;
@@ -18,6 +21,7 @@ export interface TimelineProps {
   canDecide?: boolean;
   busy?: boolean;
   belowThresholdPhases?: Set<string>;
+  events?: SseEvent[];
   onDecide?: (d: Decision) => void;
   onRetry?: () => void;
 }
@@ -26,6 +30,8 @@ export function Timeline(props: TimelineProps) {
   if (props.loading) return <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} rows={2} />)}</div>;
   if (props.error) return <ErrorBanner severity="P0" message={props.error} onRetry={props.onRetry} />;
   if (!props.currentPhase) return <EmptyState title="暂无 run" hint="在项目页选择 mode 启动一次工作流。" />;
+  const normalizedEvents = normalizeWorkflowEvents(props.events ?? []);
+  const currentPhaseEvents = eventsForPhase(normalizedEvents, props.currentPhase).slice(-5);
 
   return (
     <div className="space-y-4">
@@ -47,6 +53,18 @@ export function Timeline(props: TimelineProps) {
                 busy={props.busy}
                 onDecide={props.onDecide}
               />
+              {current && currentPhaseEvents.length > 0 && (
+                <div className="mt-2">
+                  <RealtimeEventFeed
+                    events={props.events ?? []}
+                    currentPhase={props.currentPhase}
+                    offline={props.offline}
+                    limit={5}
+                    compact
+                    phaseOnly
+                  />
+                </div>
+              )}
             </li>
           );
         })}

@@ -17,6 +17,8 @@ import { loadPmConfig } from "../pm/config.ts";
 import { languageGate } from "../pm/language-gate.ts";
 import { runRole } from "../agents/executor.ts";
 import { createDbCostHook } from "../agents/hooks.ts";
+import type { NormalizedEvent } from "../agents/event-types.ts";
+import type { RoleContext } from "../agents/types.ts";
 import { config } from "../config.ts";
 import { resolveSafeCwd } from "./git-link.ts";
 import type { AgentRunner } from "../workflow/phases/index.ts";
@@ -134,6 +136,66 @@ function insertCost(db: DB, workflowId: string) {
   };
 }
 
+function truncateSummary(text: string, max = 160): string {
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  return oneLine.length > max ? `${oneLine.slice(0, max - 1)}…` : oneLine;
+}
+
+export function normalizeAgentProgressEvent(
+  ev: NormalizedEvent,
+  ctx: RoleContext,
+  meta: { workflowId: string; phase: string | null },
+): Record<string, unknown> | null {
+  const base = {
+    jobId: ctx.jobId,
+    phase: meta.phase,
+    role: ctx.role,
+    model: ctx.model,
+    type: ev.type,
+  };
+
+  switch (ev.type) {
+    case "thinking_delta":
+      return null;
+    case "text_delta":
+      // text_delta 高频且低信息密度；runRole 会 await 每个 hook，逐 chunk 写 DB 会拖慢流式执行并污染 SSE 回放日志。
+      // 最终文本仍由 phase artifact 持久化；实时流只保留状态/工具/用量等可审计事件。
+      return null;
+    case "tool_use":
+      return { ...base, toolName: ev.name, toolUseId: ev.id, summary: `调用工具 ${ev.name}` };
+    case "tool_result":
+      return {
+        ...base,
+        toolUseId: ev.toolUseId,
+        isError: ev.isError,
+        summary: ev.isError ? "工具返回错误" : "工具返回结果",
+      };
+    case "usage":
+      return {
+        ...base,
+        usage: {
+          inputTokens: ev.inputTokens,
+          outputTokens: ev.outputTokens,
+          cacheReadTokens: ev.cacheReadTokens,
+        },
+        summary: `Token 用量 input ${ev.inputTokens} / output ${ev.outputTokens}`,
+      };
+    case "status": {
+      const detail = typeof ev.detail?.message === "string" ? `：${truncateSummary(ev.detail.message)}` : "";
+      return { ...base, status: ev.phase, summary: `Agent ${ev.phase}${detail}` };
+    }
+  }
+}
+
+function appendAgentProgressEvent(db: DB, workflowId: string) {
+  return async (data: Record<string, unknown>) => {
+    await db.execute(sql`
+      INSERT INTO workflow_events (run_id, event, data)
+      VALUES (${workflowId}, 'agent-progress', ${JSON.stringify(data)}::jsonb)
+    `);
+  };
+}
+
 export function makeProductionAgentRunner(db: DB): AgentRunner {
   return async (spec) => {
     const snapshot = await loadSnapshot(db, spec.workflowId);
@@ -160,6 +222,9 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
       if (baseDir) cwd = await resolveSafeCwd(baseDir);
     }
 
+    const costHook = createDbCostHook(insertCost(db, spec.workflowId), { workflowId: spec.workflowId, phase: spec.phase });
+    const appendProgress = appendAgentProgressEvent(db, spec.workflowId);
+
     const result = await runRole(
       {
         jobId: `${spec.workflowId}:${spec.phase}:${spec.role}`,
@@ -175,7 +240,15 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
         ...(cwd ? { cwd, additionalDirectories: [cwd] } : {}),
       },
       {
-        hooks: createDbCostHook(insertCost(db, spec.workflowId), { workflowId: spec.workflowId, phase: spec.phase }),
+        hooks: {
+          async onEvent(ev, ctx) {
+            const data = normalizeAgentProgressEvent(ev, ctx, { workflowId: spec.workflowId, phase: spec.phase });
+            if (data) await appendProgress(data);
+          },
+          async onUsage(usage, ctx) {
+            await costHook.onUsage?.(usage, ctx);
+          },
+        },
         timeoutMs: policy.watchdogMs,
       },
     );

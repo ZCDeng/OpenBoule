@@ -36,6 +36,13 @@
       "when": 1780237746309,
       "tag": "0004_kind_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780279352458,
+      "tag": "0005_overrated_jack_power",
+      "breakpoints": true
     }
   ]
 }

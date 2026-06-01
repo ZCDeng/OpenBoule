@@ -4,9 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
 import { useWorkflow } from "../stores/workflow.ts";
 import { SseClient, type EventSourceLike } from "../lib/sse.ts";
+import { surfaceEventFromSse } from "../lib/workflow-events.ts";
 import { Timeline } from "../views/RunTimeline/Timeline.tsx";
 import { Dashboard } from "../views/AgentMonitor/Dashboard.tsx";
 import { Workspace } from "../views/DocumentWorkspace/Workspace.tsx";
+import { FrozenReferences } from "../views/ProjectInputs/FrozenReferences.tsx";
 import { SharePanel } from "../views/ReportShare/SharePanel.tsx";
 import type { Decision } from "../components/CheckpointCard.tsx";
 import { ErrorBanner } from "../components/States.tsx";
@@ -20,12 +22,25 @@ interface WorkflowStatus {
   myRole?: "external" | "viewer" | "editor" | "owner";
 }
 
+const STATUS_REFETCH_EVENTS = new Set([
+  "workflow-status-changed",
+  "workflow-completed",
+  "workflow-recovered",
+  "workflow-rerun-requested",
+  "surface_request",
+  "surface_response",
+]);
+
 export function WorkflowPage() {
   const { id } = useParams<{ id: string }>();
   const api = useAuth((s) => s.api);
   const setConnection = useWorkflow((s) => s.setConnection);
   const pushEvent = useWorkflow((s) => s.pushEvent);
+  const clearEvents = useWorkflow((s) => s.clearEvents);
+  const resetSurfaces = useWorkflow((s) => s.resetSurfaces);
+  const applySurface = useWorkflow((s) => s.applySurface);
   const connection = useWorkflow((s) => s.connection);
+  const recentEvents = useWorkflow((s) => s.recentEvents);
   const [tab, setTab] = useState<"timeline" | "monitor" | "docs" | "share">("timeline");
   const [busy, setBusy] = useState(false);
   const [decisionError, setDecisionError] = useState<{ severity: "P0" | "P1"; msg: string } | null>(null);
@@ -37,13 +52,17 @@ export function WorkflowPage() {
 
   useEffect(() => {
     if (!id) return;
+    clearEvents();
+    resetSurfaces();
     const client = new SseClient({
       baseUrl: `/api/sse/workflows/${id}`,
       ticketProvider: async () => (await api.json<{ ticket: string }>("/api/sse/ticket", { method: "POST" })).ticket,
       eventSourceFactory: (url) => new EventSource(url) as unknown as EventSourceLike,
       onEvent: (e) => {
         pushEvent(e);
-        void status.refetch();
+        const surface = surfaceEventFromSse(e);
+        if (surface) applySurface(surface);
+        if (STATUS_REFETCH_EVENTS.has(e.event)) void status.refetch();
       },
       onStateChange: setConnection,
     });
@@ -97,13 +116,19 @@ export function WorkflowPage() {
           offline={offline}
           canDecide={canDecide}
           busy={busy}
+          events={recentEvents}
           onDecide={decide}
           onRetry={() => void status.refetch()}
         />
       ) : tab === "monitor" ? (
-        id && <Dashboard workflowId={id} />
+        id && <Dashboard workflowId={id} currentPhase={wf?.currentPhase} events={recentEvents} />
       ) : tab === "docs" ? (
-        id && <Workspace workflowId={id} />
+        id && (
+          <div className="space-y-4">
+            <FrozenReferences workflowId={id} />
+            <Workspace workflowId={id} />
+          </div>
+        )
       ) : (
         id && <SharePanel workflowId={id} />
       )}

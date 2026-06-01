@@ -21,6 +21,7 @@ interface WorkflowState {
   resetSurfaces: (resolvedDigests?: string[]) => void;
   applySurface: (ev: SurfaceEvent) => void;
   pushEvent: (ev: SseEvent) => void;
+  clearEvents: () => void;
   pending: () => Surface[];
 }
 
@@ -39,5 +40,6 @@ export const useWorkflow = create<WorkflowState>((set, get) => ({
       if (next.length > MAX_RECENT) next.splice(0, next.length - MAX_RECENT);
       return { recentEvents: next };
     }),
+  clearEvents: () => set({ recentEvents: [] }),
   pending: () => pendingSurfaces(get().surfaces),
 }));

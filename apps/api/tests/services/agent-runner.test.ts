@@ -5,8 +5,9 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rolePolicy } from "../../src/services/agent-runner.ts";
+import { normalizeAgentProgressEvent, rolePolicy } from "../../src/services/agent-runner.ts";
 import { config } from "../../src/config.ts";
+import type { RoleContext } from "../../src/agents/types.ts";
 
 test("researcher：可执行工具 + 高回合 + 大 watchdog", () => {
   const p = rolePolicy("industry-researcher");
@@ -43,4 +44,54 @@ test("纯推理 role：禁文件系统工具、不执行工具、回合少", () 
 
 test("watchdog 默认值已从 120s 调大", () => {
   assert.ok(config.agent.watchdogMs > 120_000);
+});
+
+test("agent progress 事件不暴露 thinking_delta", () => {
+  const ctx: RoleContext = {
+    jobId: "wf1:phase1_intake:ia",
+    role: "information-architect",
+    systemPrompt: "system",
+    task: "task",
+    model: "test-model",
+    allowedTools: [],
+    disallowedTools: [],
+    allowToolExecution: false,
+  };
+
+  assert.equal(
+    normalizeAgentProgressEvent({ type: "thinking_delta", text: "hidden chain of thought" }, ctx, {
+      workflowId: "wf1",
+      phase: "phase1_intake",
+    }),
+    null,
+  );
+
+  const tool = normalizeAgentProgressEvent({ type: "tool_use", id: "tu1", name: "web_search" }, ctx, {
+    workflowId: "wf1",
+    phase: "phase1_intake",
+  });
+  assert.equal(tool?.type, "tool_use");
+  assert.equal(tool?.toolName, "web_search");
+  assert.equal(tool?.summary, "调用工具 web_search");
+});
+
+test("agent progress 丢弃高频 text_delta，避免逐 chunk 写 workflow_events", () => {
+  const ctx: RoleContext = {
+    jobId: "wf1:phase1_intake:ia",
+    role: "information-architect",
+    systemPrompt: "system",
+    task: "task",
+    model: "test-model",
+    allowedTools: [],
+    disallowedTools: [],
+    allowToolExecution: false,
+  };
+
+  assert.equal(
+    normalizeAgentProgressEvent({ type: "text_delta", text: "partial token chunk" }, ctx, {
+      workflowId: "wf1",
+      phase: "phase1_intake",
+    }),
+    null,
+  );
 });

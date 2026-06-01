@@ -10,6 +10,7 @@ import { getWorkflowProjectId } from "../services/rbac.ts";
 import { computeCost } from "../pm/cost-calc.ts";
 import { listStalePhases } from "../services/lineage.ts";
 import { checkPublication } from "../artifacts/publication-guard.ts";
+import { freezeWorkflowReferences, loadProjectReferences, validateReferenceIds } from "../services/references.ts";
 
 export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
@@ -27,7 +28,18 @@ export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): voi
       ],
     },
     async (req, reply) => {
-      const { projectId, mode, axes } = (req.body ?? {}) as { projectId?: string; mode?: string; axes?: unknown[] };
+      const { projectId, mode, axes, referenceIds } = (req.body ?? {}) as {
+        projectId?: string;
+        mode?: string;
+        axes?: unknown[];
+        referenceIds?: unknown;
+      };
+      const refsInput = validateReferenceIds(referenceIds);
+      if (!refsInput.ok) return reply.code(400).send({ error: "BAD_REFERENCE_IDS", message: refsInput.error });
+      const references = await loadProjectReferences(db, projectId!, refsInput.ids);
+      if (references.length !== refsInput.ids.length) {
+        return reply.code(400).send({ error: "INVALID_REFERENCES", message: "referenceIds 必须属于当前 project" });
+      }
       // 创建时固化真值源快照（不可变，所有 phase/retry 只读它）。
       // 值必须源自 truth/sync.ts#createFrozenSnapshot（经注入的 snapshotProvider）——
       // 缺 provider 即 503，绝不在此**伪造** snapshot（KTD-20 写入收口，见 write-funnel.guard）。
@@ -41,9 +53,10 @@ export function registerWorkflowRoutes(app: FastifyInstance, deps: AppDeps): voi
                 ${JSON.stringify(snapshot)}::jsonb)
         RETURNING id`);
       const workflowId = (res as unknown as { rows: { id: string }[] }).rows[0]!.id;
+      await freezeWorkflowReferences(db, workflowId, references);
 
       if (deps.engine) await deps.engine.startWorkflow(workflowId);
-      return reply.code(201).send({ workflowId, started: !!deps.engine });
+      return reply.code(201).send({ workflowId, started: !!deps.engine, referenceCount: references.length });
     },
   );
 
