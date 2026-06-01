@@ -1,6 +1,6 @@
 {
   "project": "Boule / OpenConsult",
-  "updated": "2026-05-31",
+  "updated": "2026-06-01",
   "note": "特性线追踪（long-term）。状态以 git + PR 为准，progress.md 为详情。",
   "features": [
     {
@@ -41,6 +41,24 @@
       },
       "completedAt": "2026-05-31",
       "verification": "api 181 + cli 3 + web 24 测全绿，tsc 三包 0，迁移 0002–0004 应用，4 PR 全合 main"
+    },
+    {
+      "id": "F4",
+      "title": "Web 工作流可审计 + 项目 references + 运行时设置",
+      "status": "completed",
+      "commits": ["9fffd3c", "3d4f43e", "33b174e"],
+      "units": {
+        "audit": "agent-progress 事件持久化层过滤 thinking_delta/text_delta，仅留 tool/usage/status 可审计事件；前端二次过滤；workflow-status 仅状态变更时 refetch 防请求风暴",
+        "references": "项目输入材料（映射 Skill sources/，不复用 artifact）+ workflow 启动冻结快照；输入校验 UUID/256KB/20 条/filename；全程参数化 SQL",
+        "settings": "运行时只读总览（不暴露密钥，CLI/API 调用方式服务端决定）",
+        "docs-ws": "文档可编辑状态 + 版本历史前端打通"
+      },
+      "review": {
+        "type": "单线程代码审核（安全边界 + 输入校验 + 参数化 SQL）",
+        "refactor": "DELETE reference 路由内联 SQL 下沉 service 层（3d4f43e），沉淀 docs/solutions 首条（33b174e）"
+      },
+      "completedAt": "2026-06-01",
+      "verification": "api typecheck 0 + 184 测、web 32 测全绿（含 thinking_delta 过滤约束）；迁移 0005 应用；直接合 main 无 PR"
     }
   ],
   "deferred": [
