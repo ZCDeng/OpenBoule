@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
 import { ApiError } from "../lib/api.ts";
 import { ErrorBanner } from "../components/States.tsx";
+import { Badge, Button, PageShell, Panel, TextInput } from "../components/Brutalist.tsx";
 
 export function LoginPage() {
   const nav = useNavigate();
@@ -36,22 +37,38 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto mt-24 max-w-sm px-6">
-      <h1 className="mb-6 text-center text-2xl">OpenConsult · 咨询工作台</h1>
-      {error && <div className="mb-4"><ErrorBanner severity="P0" message={error} /></div>}
-      <form onSubmit={submit} className="space-y-3">
-        {mode === "register" && (
-          <input className="w-full rounded border border-neutral-300 px-3 py-2" placeholder="姓名" value={name} onChange={(e) => setName(e.target.value)} />
-        )}
-        <input className="w-full rounded border border-neutral-300 px-3 py-2" placeholder="邮箱" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input className="w-full rounded border border-neutral-300 px-3 py-2" placeholder="密码" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <button disabled={busy} className="w-full rounded bg-neutral-900 py-2 text-white disabled:opacity-50">
-          {busy ? "处理中…" : mode === "login" ? "登录" : "注册"}
-        </button>
-      </form>
-      <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="mt-4 w-full text-center text-sm text-neutral-500">
-        {mode === "login" ? "没有账号？注册" : "已有账号？登录"}
-      </button>
-    </div>
+    <PageShell>
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_.85fr] lg:items-end">
+        <header className="border-b-2 border-black pb-8">
+          <div className="boule-eyebrow">Nº 00 — AUTH GATE</div>
+          <h1 className="boule-title">进入<br />咨询流水线。</h1>
+          <p className="boule-lede">Claude-only 工作台。注册后即可创建项目、上传 reference、启动 7+2 阶段咨询工作流。</p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Badge tone="orange">Claude专用</Badge>
+            <Badge>JWT Session</Badge>
+            <Badge>Owner Workspace</Badge>
+          </div>
+        </header>
+
+        <Panel>
+          <div className="flex items-center justify-between border-b-2 border-black bg-black px-5 py-4 text-white">
+            <span className="font-[var(--boule-mono)] text-xs uppercase tracking-[0.16em]">{mode === "login" ? "登录" : "注册"}</span>
+            <span className="font-[var(--boule-mono)] text-xs">↵</span>
+          </div>
+          <div className="boule-panel-body">
+            {error && <div className="mb-4"><ErrorBanner severity="P0" message={error} /></div>}
+            <form onSubmit={submit} className="space-y-4">
+              {mode === "register" && <TextInput placeholder="姓名" value={name} onChange={(e) => setName(e.target.value)} />}
+              <TextInput placeholder="邮箱" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <TextInput placeholder="密码" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Button disabled={busy} className="w-full">{busy ? "处理中…" : mode === "login" ? "登录" : "注册"}</Button>
+            </form>
+            <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }} className="mt-5 w-full border-b-2 border-black pb-1 text-center font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)] hover:text-black">
+              {mode === "login" ? "没有账号？注册 →" : "已有账号？← 登录"}
+            </button>
+          </div>
+        </Panel>
+      </div>
+    </PageShell>
   );
 }

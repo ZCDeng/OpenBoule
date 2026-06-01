@@ -1,58 +1,37 @@
 import type { SseEvent } from "../../lib/sse.ts";
 import { normalizeWorkflowEvents, type WorkflowEventItem } from "../../lib/workflow-events.ts";
+import { Badge } from "../../components/Brutalist.tsx";
 
 const TONE_CLASS: Record<WorkflowEventItem["tone"], string> = {
-  neutral: "border-neutral-200 bg-white",
-  blue: "border-blue-200 bg-blue-50",
-  green: "border-green-200 bg-green-50",
-  amber: "border-amber-200 bg-amber-50",
-  red: "border-red-200 bg-red-50",
+  neutral: "bg-[var(--boule-paper)]",
+  blue: "bg-[var(--boule-blue)] text-white",
+  green: "bg-black text-white",
+  amber: "bg-[var(--boule-orange)] text-white",
+  red: "bg-red-600 text-white",
 };
 
-export function RealtimeEventFeed({
-  events,
-  currentPhase,
-  offline,
-  limit = 30,
-  compact = false,
-  phaseOnly = false,
-}: {
-  events: readonly SseEvent[];
-  currentPhase?: string;
-  offline?: boolean;
-  limit?: number;
-  compact?: boolean;
-  phaseOnly?: boolean;
-}) {
+export function RealtimeEventFeed({ events, currentPhase, offline, limit = 30, compact = false, phaseOnly = false }: { events: readonly SseEvent[]; currentPhase?: string; offline?: boolean; limit?: number; compact?: boolean; phaseOnly?: boolean }) {
   const normalized = normalizeWorkflowEvents(events);
   const items = (phaseOnly && currentPhase ? normalized.filter((item) => item.phase === currentPhase) : normalized).slice(-limit).reverse();
-
   return (
-    <section className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm text-neutral-500">实时事件流</h3>
-        {offline && <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">数据暂停更新</span>}
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3 border-b-2 border-black pb-2">
+        <h3 className="font-[var(--boule-disp)] text-2xl font-black tracking-[-0.03em]">实时事件流</h3>
+        {offline && <Badge tone="orange">数据暂停更新</Badge>}
       </div>
-      {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-neutral-200 bg-white p-4 text-sm text-neutral-400">暂无实时事件</p>
-      ) : (
+      {items.length === 0 ? <p className="border-2 border-dashed border-black p-4 font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)]">暂无实时事件</p> : (
         <ol className="space-y-2">
           {items.map((item) => {
             const active = currentPhase && item.phase === currentPhase;
             return (
-              <li key={item.id} className={`rounded-lg border p-3 text-sm ${TONE_CLASS[item.tone]} ${active ? "ring-1 ring-amber-300" : ""}`}>
+              <li key={item.id} className={`border-2 border-black p-3 text-sm shadow-[3px_3px_0_#0B0B0B] ${TONE_CLASS[item.tone]} ${active ? "outline outline-2 outline-[var(--boule-blue)]" : ""}`}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-neutral-800">{item.title}</span>
-                  {item.phase && <span className="rounded bg-white/70 px-1.5 py-0.5 text-xs text-neutral-500">{item.phase}</span>}
-                  <span className="ml-auto text-xs text-neutral-400">#{item.eventId}</span>
+                  <span className="font-[var(--boule-disp)] font-black tracking-[-0.02em]">{item.title}</span>
+                  {item.phase && <span className="border border-current px-1.5 py-0.5 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em]">{item.phase}</span>}
+                  <span className="ml-auto font-[var(--boule-mono)] text-[10px] opacity-65">#{item.eventId}</span>
                 </div>
-                <p className="mt-1 text-xs text-neutral-600">{item.summary}</p>
-                {!compact && (
-                  <details className="mt-2 text-xs text-neutral-500">
-                    <summary className="cursor-pointer">原始事件</summary>
-                    <pre className="mt-2 max-h-48 overflow-auto rounded bg-white/80 p-2">{JSON.stringify(item.raw, null, 2)}</pre>
-                  </details>
-                )}
+                <p className="mt-1 text-xs opacity-80">{item.summary}</p>
+                {!compact && <details className="mt-2 text-xs"><summary className="cursor-pointer font-[var(--boule-mono)] uppercase tracking-[0.08em]">原始事件</summary><pre className="mt-2 max-h-48 overflow-auto border-2 border-current bg-transparent p-2">{JSON.stringify(item.raw, null, 2)}</pre></details>}
               </li>
             );
           })}

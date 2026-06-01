@@ -12,6 +12,7 @@ import { useAuth } from "../../stores/auth.ts";
 import { debounce } from "../../lib/debounce.ts";
 import { ApiClient, ApiError } from "../../lib/api.ts";
 import { ErrorBanner } from "../../components/States.tsx";
+import { Badge, Button } from "../../components/Brutalist.tsx";
 
 type LockState = { kind: "acquiring" } | { kind: "held" } | { kind: "locked"; holder: string; ttlSec: number };
 type SaveState = "idle" | "saving" | "saved" | "local-fallback";
@@ -129,41 +130,41 @@ export function Editor({
   return (
     <div className="space-y-2">
       {lock.kind === "locked" && (
-        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+        <div className="border-2 border-black bg-[var(--boule-orange)] p-3 text-sm text-white shadow-[4px_4px_0_#0B0B0B]">
           {readOnly ? (
             <span>正在只读查看历史版本或锁定文档。</span>
           ) : (
             <>
-              文档正被 <span className="font-medium">{lock.holder}</span> 编辑
+              文档正被 <span className="font-bold">{lock.holder}</span> 编辑
               {lock.ttlSec > 0 ? `，预计 ${lock.ttlSec}s 后过期` : ""}。
-              <button type="button" className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-xs" onClick={() => editor?.setEditable(false)}>
+              <Button type="button" variant="secondary" className="ml-2" onClick={() => editor?.setEditable(false)}>
                 只读查看
-              </button>
-              <button type="button" disabled className="ml-2 rounded border border-neutral-300 px-2 py-0.5 text-xs opacity-50" title="当前未实现后端排队">
+              </Button>
+              <Button type="button" variant="secondary" disabled className="ml-2" title="当前未实现后端排队">
                 排队等编辑
-              </button>
+              </Button>
             </>
           )}
         </div>
       )}
       {save === "local-fallback" && <ErrorBanner severity="P1" message="保存失败，将保存在本地，恢复后同步" />}
 
-      <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-          <span className="font-medium text-neutral-800">{meta.phaseLabel}</span>
+      <div className="border-2 border-black px-3 py-2 shadow-[3px_3px_0_#0B0B0B]">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-[var(--boule-disp)] font-black tracking-[-0.02em]">{meta.phaseLabel}</span>
           <span>{meta.type}</span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5">v{meta.version}</span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5">{meta.status}</span>
-          {meta.stale && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">stale</span>}
+          <Badge>v{meta.version}</Badge>
+          <Badge>{meta.status}</Badge>
+          {meta.stale && <Badge tone="orange">stale</Badge>}
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-neutral-400">
+      <div className="flex items-center justify-between font-[var(--boule-mono)] text-xs uppercase tracking-[0.08em] text-[var(--boule-muted)]">
         <span>{readOnly ? "只读历史版本" : lock.kind === "held" ? "● 你正在编辑" : lock.kind === "acquiring" ? "获取锁中…" : "只读"}</span>
         <span>{save === "saving" ? "保存中…" : save === "saved" ? "已保存" : ""}</span>
       </div>
 
-      <div className="prose max-w-none rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="prose max-w-none border-2 border-black bg-[var(--boule-paper)] p-4 shadow-[5px_5px_0_#0B0B0B]">
         <EditorContent editor={editor} />
       </div>
     </div>
