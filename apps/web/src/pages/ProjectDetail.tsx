@@ -14,12 +14,12 @@ export function ProjectDetailPage() {
   const api = useAuth((s) => s.api);
   const nav = useNavigate();
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
-  const [skippedReferences, setSkippedReferences] = useState<{ id: string; filename: string | null; parseStatus: string }[]>([]);
+  const [skippedReferences, setSkippedReferences] = useState<{ id: string; filename: string | null; parseStatus: "parsed" | "failed" | "partial" | "missing" }[]>([]);
   const [createdWorkflowId, setCreatedWorkflowId] = useState<string | null>(null);
 
   const start = useMutation({
     mutationFn: (mode: string) =>
-      api.json<{ workflowId: string; skippedReferences?: { id: string; filename: string | null; parseStatus: string }[] }>("/api/workflows", {
+      api.json<{ workflowId: string; skippedReferences?: { id: string; filename: string | null; parseStatus: "parsed" | "failed" | "partial" | "missing" }[] }>("/api/workflows", {
         method: "POST",
         body: JSON.stringify({ projectId: id, mode, referenceIds: selectedReferenceIds }),
       }),

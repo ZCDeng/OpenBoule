@@ -3,7 +3,7 @@
  * Boule Thin CLI 入口（U3 / KTD-6）。零依赖纯 process.argv 路由。
  *
  * 目标用户（H 簇）：不在 Claude Code/Cursor 里、要脚本化/CI 调 Boule 的人。用 agent 的人走 MCP。
- * 子命令映射到**真实** API 端点（与 7 个 MCP 工具同面）；boule mcp 复用 U1 MCP server（@boule/api/mcp）。
+ * 子命令映射到**真实** API 端点（与 MCP 工具同面）；boule mcp 复用 U1 MCP server（@boule/api/mcp）。
  */
 
 import { readFileSync } from "node:fs";

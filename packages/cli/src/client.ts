@@ -46,10 +46,11 @@ export async function postFile(cfg: CliConfig, path: string, filePath: string): 
       method: "POST",
       headers: { ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}) },
       body: fileForm(filePath),
-      signal: AbortSignal.timeout(15_000),
+      // 上传路径要长于 JSON request() 的 15s：服务端解析 reference 最长可达 parseTimeoutMs（120s），
+      // 大文件/扫描件会在解析中途被 abort。给 parseTimeoutMs + margin。
+      signal: AbortSignal.timeout(130_000),
     });
   } catch (err) {
-    if (err instanceof CliError) throw err;
     throw new CliError(`无法连接 Boule（${cfg.daemonUrl}）：daemon 在运行吗？(${(err as Error).message})`);
   }
   return parseResponse("POST", path, res);

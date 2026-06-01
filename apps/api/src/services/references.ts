@@ -192,7 +192,8 @@ export async function loadProjectReferencesPartitioned(db: DB, projectId: string
 
 export async function freezeWorkflowReferences(db: DB, workflowId: string, references: ProjectReferenceRow[]): Promise<void> {
   for (const ref of references) {
-    if (ref.parseStatus === "failed") continue;
+    // invariant：唯一调用方传 loaded（已剔除 failed）。收到 failed 说明上游契约被破坏，fail loud。
+    if (ref.parseStatus === "failed") throw new Error("freezeWorkflowReferences 收到 failed reference: " + ref.id);
     await db.execute(sql`
       INSERT INTO workflow_references (workflow_id, reference_id, filename, mime_type, size_bytes, body_snapshot)
       VALUES (${workflowId}, ${ref.id}, ${ref.filename}, ${ref.mimeType}, ${ref.sizeBytes}, ${ref.body})`);

@@ -8,7 +8,7 @@
  * checkpoint 由引擎在 phase 边界创建，外部创建语义与现有状态机冲突，挂 Deferred 待设计。
  */
 
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 export interface BouleClient {
@@ -61,6 +61,11 @@ async function call(
       `无法连接 Boule API（${client.baseUrl}）：daemon 是否在运行？原始错误：${(err as Error).message}`,
     );
   }
+  return readResponse(res, method, path);
+}
+
+/** 响应尾段：text → safeJson，非 2xx 抛清晰错误。call()/callMultipart 共用。 */
+async function readResponse(res: Response, method: string, path: string): Promise<unknown> {
   const text = await res.text();
   const parsed = text ? safeJson(text) : null;
   if (!res.ok) {
@@ -87,30 +92,23 @@ async function callMultipart(
       method,
       headers: { authorization: `Bearer ${client.apiKey}` },
       body: form,
-      signal: AbortSignal.timeout(15_000),
+      // 上传路径要长于 JSON call() 的 15s：服务端解析 reference 最长可达 config.references.parseTimeoutMs（120s），
+      // 大文件/扫描件会在解析中途被 abort。给 parseTimeoutMs + margin。
+      signal: AbortSignal.timeout(130_000),
     });
   } catch (err) {
     throw new Error(
       `无法连接 Boule API（${client.baseUrl}）：daemon 是否在运行？原始错误：${(err as Error).message}`,
     );
   }
-  const text = await res.text();
-  const parsed = text ? safeJson(text) : null;
-  if (!res.ok) {
-    const msg = (parsed as { message?: string; error?: string } | null)?.message
-      ?? (parsed as { error?: string } | null)?.error
-      ?? text
-      ?? `HTTP ${res.status}`;
-    throw new Error(`Boule API ${method} ${path} → ${res.status}：${msg}`);
-  }
-  return parsed;
+  return readResponse(res, method, path);
 }
 
-function fileForm(filePath: string): FormData {
+async function fileForm(filePath: string): Promise<FormData> {
   if (!filePath) throw new Error("filePath 必填");
   let buf: Buffer;
   try {
-    buf = readFileSync(filePath);
+    buf = await readFile(filePath);
   } catch (err) {
     throw new Error(`读取 reference 文件失败：${filePath}（${(err as Error).message}）`);
   }
@@ -221,7 +219,9 @@ export function makeTools(client: BouleClient): ToolDef[] {
       handler: async (args) => {
         const projectId = str(args.projectId);
         if (!projectId) throw new Error("projectId 必填");
-        return callMultipart(client, "POST", `/api/projects/${projectId}/references`, fileForm(str(args.filePath) ?? ""));
+        const filePath = str(args.filePath);
+        if (!filePath) throw new Error("filePath 必填");
+        return callMultipart(client, "POST", `/api/projects/${projectId}/references`, await fileForm(filePath));
       },
     },
     {
