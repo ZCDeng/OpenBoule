@@ -44,7 +44,7 @@ function client(routes: Record<string, unknown>, rec: Recorded[]) {
   return createBouleClient({ baseUrl: "http://test", apiKey: "bk_test", fetchImpl: fakeFetch(routes, rec) });
 }
 
-test("工具集恰好 10 个，命名稳定", () => {
+test("工具集恰好 11 个，命名稳定", () => {
   const tools = makeTools(client({}, []));
   const names = tools.map((t) => t.name).sort();
   assert.deepEqual(names, [
@@ -56,6 +56,7 @@ test("工具集恰好 10 个，命名稳定", () => {
     "list_projects",
     "list_reference",
     "search_research",
+    "start_workflow",
     "submit_artifact",
     "upload_reference",
   ]);
@@ -127,6 +128,35 @@ test("delete_reference → DELETE endpoint and propagates 404", async () => {
 
   const missing = makeTools(client({}, []));
   await assert.rejects(() => missing.find((t) => t.name === "delete_reference")!.handler({ projectId: "p1", referenceId: "missing" }), /404/);
+});
+
+test("start_workflow → POST /api/workflows and exposes skippedReferences", async () => {
+  const rec: Recorded[] = [];
+  const tools = makeTools(client({
+    "/api/workflows": {
+      workflowId: "wf-1",
+      started: true,
+      referenceCount: 1,
+      skippedReferences: [{ id: "r-bad", filename: "bad.pdf", parseStatus: "failed" }],
+    },
+  }, rec));
+  const out = (await tools.find((t) => t.name === "start_workflow")!.handler({
+    projectId: "p1",
+    mode: "调研",
+    referenceIds: ["r-ok", "r-bad"],
+  })) as { workflowId: string; skippedReferences: { id: string }[] };
+  assert.equal(out.workflowId, "wf-1");
+  assert.equal(out.skippedReferences[0]!.id, "r-bad");
+  assert.equal(rec[0]!.method, "POST");
+  assert.equal(rec[0]!.url, "http://test/api/workflows");
+  assert.deepEqual(rec[0]!.body, { projectId: "p1", mode: "调研", referenceIds: ["r-ok", "r-bad"] });
+});
+
+test("start_workflow missing projectId fails before request", async () => {
+  const rec: Recorded[] = [];
+  const tools = makeTools(client({}, rec));
+  await assert.rejects(() => tools.find((t) => t.name === "start_workflow")!.handler({}), /projectId 必填/);
+  assert.equal(rec.length, 0);
 });
 
 test("upload_reference missing file fails before request", async () => {

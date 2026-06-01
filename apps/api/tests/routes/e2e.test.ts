@@ -11,6 +11,12 @@ import type { FastifyInstance } from "fastify";
 import { WorkflowEngine } from "../../src/workflow/engine.ts";
 import type { AgentRunner } from "../../src/workflow/phases/index.ts";
 import { PHASE_IDS } from "../../src/workflow/state.ts";
+import {
+  MAX_PROJECT_REFERENCE_BYTES,
+  computeReferenceContentHash,
+  createProjectReference,
+  loadProjectReferencesPartitioned,
+} from "../../src/services/references.ts";
 import { makeApp, registerUser, auth, db, securityRedis, cleanupAll } from "./_helpers.ts";
 
 const intakeTasks = new Map<string, string>();
@@ -237,4 +243,136 @@ test("workflow start reports skipped failed references instead of silently dropp
   assert.equal(body.skippedReferences.length, 1);
   assert.equal(body.skippedReferences[0]!.id, failedId);
   assert.equal(body.skippedReferences[0]!.parseStatus, "failed");
+});
+
+test("reference upload is idempotent by content hash and returns 200 for duplicate", async () => {
+  const owner = await registerUser(app);
+  users.push(owner.userId);
+  const projRes = await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "IdempotentRefs" } });
+  const projectId = (projRes.json() as { projectId: string }).projectId;
+  projects.push(projectId);
+
+  const payload = { filename: "brief.md", mimeType: "text/markdown", body: "客户 brief\n" };
+  const first = await app.inject({ method: "POST", url: `/api/projects/${projectId}/references`, headers: auth(owner.token), payload });
+  assert.equal(first.statusCode, 201);
+  const firstId = (first.json() as { reference: { id: string } }).reference.id;
+
+  const second = await app.inject({ method: "POST", url: `/api/projects/${projectId}/references`, headers: auth(owner.token), payload });
+  assert.equal(second.statusCode, 200);
+  assert.equal((second.json() as { reference: { id: string } }).reference.id, firstId);
+
+  const rows = await db.execute(sql`SELECT COUNT(*)::int AS "count", COALESCE(SUM(size_bytes), 0)::int AS "bytes" FROM project_references WHERE project_id = ${projectId}`);
+  const row = (rows as unknown as { rows: { count: number; bytes: number }[] }).rows[0]!;
+  assert.equal(row.count, 1);
+  assert.equal(row.bytes, Buffer.byteLength(payload.body));
+});
+
+test("reference idempotency is project-scoped and legacy NULL hashes remain forward-only", async () => {
+  const owner = await registerUser(app);
+  users.push(owner.userId);
+  const p1 = (await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "ScopeA" } }).then((r) => r.json())) as { projectId: string };
+  const p2 = (await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "ScopeB" } }).then((r) => r.json())) as { projectId: string };
+  projects.push(p1.projectId, p2.projectId);
+
+  const body = "same customer material";
+  const mkPayload = { filename: "same.md", mimeType: "text/markdown", body };
+  const a = await app.inject({ method: "POST", url: `/api/projects/${p1.projectId}/references`, headers: auth(owner.token), payload: mkPayload });
+  const b = await app.inject({ method: "POST", url: `/api/projects/${p2.projectId}/references`, headers: auth(owner.token), payload: mkPayload });
+  assert.equal(a.statusCode, 201);
+  assert.equal(b.statusCode, 201);
+  assert.notEqual((a.json() as { reference: { id: string } }).reference.id, (b.json() as { reference: { id: string } }).reference.id);
+
+  await db.execute(sql`
+    INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, parse_status, content_hash)
+    VALUES (${p1.projectId}, 'legacy.md', 'text/markdown', ${Buffer.byteLength(body)}, ${body}, 'parsed', NULL)`);
+  const before = await db.execute(sql`SELECT COUNT(*)::int AS "count" FROM project_references WHERE project_id = ${p1.projectId}`);
+  const legacyReplay = await app.inject({ method: "POST", url: `/api/projects/${p1.projectId}/references`, headers: auth(owner.token), payload: { ...mkPayload, filename: "legacy-replay.md" } });
+  assert.equal(legacyReplay.statusCode, 200, "replay dedupes against the new hashed row, not the legacy NULL row");
+  const after = await db.execute(sql`SELECT COUNT(*)::int AS "count" FROM project_references WHERE project_id = ${p1.projectId}`);
+  assert.equal(
+    (after as unknown as { rows: { count: number }[] }).rows[0]!.count,
+    (before as unknown as { rows: { count: number }[] }).rows[0]!.count,
+  );
+
+  const legacyOnlyProject = (await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "LegacyOnly" } }).then((r) => r.json())) as { projectId: string };
+  projects.push(legacyOnlyProject.projectId);
+  await db.execute(sql`
+    INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, parse_status, content_hash)
+    VALUES (${legacyOnlyProject.projectId}, 'legacy.md', 'text/markdown', ${Buffer.byteLength(body)}, ${body}, 'parsed', NULL)`);
+  const replay = await app.inject({ method: "POST", url: `/api/projects/${legacyOnlyProject.projectId}/references`, headers: auth(owner.token), payload: mkPayload });
+  assert.equal(replay.statusCode, 201, "legacy NULL content_hash cannot be backfilled, so first new replay creates a hashed row");
+});
+
+test("reference storage budget is atomic under concurrent service writes", async () => {
+  const owner = await registerUser(app);
+  users.push(owner.userId);
+  const projRes = await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "BudgetRace" } });
+  const projectId = (projRes.json() as { projectId: string }).projectId;
+  projects.push(projectId);
+  await db.execute(sql`
+    INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, parse_status)
+    VALUES (${projectId}, 'used.bin', 'text/plain', ${MAX_PROJECT_REFERENCE_BYTES - 300}, 'seed', 'parsed')`);
+
+  const mk = (name: string, body: string) => createProjectReference(db, projectId, {
+    filename: name,
+    mimeType: "text/plain",
+    sizeBytes: 200,
+    body,
+    contentHash: computeReferenceContentHash(Buffer.from(body, "utf8")),
+  });
+  const settled = await Promise.allSettled([mk("a.txt", "a".repeat(200)), mk("b.txt", "b".repeat(200))]);
+  assert.equal(settled.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(settled.filter((r) => r.status === "rejected").length, 1);
+});
+
+test("missing references are partitioned as skipped and budget overflow maps to 400", async () => {
+  const owner = await registerUser(app);
+  users.push(owner.userId);
+  const projRes = await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "MissingAndBudget" } });
+  const projectId = (projRes.json() as { projectId: string }).projectId;
+  projects.push(projectId);
+
+  const missingId = randomUUID();
+  const partitioned = await loadProjectReferencesPartitioned(db, projectId, [missingId]);
+  assert.deepEqual(partitioned, { loaded: [], skipped: [{ id: missingId, filename: null, parseStatus: "missing" }] });
+
+  await db.execute(sql`
+    INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, parse_status)
+    VALUES (${projectId}, 'used.bin', 'text/plain', ${MAX_PROJECT_REFERENCE_BYTES - 5}, 'seed', 'parsed')`);
+  const over = await app.inject({
+    method: "POST",
+    url: `/api/projects/${projectId}/references`,
+    headers: auth(owner.token),
+    payload: { filename: "too-much.md", mimeType: "text/markdown", body: "0123456789" },
+  });
+  assert.equal(over.statusCode, 400);
+  assert.equal((over.json() as { error: string }).error, "BAD_REFERENCE");
+});
+
+test("re-uploading a previously-failed parse refreshes the row instead of pinning the failure", async () => {
+  const owner = await registerUser(app);
+  users.push(owner.userId);
+  const projRes = await app.inject({ method: "POST", url: "/api/projects", headers: auth(owner.token), payload: { name: "FailedReparse" } });
+  const projectId = (projRes.json() as { projectId: string }).projectId;
+  projects.push(projectId);
+
+  // 模拟一次解析失败后落下的行：content_hash 与后续重传的原始字节一致。
+  const body = "扫描件 OCR 此前失败的素材\n";
+  const contentHash = computeReferenceContentHash(Buffer.from(body, "utf8"));
+  const failed = await db.execute(sql`
+    INSERT INTO project_references (project_id, filename, mime_type, size_bytes, content_hash, body, parse_status, parse_error)
+    VALUES (${projectId}, 'scan.md', 'text/markdown', ${Buffer.byteLength(body)}, ${contentHash}, '', 'failed', 'OCR disabled')
+    RETURNING id`);
+  const failedId = (failed as unknown as { rows: { id: string }[] }).rows[0]!.id;
+
+  // 原样重传：命中同 hash 的 failed 行 → 刷新为本次解析结果，返回同一行（200）。
+  const replay = await app.inject({ method: "POST", url: `/api/projects/${projectId}/references`, headers: auth(owner.token), payload: { filename: "scan.md", mimeType: "text/markdown", body } });
+  assert.equal(replay.statusCode, 200);
+  assert.equal((replay.json() as { reference: { id: string } }).reference.id, failedId);
+
+  const rows = await db.execute(sql`SELECT COUNT(*)::int AS "count", MAX(parse_status) AS "status", MAX(body) AS "body" FROM project_references WHERE project_id = ${projectId}`);
+  const row = (rows as unknown as { rows: { count: number; status: string; body: string }[] }).rows[0]!;
+  assert.equal(row.count, 1, "刷新而非新建：仍只有一行");
+  assert.equal(row.status, "parsed", "failed 行已被本次成功解析刷新");
+  assert.equal(row.body, body.trim(), "body 已写入刷新内容");
 });

@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import type { DB } from "../db/client.ts";
 import { config } from "../config.ts";
 import { isTextLikeMime, parseReferenceDocument, type ParseSource, type ParseStatus } from "./document-parsing.ts";
@@ -25,6 +26,11 @@ export interface ProjectReferenceRow {
 }
 
 export interface ProjectReferenceListRow extends Omit<ProjectReferenceRow, "body" | "projectId"> {}
+
+export interface CreateProjectReferenceResult {
+  reference: ProjectReferenceListRow;
+  inserted: boolean;
+}
 
 export interface SkippedReferenceRow {
   id: string;
@@ -92,6 +98,10 @@ export function validateReferenceFile(input: { filename: unknown; mimeType: unkn
   return { ok: true, filename, mimeType: detected.mimeType, buffer: input.buffer, sizeBytes: input.buffer.length };
 }
 
+export function computeReferenceContentHash(bytes: Buffer): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
 function detectMimeType(buffer: Buffer, declared: string | undefined, filename: string): { ok: true; mimeType: string } | { ok: false; error: string } {
   const lower = filename.toLowerCase();
   const d = (declared ?? "").trim().toLowerCase();
@@ -136,23 +146,44 @@ export async function createProjectReference(
   db: DB,
   projectId: string,
   input:
-    | { filename: string; mimeType: string; sizeBytes: number; body: string }
-    | { filename: string; mimeType: string; sizeBytes: number; buffer: Buffer },
-): Promise<ProjectReferenceListRow> {
+    | { filename: string; mimeType: string; sizeBytes: number; body: string; contentHash: string }
+    | { filename: string; mimeType: string; sizeBytes: number; buffer: Buffer; contentHash: string },
+): Promise<CreateProjectReferenceResult> {
   const parsed = "body" in input
     ? { body: input.body, parseStatus: "parsed" as ParseStatus, parseSource: "local-js" as ParseSource, shouldStoreOriginal: false, error: null }
     : await parseReferenceDocument({ buffer: input.buffer, mimeType: input.mimeType, filename: input.filename });
   const originalBinary = "buffer" in input && parsed.shouldStoreOriginal ? input.buffer : null;
   return db.transaction(async (tx) => {
+    // 这把锁不仅保护预算检查，也保护内容哈希幂等：READ COMMITTED 下同项目写入必须串行，
+    // 才能让 ON CONFLICT DO UPDATE RETURNING 稳定看到已提交的同 hash 行。
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`);
-    const budget = await assertProjectReferenceStorageBudget(tx, projectId, input.sizeBytes);
-    if (!budget.ok) throw new ReferenceStorageLimitError(budget.error);
     const res = await tx.execute(sql`
-      INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, original_binary, parse_status, parse_source, parse_error)
-      VALUES (${projectId}, ${input.filename}, ${input.mimeType}, ${input.sizeBytes}, ${parsed.body}, ${originalBinary}, ${parsed.parseStatus}, ${parsed.parseSource}, ${parsed.error ?? null})
+      INSERT INTO project_references (project_id, filename, mime_type, size_bytes, content_hash, body, original_binary, parse_status, parse_source, parse_error)
+      VALUES (${projectId}, ${input.filename}, ${input.mimeType}, ${input.sizeBytes}, ${input.contentHash}, ${parsed.body}, ${originalBinary}, ${parsed.parseStatus}, ${parsed.parseSource}, ${parsed.error ?? null})
+      -- 命中冲突时必须 DO UPDATE（而非 DO NOTHING）才能让 RETURNING 返回既有行。
+      -- 语义：已 parsed 的行走 ELSE 分支保持原值（纯幂等）；此前 parse_status='failed' 的行
+      -- 用本次新解析结果刷新——让"上次解析/OCR 失败、原样重传"能恢复，兑现"safe to retry"。
+      -- 同 hash ⇒ 同字节 ⇒ 同 size_bytes，故不刷新 size_bytes、不影响预算、不新增行。
+      ON CONFLICT (project_id, content_hash) DO UPDATE SET
+        body            = CASE WHEN project_references.parse_status = 'failed' THEN EXCLUDED.body            ELSE project_references.body            END,
+        original_binary = CASE WHEN project_references.parse_status = 'failed' THEN EXCLUDED.original_binary ELSE project_references.original_binary END,
+        parse_status    = CASE WHEN project_references.parse_status = 'failed' THEN EXCLUDED.parse_status    ELSE project_references.parse_status    END,
+        parse_source    = CASE WHEN project_references.parse_status = 'failed' THEN EXCLUDED.parse_source    ELSE project_references.parse_source    END,
+        parse_error     = CASE WHEN project_references.parse_status = 'failed' THEN EXCLUDED.parse_error     ELSE project_references.parse_error     END
       RETURNING id, filename, mime_type AS "mimeType", size_bytes AS "sizeBytes", parse_status AS "parseStatus",
-                parse_source AS "parseSource", parse_error AS "parseError", created_at AS "createdAt"`);
-    return (res as unknown as { rows: ProjectReferenceListRow[] }).rows[0]!;
+                parse_source AS "parseSource", parse_error AS "parseError", created_at AS "createdAt",
+                -- xmax 为新插入行=0、被 UPDATE 行非0：据此区分新建 vs 命中已有。
+                -- 依赖上面的 advisory lock 串行化；project_references 无行级触发器，否则触发器 UPDATE 会翻转 xmax。
+                (xmax = 0) AS "inserted"`);
+    const row = (res as unknown as { rows: (ProjectReferenceListRow & { inserted: boolean })[] }).rows[0]!;
+    if (row.inserted) {
+      // 仅新建才查预算：命中去重不新增行，SUM 不变、不双扣。新建行已在本事务内可见，
+      // 故 incomingBytes 传 0——SUM 已含该行，超额则抛出并回滚该插入。
+      const budget = await assertProjectReferenceStorageBudget(tx, projectId, 0);
+      if (!budget.ok) throw new ReferenceStorageLimitError(budget.error);
+    }
+    const { inserted, ...reference } = row;
+    return { reference, inserted };
   });
 }
 

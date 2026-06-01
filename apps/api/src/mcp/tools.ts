@@ -243,6 +243,33 @@ export function makeTools(client: BouleClient): ToolDef[] {
       },
     },
     {
+      name: "start_workflow",
+      description: "启动项目 workflow。返回 skippedReferences；非空表示部分 reference 因解析失败或不存在而未纳入本次 workflow——此时应向用户报告被跳过的 reference 再继续，不要默认全部已纳入。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          projectId: { type: "string", description: "project id" },
+          mode: { type: "string", description: "咨询模式/任务类型（可选）" },
+          referenceIds: {
+            type: "array",
+            items: { type: "string" },
+            description: "要冻结进 workflow 的 reference id 列表（可选）",
+          },
+        },
+        required: ["projectId"],
+      },
+      handler: async (args) => {
+        const projectId = str(args.projectId);
+        if (!projectId) throw new Error("projectId 必填");
+        const referenceIds = Array.isArray(args.referenceIds) ? args.referenceIds : undefined;
+        return call(client, "POST", "/api/workflows", {
+          projectId,
+          mode: str(args.mode),
+          ...(referenceIds ? { referenceIds } : {}),
+        });
+      },
+    },
+    {
       name: "submit_artifact",
       description: "提交一份产出到 workflow（落 draft，出现在 Web UI）。需 editor+ 的 write scope key。",
       inputSchema: {

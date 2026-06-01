@@ -1,0 +1,2 @@
+ALTER TABLE "project_references" ADD COLUMN "content_hash" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "project_references_project_content_hash_uniq" ON "project_references" USING btree ("project_id","content_hash");

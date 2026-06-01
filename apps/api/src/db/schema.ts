@@ -116,6 +116,9 @@ export const projectReferences = pgTable(
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull().default("text/plain"),
     sizeBytes: integer("size_bytes").notNull(),
+    // sha256 hex of the original upload bytes captured before route-level normalization.
+    // Nullable for legacy rows: historical uploads did not preserve raw bytes, so they cannot be backfilled.
+    contentHash: text("content_hash"),
     body: text("body").notNull(),
     originalBinary: bytea("original_binary"),
     parseStatus: referenceParseStatus("parse_status").notNull().default("parsed"),
@@ -123,7 +126,10 @@ export const projectReferences = pgTable(
     parseError: text("parse_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("project_references_project_idx").on(t.projectId)],
+  (t) => [
+    index("project_references_project_idx").on(t.projectId),
+    uniqueIndex("project_references_project_content_hash_uniq").on(t.projectId, t.contentHash),
+  ],
 );
 
 // ── 5. workflows（状态机真值源，KTD-3）──

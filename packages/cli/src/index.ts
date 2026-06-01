@@ -7,6 +7,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { loadConfig, flag } from "./config.ts";
 import { get, post, del, postFile, CliError } from "./client.ts";
 
@@ -30,7 +31,7 @@ function print(v: unknown): void {
   process.stdout.write(typeof v === "string" ? v + "\n" : JSON.stringify(v, null, 2) + "\n");
 }
 
-async function run(argv: string[]): Promise<number> {
+export async function run(argv: string[]): Promise<number> {
   const cmd = argv[0];
   if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
     print(USAGE);
@@ -103,9 +104,11 @@ async function run(argv: string[]): Promise<number> {
   }
 }
 
-run(process.argv.slice(2))
-  .then((code) => process.exit(code))
-  .catch((err) => {
-    process.stderr.write(`${err instanceof CliError ? err.message : (err as Error).stack ?? String(err)}\n`);
-    process.exit(1);
-  });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run(process.argv.slice(2))
+    .then((code) => process.exit(code))
+    .catch((err) => {
+      process.stderr.write(`${err instanceof CliError ? err.message : (err as Error).stack ?? String(err)}\n`);
+      process.exit(1);
+    });
+}
