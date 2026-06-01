@@ -10,6 +10,7 @@ import { makeAuthenticate, requireProjectRole } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import {
   MAX_PDF_REFERENCE_BYTES,
+  ReferenceStorageLimitError,
   createProjectReference,
   deleteProjectReference,
   listProjectReferences,
@@ -68,7 +69,13 @@ export function registerReferenceRoutes(app: FastifyInstance, deps: AppDeps): vo
         return reply.code(201).send({ reference });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        if (message.includes("项目 reference 总量超过")) return reply.code(400).send({ error: "BAD_REFERENCE", message });
+        if (err instanceof ReferenceStorageLimitError) return reply.code(400).send({ error: "BAD_REFERENCE", message });
+        // Fastify multipart 超限会抛 FST_REQ_FILE_TOO_LARGE / statusCode 413。
+        const code = (err as { code?: string }).code;
+        const statusCode = (err as { statusCode?: number }).statusCode;
+        if (code === "FST_REQ_FILE_TOO_LARGE" || statusCode === 413) {
+          return reply.code(413).send({ error: "REFERENCE_TOO_LARGE", message: `reference 超过 ${MAX_PDF_REFERENCE_BYTES} bytes` });
+        }
         return reply.code(500).send({ error: "REFERENCE_UPLOAD_FAILED", message });
       } finally {
         activeProjectUploads.delete(projectId);

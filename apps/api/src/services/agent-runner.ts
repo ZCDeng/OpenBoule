@@ -70,6 +70,10 @@ function webRolePolicyFromProvider(provider: ReturnType<typeof selectFirstConfig
   };
 }
 
+/**
+ * 仅供测试使用：跳过联网 provider 的 pre-flight probe，直接取第一个已配置 provider。
+ * 生产路径用 rolePolicyWithSearchProbe（带 probe）。请勿删除——测试依赖它。
+ */
 export function rolePolicy(roleFile: string): RolePolicy {
   if (!WEB_ROLES.has(roleFile)) return baseReasoningPolicy();
   return webRolePolicyFromProvider(selectFirstConfiguredSearchProvider().selected);

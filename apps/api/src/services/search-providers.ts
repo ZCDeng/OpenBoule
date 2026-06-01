@@ -91,6 +91,8 @@ export async function probeProvider(provider: SearchProviderConfig): Promise<boo
       headers: { "content-type": "application/json", ...(provider.mcpServerConfig?.headers ?? {}) },
       body: JSON.stringify({ jsonrpc: "2.0", id: "boule-health", method: "tools/list", params: {} }),
     });
+    // probe 只看 status，主动 drain body 避免 socket 悬挂泄漏。
+    res.body?.cancel().catch(() => undefined);
     return res.ok;
   } catch {
     return false;

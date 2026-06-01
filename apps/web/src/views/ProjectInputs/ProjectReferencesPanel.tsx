@@ -109,7 +109,7 @@ export function ProjectReferencesPanel({
                 <div className="truncate text-sm">{ref.filename}</div>
                 <div className="text-xs text-neutral-500">
                   {ref.mimeType} · {ref.sizeBytes} bytes · {statusLabel(ref.parseStatus, ref.parseSource)}
-                  {ref.parseError ? ` · ${ref.parseError}` : ""}
+                  {ref.parseError ? ` · ${parseErrorLabel(ref.parseError)}` : ""}
                 </div>
               </div>
               <button
@@ -127,6 +127,12 @@ export function ProjectReferencesPanel({
       <div className="text-xs text-neutral-500">本次启动将冻结 {selectedIds.length} 个 reference。</div>
     </section>
   );
+}
+
+function parseErrorLabel(parseError: string): string {
+  // 仅特例化这一个 code，给出可操作提示；其余原样透出。
+  if (parseError === "CLAUDE_REFERENCE_OCR_DISABLED") return "扫描件需开启 Claude OCR 或改用数字版";
+  return parseError;
 }
 
 function statusLabel(status: ProjectReference["parseStatus"], source: ProjectReference["parseSource"]): string {

@@ -47,6 +47,17 @@ export async function parseReferenceDocument(input: { buffer: Buffer; mimeType: 
     return { body: local.text, parseStatus: "parsed", parseSource: "local-js", shouldStoreOriginal: false };
   }
 
+  // 仅 PDF 才送 Claude OCR：Office 扫描件无法作为合法 Anthropic document media_type 发送，直接走本地文本的 partial/failed 映射。
+  if (input.mimeType !== "application/pdf") {
+    return {
+      body: local.text,
+      parseStatus: local.signal === "partial" && local.text ? "partial" : "failed",
+      parseSource: local.text ? "local-js" : null,
+      shouldStoreOriginal: local.signal === "partial",
+      error: local.text ? undefined : "EMPTY_TEXT",
+    };
+  }
+
   try {
     const body = await extractScannedWithClaude(input);
     if (!body.trim()) throw new Error("CLAUDE_EMPTY_TEXT");
@@ -80,8 +91,12 @@ export function parseDigitalDocument(input: { buffer: Buffer; mimeType: string; 
     }, config.references.parseTimeoutMs);
     worker.once("message", (msg: { ok: boolean; result?: LocalParseResult; error?: string }) => {
       clearTimeout(timer);
-      if (msg.ok && msg.result) resolve(msg.result);
-      else reject(new Error(msg.error ?? "DOCUMENT_PARSE_FAILED"));
+      if (msg.ok && msg.result) {
+        resolve(msg.result);
+      } else {
+        worker.terminate().catch(() => undefined);
+        reject(new Error(msg.error ?? "DOCUMENT_PARSE_FAILED"));
+      }
     });
     worker.once("error", (err) => {
       clearTimeout(timer);
@@ -96,8 +111,15 @@ export function parseDigitalDocument(input: { buffer: Buffer; mimeType: string; 
   });
 }
 
+/** query() 流式消息的最小形状（只取本函数读到的字段，避免散在各处的 as any）。 */
+interface ClaudeQueryMessage {
+  type?: string;
+  message?: { content?: unknown };
+  result?: unknown;
+}
+
 async function extractScannedWithClaude(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<string> {
-  if (process.env.BOULE_ENABLE_CLAUDE_REFERENCE_OCR !== "1") {
+  if (!config.references.claudeReferenceOcrEnabled) {
     throw new Error("CLAUDE_REFERENCE_OCR_DISABLED");
   }
   const prompt = {
@@ -120,13 +142,35 @@ async function extractScannedWithClaude(input: { buffer: Buffer; mimeType: strin
       ],
     },
   };
-  let out = "";
-  for await (const msg of query({ prompt: [prompt] as any, options: { maxTurns: 1, model: config.agent.model } as any })) {
-    const content = (msg as any)?.message?.content;
-    if (Array.isArray(content)) {
-      for (const block of content) if (block?.type === "text" && typeof block.text === "string") out += block.text;
-    }
-    if ((msg as any)?.type === "result" && typeof (msg as any).result === "string") out += (msg as any).result;
+  // Claude 调用跑在 HTTP 主线程，没有截止时间会阻塞请求；用 Promise.race 加 parseTimeoutMs 死线。
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("CLAUDE_OCR_TIMEOUT")), config.references.parseTimeoutMs);
+  });
+  try {
+    return await Promise.race([deadline, drainClaudeQuery(prompt)]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
-  return out;
+}
+
+async function drainClaudeQuery(prompt: unknown): Promise<string> {
+  let result = "";
+  let fallback = "";
+  for await (const raw of query({ prompt: [prompt] as any, options: { maxTurns: 1, model: config.agent.model } as any })) {
+    const msg = raw as ClaudeQueryMessage;
+    // 终态 result 是权威输出；正常情况只取它，避免与流式 text block 双计。
+    if (msg.type === "result" && typeof msg.result === "string") {
+      result = msg.result;
+      continue;
+    }
+    // fallback：若始终没有 result 消息，再用累积的 text content block 兜底。
+    const content = msg.message?.content;
+    if (Array.isArray(content)) {
+      for (const block of content as { type?: string; text?: unknown }[]) {
+        if (block?.type === "text" && typeof block.text === "string") fallback += block.text;
+      }
+    }
+  }
+  return result || fallback;
 }

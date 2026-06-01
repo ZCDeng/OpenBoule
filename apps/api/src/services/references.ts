@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
 import type { DB } from "../db/client.ts";
 import { config } from "../config.ts";
-import { parseReferenceDocument, type ParseSource, type ParseStatus } from "./document-parsing.ts";
+import { isTextLikeMime, parseReferenceDocument, type ParseSource, type ParseStatus } from "./document-parsing.ts";
+
+/** 项目 reference 总量超额（替代字符串匹配，路由层据此映射 400）。 */
+export class ReferenceStorageLimitError extends Error {}
 
 export const MAX_REFERENCE_BYTES = config.references.textMaxBytes;
 export const MAX_REFERENCES_PER_WORKFLOW = 20;
@@ -10,7 +13,6 @@ export const MAX_OFFICE_REFERENCE_BYTES = config.references.officeMaxBytes;
 export const MAX_PROJECT_REFERENCE_BYTES = config.references.projectMaxBytes;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const TEXT_MIME_RE = /^(text\/|application\/(json|xml|csv|x-yaml|yaml))/i;
 
 export interface ProjectReferenceRow {
   id: string;
@@ -59,7 +61,7 @@ export function validateReferenceUpload(raw: unknown): { ok: true; filename: str
   if (typeof body !== "string") return { ok: false, error: "body 必填" };
   const file = validateReferenceFile({ filename, mimeType, buffer: Buffer.from(body, "utf8") });
   if (!file.ok) return file;
-  if (!TEXT_MIME_RE.test(file.mimeType)) return { ok: false, error: "JSON 上传只支持文本 reference；二进制请使用 multipart" };
+  if (!isTextLikeMime(file.mimeType)) return { ok: false, error: "JSON 上传只支持文本 reference；二进制请使用 multipart" };
   const text = body.trim();
   if (!text) return { ok: false, error: "body 必填" };
   return { ok: true, filename: file.filename, mimeType: file.mimeType, body: text, sizeBytes: file.sizeBytes };
@@ -88,7 +90,7 @@ function detectMimeType(buffer: Buffer, declared: string | undefined, filename: 
     if (lower.endsWith(".xlsx") || d.includes("spreadsheetml")) return { ok: true, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
     return { ok: false, error: "不支持的 Office/ZIP reference 类型" };
   }
-  if (TEXT_MIME_RE.test(d) || /\.(txt|md|csv|json|ya?ml)$/i.test(filename)) return { ok: true, mimeType: d || "text/plain" };
+  if (isTextLikeMime(d) || /\.(txt|md|csv|json|ya?ml)$/i.test(filename)) return { ok: true, mimeType: d || "text/plain" };
   return { ok: false, error: "不支持的 reference 类型或文件签名不匹配" };
 }
 
@@ -118,14 +120,16 @@ export async function listProjectReferences(db: DB, projectId: string): Promise<
 export async function createProjectReference(
   db: DB,
   projectId: string,
-  input: { filename: string; mimeType: string; sizeBytes: number; body?: string; buffer?: Buffer },
+  input:
+    | { filename: string; mimeType: string; sizeBytes: number; body: string }
+    | { filename: string; mimeType: string; sizeBytes: number; buffer: Buffer },
 ): Promise<ProjectReferenceListRow> {
   const budget = await assertProjectReferenceStorageBudget(db, projectId, input.sizeBytes);
-  if (!budget.ok) throw new Error(budget.error);
-  const parsed = input.body != null
+  if (!budget.ok) throw new ReferenceStorageLimitError(budget.error);
+  const parsed = "body" in input
     ? { body: input.body, parseStatus: "parsed" as ParseStatus, parseSource: "local-js" as ParseSource, shouldStoreOriginal: false, error: null }
-    : await parseReferenceDocument({ buffer: input.buffer ?? Buffer.alloc(0), mimeType: input.mimeType, filename: input.filename });
-  const originalBinary = parsed.shouldStoreOriginal ? input.buffer ?? null : null;
+    : await parseReferenceDocument({ buffer: input.buffer, mimeType: input.mimeType, filename: input.filename });
+  const originalBinary = "buffer" in input && parsed.shouldStoreOriginal ? input.buffer : null;
   const res = await db.execute(sql`
     INSERT INTO project_references (project_id, filename, mime_type, size_bytes, body, original_binary, parse_status, parse_source, parse_error)
     VALUES (${projectId}, ${input.filename}, ${input.mimeType}, ${input.sizeBytes}, ${parsed.body}, ${originalBinary}, ${parsed.parseStatus}, ${parsed.parseSource}, ${parsed.error ?? null})

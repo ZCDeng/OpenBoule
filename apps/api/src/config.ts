@@ -39,11 +39,28 @@ function searchOrder(): ("aditly" | "anysearch")[] {
 
 function publicHttpsUrl(name: string, fallback: string): string {
   const value = optional(name, fallback).trim();
+  // 空串 / "off" 是有意禁用（关闭外部 provider），不是配置错误，直接放行。
   if (value === "" || value.toLowerCase() === "off") return value;
   const url = new URL(value);
   if (url.protocol !== "https:") throw new Error(`环境变量 ${name} 必须是 HTTPS URL 或 off`);
-  const host = url.hostname.toLowerCase();
-  if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.startsWith("10.") || host.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) {
+  let host = url.hostname.toLowerCase();
+  // IPv6 字面量 new URL 会带方括号，剥掉再比对。
+  if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
+  // SSRF 阻断名单：环回 / 全零 / 内网 / 链路本地（含云元数据 169.254）/ IPv6 ULA / link-local / IPv4-mapped。
+  const blocked =
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host === "::" ||
+    host === "::1" ||
+    host.startsWith("127.") ||
+    host.startsWith("10.") ||
+    host.startsWith("192.168.") ||
+    host.startsWith("169.254.") || // 链路本地 + 云 metadata 端点
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+    host.startsWith("fc") || host.startsWith("fd") || // IPv6 ULA fc00::/7
+    host.startsWith("fe8") || host.startsWith("fe9") || host.startsWith("fea") || host.startsWith("feb") || // link-local fe80::/10
+    host.startsWith("::ffff:"); // IPv4-mapped IPv6（绕过用）
+  if (blocked) {
     throw new Error(`环境变量 ${name} 不允许指向环回或内网地址`);
   }
   return value;
@@ -95,6 +112,7 @@ export const config = {
     officeMaxBytes: numeric("REFERENCE_OFFICE_MAX_BYTES", "5242880"),
     projectMaxBytes: numeric("REFERENCE_PROJECT_MAX_BYTES", "104857600"),
     parseTimeoutMs: numeric("REFERENCE_PARSE_TIMEOUT_MS", "120000"),
+    claudeReferenceOcrEnabled: optional("BOULE_ENABLE_CLAUDE_REFERENCE_OCR", "") === "1",
   },
 
   search: {
