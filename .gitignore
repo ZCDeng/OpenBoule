@@ -25,3 +25,6 @@ spikes/.snapshot-cache/
 # tooling runtime state (machine-local, not project source)
 .omx/
 .claude/homunculus/
+
+# understand-anything knowledge graph (machine-local, regenerable via /understand)
+.understand-anything/
