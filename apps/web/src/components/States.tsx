@@ -31,7 +31,7 @@ export function EmptyState({ title, hint, action }: { title: string; hint?: stri
 
 export function ErrorBanner({ severity, message, onRetry }: { severity: "P0" | "P1" | "P2"; message: string; onRetry?: () => void }) {
   const tone = {
-    P0: "bg-red-600 text-white",
+    P0: "bg-[var(--boule-red)] text-white",
     P1: "bg-[var(--boule-orange)] text-white",
     P2: "bg-[var(--boule-paper)] text-black",
   }[severity];

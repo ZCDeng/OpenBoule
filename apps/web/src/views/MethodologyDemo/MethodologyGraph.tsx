@@ -11,7 +11,7 @@ const nodeTypes = { phase: PhaseNode };
 export function MethodologyGraph({ statusByPhase }: { statusByPhase?: Record<string, PhaseRunStatus> }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const positions = useMemo(() => layoutPhases(PHASE_LABELS.map((p) => p.id), 120), []);
-  const nodes: Node<PhaseNodeData>[] = useMemo(() => PHASE_LABELS.map((p, i) => ({ id: p.id, type: "phase", position: { x: positions[i]!.x, y: positions[i]!.y }, data: { label: p.label, note: p.note, sampleOutputs: (i % 3) + 1, status: statusByPhase?.[p.id], onOpen: () => setOpenId(p.id) } })), [positions, statusByPhase]);
+  const nodes: Node<PhaseNodeData>[] = useMemo(() => PHASE_LABELS.map((p, i) => ({ id: p.id, type: "phase", position: { x: positions[i]!.x, y: positions[i]!.y }, data: { label: p.label, note: p.note, status: statusByPhase?.[p.id], onOpen: () => setOpenId(p.id) } })), [positions, statusByPhase]);
   const edges: Edge[] = useMemo(() => PHASE_LABELS.slice(1).map((p, i) => ({ id: `${PHASE_LABELS[i]!.id}-${p.id}`, source: PHASE_LABELS[i]!.id, target: p.id, animated: false, style: { stroke: "#0B0B0B", strokeWidth: 2 } })), []);
   const open = PHASE_LABELS.find((p) => p.id === openId);
   return (

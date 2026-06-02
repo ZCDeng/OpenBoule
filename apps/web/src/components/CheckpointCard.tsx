@@ -42,7 +42,7 @@ export function CheckpointCard({ surface, canDecide, onDecide, busy }: { surface
           </div>
         )}
         {confirming === "reject" && (
-          <div className="mt-5 border-2 border-black bg-red-600 p-4 text-sm text-white">
+          <div className="mt-5 border-2 border-black bg-[var(--boule-red)] p-4 text-sm text-white">
             确认拒绝此步骤？
             <div className="mt-3 flex gap-2">
               <Button variant="secondary" onClick={() => { onDecide("reject"); setConfirming(null); }}>确认拒绝</Button>

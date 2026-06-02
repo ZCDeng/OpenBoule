@@ -58,9 +58,9 @@ export function LoginPage() {
           <div className="boule-panel-body">
             {error && <div className="mb-4"><ErrorBanner severity="P0" message={error} /></div>}
             <form onSubmit={submit} className="space-y-4">
-              {mode === "register" && <TextInput placeholder="姓名" value={name} onChange={(e) => setName(e.target.value)} />}
-              <TextInput placeholder="邮箱" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <TextInput placeholder="密码" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              {mode === "register" && <TextInput aria-label="姓名" placeholder="姓名" value={name} onChange={(e) => setName(e.target.value)} />}
+              <TextInput aria-label="邮箱" placeholder="邮箱" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <TextInput aria-label="密码" placeholder="密码" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
               <Button disabled={busy} className="w-full">{busy ? "处理中…" : mode === "login" ? "登录" : "注册"}</Button>
             </form>
             <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }} className="mt-5 w-full border-b-2 border-black pb-1 text-center font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)] hover:text-black">
