@@ -20,6 +20,8 @@ export function Workspace({ workflowId }: { workflowId: string }) {
   const arts = useQuery({ queryKey: ["artifacts", workflowId], queryFn: () => api.json<{ artifacts: ArtifactRow[] }>(`/api/workflows/${workflowId}/artifacts`) });
   const stale = useQuery({ queryKey: ["stale", workflowId], queryFn: () => api.json<{ stalePhases: string[] }>(`/api/workflows/${workflowId}/stale`) });
   const selected = useQuery({ queryKey: ["artifact", selectedId], enabled: !!selectedId, queryFn: () => api.json<ArtifactRow>(`/api/artifacts/${selectedId}`) });
+  // Rules of Hooks：所有 hook 必须在任何条件早返回之前调用，否则不同渲染 hook 数量不一致会崩。
+  const rerun = useMutation({ mutationFn: (phase: string) => api.json(`/api/workflows/${workflowId}/rerun`, { method: "POST", body: JSON.stringify({ phase }) }), onSuccess: () => void stale.refetch() });
   if (arts.isLoading) return <Skeleton rows={4} />;
   if (arts.isError) return <ErrorBanner severity="P1" message="加载文档失败" onRetry={() => void arts.refetch()} />;
   if (!arts.data || arts.data.artifacts.length === 0) return <EmptyState title="暂无文档" hint="任务产出成果后在此编辑。" />;
@@ -28,7 +30,6 @@ export function Workspace({ workflowId }: { workflowId: string }) {
   const phaseLabel = (phase: string) => PHASE_LABELS.find((p) => p.id === phase)?.label ?? phase;
   const readOnlyHistory = Boolean(selected.data && isHistoryVersion(arts.data.artifacts, selected.data));
   const handleSaved = (nextId: string) => { setSelectedId(nextId); void arts.refetch(); void stale.refetch(); };
-  const rerun = useMutation({ mutationFn: (phase: string) => api.json(`/api/workflows/${workflowId}/rerun`, { method: "POST", body: JSON.stringify({ phase }) }), onSuccess: () => void stale.refetch() });
   return (
     <div ref={workspaceRef} className="space-y-5">
       {earliestStale && <Banner tone="warn" action={<Button variant="secondary" onClick={() => rerun.mutate(earliestStale)} disabled={rerun.isPending}>{rerun.isPending ? "重跑中…" : "保存并重跑后续步骤"}</Button>}><span>⚠ {stalePhases.size} 个后续步骤因前序修改已过期。</span>{rerun.isError && <span className="ml-3 font-[var(--boule-mono)] text-xs">重跑失败（需审校权限，且当前无进行中的步骤）</span>}</Banner>}

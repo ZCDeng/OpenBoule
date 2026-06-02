@@ -102,6 +102,9 @@ export class SseClient {
       this.scheduleReconnect();
       return;
     }
+    // close() 可能在 await ticket 期间发生（如 StrictMode mount→unmount→mount）。
+    // 不重新检查就会创建一个游离的 EventSource，事件被重复 push。
+    if (this.closed) return;
     const url = `${this.deps.baseUrl}?ticket=${encodeURIComponent(ticket)}&lastEventId=${this.lastEventId}`;
     const es = this.deps.eventSourceFactory(url);
     this.es = es;

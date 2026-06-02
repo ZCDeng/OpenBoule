@@ -30,7 +30,7 @@ export function LoginPage() {
       setSession(res.userId, { accessToken: res.accessToken, refreshToken: res.refreshToken });
       nav("/projects");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "登录失败");
+      setError(err instanceof ApiError ? err.message : "无法连接服务器，请检查网络后重试");
     } finally {
       setBusy(false);
     }
