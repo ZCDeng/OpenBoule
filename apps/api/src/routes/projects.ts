@@ -36,6 +36,26 @@ export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void
     return reply.send({ projects: (res as unknown as { rows: unknown[] }).rows });
   });
 
+  app.get(
+    "/api/projects/:id/workflows",
+    {
+      preHandler: [
+        authenticate,
+        requireProjectRole(db, "viewer", async (req) => (req.params as { id: string }).id),
+      ],
+    },
+    async (req, reply) => {
+      const projectId = (req.params as { id: string }).id;
+      const res = await db.execute(sql`
+        SELECT id, current_phase AS "currentPhase", status, mode, updated_at AS "updatedAt", created_at AS "createdAt"
+          FROM workflows
+         WHERE project_id = ${projectId}
+         ORDER BY updated_at DESC, created_at DESC
+         LIMIT 12`);
+      return reply.send({ workflows: (res as unknown as { rows: unknown[] }).rows });
+    },
+  );
+
   app.post(
     "/api/projects/:id/members",
     {
