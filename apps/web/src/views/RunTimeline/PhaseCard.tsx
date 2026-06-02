@@ -6,7 +6,7 @@ const STATUS_META: Record<PhaseRunStatus, { label: string; tone: "plain" | "blue
   waiting: { label: "等待中", tone: "plain" },
   running: { label: "进行中", tone: "blue" },
   completed: { label: "已完成", tone: "dark" },
-  needs_approval: { label: "需审批", tone: "orange" },
+  needs_approval: { label: "待确认", tone: "orange" },
   rejected: { label: "已拒绝", tone: "orange" },
 };
 
@@ -36,13 +36,13 @@ export function PhaseCard(props: PhaseCardProps) {
         <Badge tone={meta.tone}>{meta.label}</Badge>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.08em] text-[var(--boule-muted)]">
-        {typeof props.tokens === "number" && <span>token {props.tokens.toLocaleString()}</span>}
-        {props.agents && props.agents.length > 0 && <span>agent {props.agents.length}</span>}
-        {props.belowThreshold && <Badge tone="orange">⚠ 未达放行闸</Badge>}
+        {typeof props.tokens === "number" && <span>Token 用量 {props.tokens.toLocaleString()}</span>}
+        {props.agents && props.agents.length > 0 && <span>调研单元 {props.agents.length}</span>}
+        {props.belowThreshold && <Badge tone="orange">⚠ 未通过质量校验</Badge>}
       </div>
       {props.status === "needs_approval" && props.canDecide && props.onDecide && (
         <div className="mt-4 flex flex-wrap gap-2">
-          {(["approve", "redo", "augment"] as const).map((d) => <Button key={d} disabled={props.busy} variant={d === "approve" ? "primary" : "secondary"} onClick={() => props.onDecide!(d)}>{{ approve: "继续", redo: "重跑", augment: "补研究" }[d]}</Button>)}
+          {(["approve", "redo", "augment"] as const).map((d) => <Button key={d} disabled={props.busy} variant={d === "approve" ? "primary" : "secondary"} onClick={() => props.onDecide!(d)}>{{ approve: "继续", redo: "重跑", augment: "补充调研" }[d]}</Button>)}
         </div>
       )}
       {props.status === "needs_approval" && !props.canDecide && <p className="mt-3 font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)]">只读角色不可决策</p>}

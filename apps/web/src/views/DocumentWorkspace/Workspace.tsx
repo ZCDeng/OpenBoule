@@ -19,7 +19,7 @@ export function Workspace({ workflowId }: { workflowId: string }) {
   const selected = useQuery({ queryKey: ["artifact", selectedId], enabled: !!selectedId, queryFn: () => api.json<ArtifactRow>(`/api/artifacts/${selectedId}`) });
   if (arts.isLoading) return <Skeleton rows={4} />;
   if (arts.isError) return <ErrorBanner severity="P1" message="加载文档失败" onRetry={() => void arts.refetch()} />;
-  if (!arts.data || arts.data.artifacts.length === 0) return <EmptyState title="暂无文档" hint="工作流跑出 artifact 后在此编辑。" />;
+  if (!arts.data || arts.data.artifacts.length === 0) return <EmptyState title="暂无文档" hint="任务产出成果后在此编辑。" />;
   const stalePhases = new Set(stale.data?.stalePhases ?? []);
   const earliestStale = PHASE_LABELS.map((p) => p.id).find((id) => stalePhases.has(id));
   const phaseLabel = (phase: string) => PHASE_LABELS.find((p) => p.id === phase)?.label ?? phase;
@@ -28,7 +28,7 @@ export function Workspace({ workflowId }: { workflowId: string }) {
   const rerun = useMutation({ mutationFn: (phase: string) => api.json(`/api/workflows/${workflowId}/rerun`, { method: "POST", body: JSON.stringify({ phase }) }), onSuccess: () => void stale.refetch() });
   return (
     <div className="space-y-5">
-      {earliestStale && <div className="flex flex-wrap items-center gap-3 border-2 border-black bg-[var(--boule-orange)] px-4 py-3 text-sm text-white shadow-[4px_4px_0_#0B0B0B]"><span>⚠ {stalePhases.size} 个下游阶段因上游编辑已过期。</span><Button variant="secondary" onClick={() => rerun.mutate(earliestStale)} disabled={rerun.isPending}>{rerun.isPending ? "重跑中…" : "保存并重跑下游"}</Button>{rerun.isError && <span className="font-[var(--boule-mono)] text-xs">重跑失败（需 Editor 且当前无运行中阶段）</span>}</div>}
+      {earliestStale && <div className="flex flex-wrap items-center gap-3 border-2 border-black bg-[var(--boule-orange)] px-4 py-3 text-sm text-white shadow-[4px_4px_0_#0B0B0B]"><span>⚠ {stalePhases.size} 个后续步骤因前序修改已过期。</span><Button variant="secondary" onClick={() => rerun.mutate(earliestStale)} disabled={rerun.isPending}>{rerun.isPending ? "重跑中…" : "保存并重跑后续步骤"}</Button>{rerun.isError && <span className="font-[var(--boule-mono)] text-xs">重跑失败（需审校权限，且当前无进行中的步骤）</span>}</div>}
       <div className="grid gap-5 xl:grid-cols-[240px_1fr_260px]">
         <Panel><PanelHeader k="DOC TREE" title="文档树" /><DocumentList docs={arts.data.artifacts} stalePhases={stalePhases} selectedId={selectedId} onSelect={setSelectedId} /></Panel>
         <section>{!selectedId ? <EmptyState title="选择左侧文档开始编辑" /> : selected.isLoading ? <Skeleton rows={6} /> : selected.data ? <Editor key={selected.data.id} artifactId={selected.data.id} initialBody={selected.data.body ?? ""} meta={{ phase: selected.data.phase, phaseLabel: phaseLabel(selected.data.phase), type: selected.data.type, version: selected.data.version, status: selected.data.status, stale: selected.data.stale || stalePhases.has(selected.data.phase) }} readOnly={readOnlyHistory} onSaved={handleSaved} /> : null}</section>

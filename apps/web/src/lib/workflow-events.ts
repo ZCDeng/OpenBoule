@@ -1,4 +1,5 @@
 import type { SseEvent } from "./sse.ts";
+import { phaseLabel, statusLabel } from "./labels.ts";
 
 export type WorkflowEventTone = "neutral" | "blue" | "green" | "amber" | "red";
 
@@ -73,7 +74,7 @@ export function normalizeWorkflowEvent(ev: SseEvent): WorkflowEventItem | null {
     case "agent-progress": {
       const type = str(data.type);
       if (type === "thinking_delta") return null;
-      const summary = str(data.summary) ?? (type ? `Agent 事件：${type}` : "Agent 更新");
+      const summary = str(data.summary) ?? (type ? `处理事件：${type}` : "处理进展");
       const title =
         type === "tool_use"
           ? "工具调用"
@@ -82,24 +83,24 @@ export function normalizeWorkflowEvent(ev: SseEvent): WorkflowEventItem | null {
             : type === "usage"
               ? "Token 用量"
               : type === "status"
-                ? "Agent 状态"
-                : "Agent 工作";
+                ? "运行状态"
+                : "处理中";
       return { ...base, title, summary, tone: type === "tool_result" && data.isError === true ? "red" : "blue" };
     }
     case "workflow-status-changed":
-      return { ...base, title: "工作流状态更新", summary: `状态变为 ${str(data.status) ?? "未知"}`, tone: "blue" };
+      return { ...base, title: "任务状态更新", summary: `状态变为 ${str(data.status) ? statusLabel(str(data.status)) : "未知"}`, tone: "blue" };
     case "phase-scaffolded":
-      return { ...base, title: "阶段骨架已生成", summary: phase ? `${phase} 已准备` : "阶段骨架已准备", tone: "green" };
+      return { ...base, title: "步骤已初始化", summary: phase ? `${phaseLabel(phase)} 已准备` : "步骤已准备", tone: "green" };
     case "phase-aggregated":
-      return { ...base, title: "阶段结果已聚合", summary: phase ? `${phase} 聚合完成` : "阶段聚合完成", tone: "green" };
+      return { ...base, title: "步骤结果已汇总", summary: phase ? `${phaseLabel(phase)} 汇总完成` : "步骤汇总完成", tone: "green" };
     case "surface_request":
-      return { ...base, title: "需要审批", summary: "阶段已暂停，等待处理 checkpoint", tone: "amber" };
+      return { ...base, title: "需要确认", summary: "步骤已暂停，等待确认", tone: "amber" };
     case "surface_response":
-      return { ...base, title: "审批已处理", summary: "checkpoint 已关闭", tone: "green" };
+      return { ...base, title: "确认已处理", summary: "确认节点已关闭", tone: "green" };
     case "artifact-below-threshold":
-      return { ...base, title: "产物未达阈值", summary: "系统已标记需要关注的交付物", tone: "amber" };
+      return { ...base, title: "成果未达标", summary: "系统已标记需要关注的交付物", tone: "amber" };
     case "workflow-completed":
-      return { ...base, title: "工作流完成", summary: "全部阶段已完成", tone: "green" };
+      return { ...base, title: "任务完成", summary: "全部步骤已完成", tone: "green" };
     case "sse-warning":
       return { ...base, title: "实时连接提示", summary: str(data.message) ?? "事件更新暂时不可用", tone: "amber" };
     default:
