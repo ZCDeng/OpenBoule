@@ -57,7 +57,7 @@ BOULE_OCR_FALLBACK=none
 
 liteparse 的 `TextItem.confidence` **实测已是 0..1**（`apps/api/scripts/ocr-calibrate.mjs`：清晰英文 OCR ≈0.95，糊掉的中文 ≈0.49），**不是** Tesseract 原生 0–100。`BOULE_OCR_CONFIDENCE_THRESHOLD`（0.55）/ `BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD`（0.85）就是按 0..1 设的，`averageConfidence` **直接取均值、不要除 100**。
 
-历史教训：2026-06-03 一轮 code-review 的 3 个 agent 靠反汇编断言 confidence 是 0–100，据此加了 `/100` 归一（commit 8dd5ea8），反而把门弄成"全判失败"。实测推翻了该断言。结论：confidence 量级这类事**以实测为准**，不信反汇编推断。
+历史教训：2026-06-03 一轮 code-review 的 3 个 agent 靠反汇编断言 confidence 是 0–100，据此加了 `/100` 归一（commit 8dd5ea8），反而把门弄成"全判失败"。实测推翻了该断言。结论：confidence 量级这类事**以实测为准**，不信反汇编推断。这条已抽成可复用的评审纪律：见 [评审结论需实测校准](conventions/review-findings-need-empirical-calibration.md)。
 
 ## 隔离与失败语义
 
