@@ -4,6 +4,8 @@ import { useAuth } from "../stores/auth.ts";
 import { ErrorBanner, Skeleton } from "../components/States.tsx";
 import { Badge, Button, DataRow, PageHeader, PageShell, Panel, PanelHeader, SelectInput, TextInput } from "../components/Brutalist.tsx";
 
+const MODE_LABELS: Record<string, string> = { local: "本地", team: "团队" };
+
 interface RuntimeSettings {
   mode: "local" | "team";
   claudeOnly: boolean;
@@ -33,19 +35,19 @@ export function SettingsPage() {
   return (
     <PageShell wide>
       <PageHeader eyebrow="Nº 05 — CONTROL PLANE" title="配置与密钥">
-        当前登录用户即配置管理员。这里展示运行时、Claude 调用路径、检索 Provider 与个人 API Key。
+        当前登录用户即配置管理员。这里展示运行环境、Claude 调用路径、检索服务商与个人 API Key。
       </PageHeader>
 
       <div className="mt-8 space-y-8">
         {runtime.isLoading ? <Skeleton rows={4} /> : runtime.isError || !data ? <ErrorBanner severity="P1" message="加载配置失败" onRetry={() => void runtime.refetch()} /> : (
           <div className="boule-grid boule-grid--2">
             <Panel>
-              <PanelHeader k="RUNTIME" title="运行时状态" />
+              <PanelHeader k="RUNTIME" title="运行环境状态" />
               <div className="boule-panel-body">
                 <dl>
-                  <DataRow label="模式" value={data.mode} />
+                  <DataRow label="模式" value={MODE_LABELS[data.mode] ?? data.mode} />
                   <DataRow label="模型" value={data.agent.model} />
-                  <DataRow label="Runtime" value={data.agent.runtime} />
+                  <DataRow label="运行环境" value={data.agent.runtime} />
                   <DataRow label="调用方式" value={data.agent.invocationMode} />
                 </dl>
                 <p className="mt-4 text-sm text-[#33332e]">OpenConsult/Boule 是 Claude-only 工作台：不支持其它模型；模型调用由服务端环境和 Agent SDK 认证状态决定。</p>
@@ -55,7 +57,7 @@ export function SettingsPage() {
               <PanelHeader k="SEARCH" title="MCP / Web 检索" />
               <div className="boule-panel-body">
                 <dl>
-                  <DataRow label="Provider" value={data.search.provider} />
+                  <DataRow label="服务商" value={data.search.provider} />
                   <DataRow label="状态" value={data.search.enabled ? <Badge tone="blue">已启用</Badge> : <Badge>未启用</Badge>} />
                   <DataRow label="URL" value={data.search.url ?? "off"} />
                   <DataRow label="工具" value={data.search.tools.length ? data.search.tools.join(", ") : "无"} />
@@ -80,8 +82,8 @@ export function SettingsPage() {
             <div className="grid gap-2 md:grid-cols-[1fr_160px_auto]">
               <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Key 名称" />
               <SelectInput value={scope} onChange={(e) => setScope(e.target.value as "read" | "write")}>
-                <option value="write">write</option>
-                <option value="read">read</option>
+                <option value="write">读写</option>
+                <option value="read">只读</option>
               </SelectInput>
               <Button disabled={createKey.isPending || name.trim() === ""} onClick={() => createKey.mutate()}>创建 Key</Button>
             </div>
@@ -94,7 +96,7 @@ export function SettingsPage() {
                   <div key={key.id} className="boule-list-row hover:bg-[var(--boule-paper)] hover:text-black">
                     <div className="min-w-0">
                       <div className="font-[var(--boule-disp)] text-xl font-black tracking-[-0.02em]">{key.name}</div>
-                      <div className="mt-1 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.1em] text-[var(--boule-muted)]">{key.prefix} · {key.scope} · {key.lastUsedAt ? `最近使用 ${new Date(key.lastUsedAt).toLocaleString()}` : "未使用"}</div>
+                      <div className="mt-1 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.1em] text-[var(--boule-muted)]">{key.prefix} · {key.scope === "write" ? "读写" : "只读"} · {key.lastUsedAt ? `最近使用 ${new Date(key.lastUsedAt).toLocaleString()}` : "未使用"}</div>
                     </div>
                     <Button variant="secondary" disabled={revoke.isPending} onClick={() => revoke.mutate(key.id)}>撤销</Button>
                   </div>

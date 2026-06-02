@@ -17,7 +17,7 @@ test("workflow event normalizer maps known events and filters thinking_delta", (
 
   const out = normalizeWorkflowEvents(events);
   assert.equal(out.length, 2);
-  assert.equal(out[0]!.title, "工作流状态更新");
+  assert.equal(out[0]!.title, "任务状态更新");
   assert.equal(out[1]!.title, "工具调用");
   assert.ok(!JSON.stringify(out).includes("secret"));
 });

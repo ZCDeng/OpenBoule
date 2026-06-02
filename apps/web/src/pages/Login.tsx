@@ -40,13 +40,13 @@ export function LoginPage() {
     <PageShell>
       <div className="grid gap-8 lg:grid-cols-[1.15fr_.85fr] lg:items-end">
         <header className="border-b-2 border-black pb-8">
-          <div className="boule-eyebrow">Nº 00 — AUTH GATE</div>
+          <div className="boule-eyebrow">Nº 00 — 登录</div>
           <h1 className="boule-title">进入<br />咨询流水线。</h1>
-          <p className="boule-lede">Claude-only 工作台。注册后即可创建项目、上传 reference、启动 7+2 阶段咨询工作流。</p>
+          <p className="boule-lede">Claude-only 工作台。注册后即可创建项目、上传材料、启动 7+2 阶段咨询任务。</p>
           <div className="mt-6 flex flex-wrap gap-2">
             <Badge tone="orange">Claude专用</Badge>
-            <Badge>JWT Session</Badge>
-            <Badge>Owner Workspace</Badge>
+            <Badge>登录会话</Badge>
+            <Badge>个人工作区</Badge>
           </div>
         </header>
 

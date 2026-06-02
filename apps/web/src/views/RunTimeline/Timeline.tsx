@@ -12,7 +12,7 @@ export interface TimelineProps { currentPhase?: string; workflowStatus?: string;
 export function Timeline(props: TimelineProps) {
   if (props.loading) return <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} rows={2} />)}</div>;
   if (props.error) return <ErrorBanner severity="P0" message={props.error} onRetry={props.onRetry} />;
-  if (!props.currentPhase) return <EmptyState title="暂无 run" hint="在项目页选择 mode 启动一次工作流。" />;
+  if (!props.currentPhase) return <EmptyState title="暂无任务" hint="在项目页选择模式启动一次任务。" />;
   const normalizedEvents = normalizeWorkflowEvents(props.events ?? []);
   const currentPhaseEvents = eventsForPhase(normalizedEvents, props.currentPhase).slice(-5);
   return (

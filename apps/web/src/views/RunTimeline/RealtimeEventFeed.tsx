@@ -1,5 +1,6 @@
 import type { SseEvent } from "../../lib/sse.ts";
 import { normalizeWorkflowEvents, type WorkflowEventItem } from "../../lib/workflow-events.ts";
+import { phaseLabel } from "../../lib/labels.ts";
 import { Badge } from "../../components/Brutalist.tsx";
 
 const TONE_CLASS: Record<WorkflowEventItem["tone"], string> = {
@@ -27,11 +28,11 @@ export function RealtimeEventFeed({ events, currentPhase, offline, limit = 30, c
               <li key={item.id} className={`border-2 border-black p-3 text-sm shadow-[3px_3px_0_#0B0B0B] ${TONE_CLASS[item.tone]} ${active ? "outline outline-2 outline-[var(--boule-blue)]" : ""}`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-[var(--boule-disp)] font-black tracking-[-0.02em]">{item.title}</span>
-                  {item.phase && <span className="border border-current px-1.5 py-0.5 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em]">{item.phase}</span>}
+                  {item.phase && <span className="border border-current px-1.5 py-0.5 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em]">{phaseLabel(item.phase)}</span>}
                   <span className="ml-auto font-[var(--boule-mono)] text-[10px] opacity-65">#{item.eventId}</span>
                 </div>
                 <p className="mt-1 text-xs opacity-80">{item.summary}</p>
-                {!compact && <details className="mt-2 text-xs"><summary className="cursor-pointer font-[var(--boule-mono)] uppercase tracking-[0.08em]">原始事件</summary><pre className="mt-2 max-h-48 overflow-auto border-2 border-current bg-transparent p-2">{JSON.stringify(item.raw, null, 2)}</pre></details>}
+                {!compact && <details className="mt-2 text-xs"><summary className="cursor-pointer font-[var(--boule-mono)] uppercase tracking-[0.08em]">技术详情</summary><pre className="mt-2 max-h-48 overflow-auto border-2 border-current bg-transparent p-2">{JSON.stringify(item.raw, null, 2)}</pre></details>}
               </li>
             );
           })}

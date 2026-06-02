@@ -37,7 +37,7 @@ export function ErrorBanner({ severity, message, onRetry }: { severity: "P0" | "
   }[severity];
   return (
     <div className={`flex items-center justify-between gap-4 border-2 border-black px-4 py-3 text-sm shadow-[4px_4px_0_#0B0B0B] ${tone}`} role="alert">
-      <span className="font-[var(--boule-mono)] text-xs uppercase tracking-[0.08em]">{severity} · {message}</span>
+      <span className="font-[var(--boule-mono)] text-xs uppercase tracking-[0.08em]">{message}</span>
       {onRetry && <Button variant="secondary" onClick={onRetry}>重试</Button>}
     </div>
   );
@@ -52,6 +52,6 @@ export function OfflineBanner({ reconnecting }: { reconnecting: boolean }) {
   );
 }
 
-export function PermissionDenied({ need = "Editor" }: { need?: string }) {
-  return <EmptyState title="权限不足" hint={`当前角色无权访问此操作，请联系项目 Owner 申请 ${need} 权限。`} />;
+export function PermissionDenied({ need = "审校" }: { need?: string }) {
+  return <EmptyState title="权限不足" hint={`当前角色无权访问此操作，请联系项目所有者申请${need}权限。`} />;
 }

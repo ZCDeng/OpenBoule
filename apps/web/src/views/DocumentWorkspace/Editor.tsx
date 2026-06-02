@@ -12,6 +12,7 @@ import { useAuth } from "../../stores/auth.ts";
 import { debounce } from "../../lib/debounce.ts";
 import { ApiClient, ApiError } from "../../lib/api.ts";
 import { ErrorBanner } from "../../components/States.tsx";
+import { statusLabel } from "../../lib/labels.ts";
 import { Badge, Button } from "../../components/Brutalist.tsx";
 
 type LockState = { kind: "acquiring" } | { kind: "held" } | { kind: "locked"; holder: string; ttlSec: number };
@@ -154,8 +155,8 @@ export function Editor({
           <span className="font-[var(--boule-disp)] font-black tracking-[-0.02em]">{meta.phaseLabel}</span>
           <span>{meta.type}</span>
           <Badge>v{meta.version}</Badge>
-          <Badge>{meta.status}</Badge>
-          {meta.stale && <Badge tone="orange">stale</Badge>}
+          <Badge>{statusLabel(meta.status)}</Badge>
+          {meta.stale && <Badge tone="orange">{statusLabel("stale")}</Badge>}
         </div>
       </div>
 

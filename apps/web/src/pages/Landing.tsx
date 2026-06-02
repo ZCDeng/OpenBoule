@@ -36,23 +36,23 @@ const monoMeta: CSSProperties = {
 
 /* Nº 01 能力矩阵（demo CAPABILITIES，4 列等权）。 */
 const CAPABILITIES: { no: string; title: string; body: string }[] = [
-  { no: "01", title: "确定性脚手架", body: "Phase 0 秒级生成项目骨架与目录，不调模型、不耗 token。该用代码答的判断，绝不空转 agent。" },
-  { no: "02", title: "多角色 agent 编排", body: "researcher / strategy / editor / designer 按 7+2 阶段 DAG 分工 fan-out 并发、串行放行闸，合议交付。" },
-  { no: "03", title: "真实联网检索", body: "researcher 接 Aditly MCP 真检索：安思派深度搜索、博查实时信息、Jina 静态提取、Reach 动态抓取。带来源 URL 落进报告，不靠模型记忆编造，可超训练截止时点。" },
-  { no: "04", title: "对抗验证三票", body: "source-verifier 对每条断言独立三票裁决，refute 优先。站不住的论据当场出局，不让似是而非过关。" },
-  { no: "05", title: "AI persona 访谈", body: "atypica-research 生成 3–5 个 AI persona 深度访谈，抽取用户痛点与决策动机。basis 标 simulated，占比 ≤20%，诊断模式禁用。" },
+  { no: "01", title: "确定性初始化", body: "阶段 0 秒级建立项目结构与目录，不调模型、不耗 Token。该用代码答的判断，绝不空转 AI。" },
+  { no: "02", title: "多角色 AI 编排", body: "调研 / 综合 / 审校 / 设计按 7+2 阶段流程分工，并发（多线并行）、串行质量校验，合议交付。" },
+  { no: "03", title: "真实联网检索", body: "调研接 Aditly 真检索：安思派深度搜索、博查实时信息、Jina 静态提取、Reach 动态抓取。带来源 URL 落进报告，不靠模型记忆编造，可超训练截止时点。" },
+  { no: "04", title: "对抗验证三票", body: "来源核验对每条断言独立三票裁决，反驳优先。站不住的论据当场出局，不让似是而非过关。" },
+  { no: "05", title: "AI 用户访谈", body: "atypica-research 生成 3–5 个 AI 用户深度访谈，抽取用户痛点与决策动机。明确标注为模拟来源，占比 ≤20%，诊断模式禁用。" },
 ];
 
 /* Nº 02 角色编队（demo CREW，7 个真角色 + 第 8 张黑色扩展卡）。 */
 const ROLES: { rid: string; name: string; en: string; body: string; dark?: boolean }[] = [
-  { rid: "R1", name: "行业研究员", en: "industry-researcher", body: "接 web 工具按轴真检索，带来源 URL 落进报告。Phase 2 并发 fan-out。" },
-  { rid: "R2", name: "对抗声称验证", en: "source-verifier · v2.4", body: "对每条断言独立三票裁决，refute 优先。站不住的论据当场出局。" },
-  { rid: "R3", name: "战略顾问", en: "strategy-advisor", body: "把验证过的发现合成报告，Phase 3 出结构化结论与建议。" },
-  { rid: "R4", name: "审稿编辑", en: "editor", body: "Phase 4 串行三筛 + 语言闸门，代码裁决放行，不靠模型自评。" },
-  { rid: "R5", name: "设计师", en: "designer", body: "Phase 5 把报告排版交付，生成可分享的文档与方法论图。" },
-  { rid: "R6", name: "市场扫描员", en: "market-scanner", body: "Phase 6 增益，扫描热点与新增信号，回灌可追加的调研轴。" },
-  { rid: "R7", name: "信息架构师", en: "information-architect", body: "梳理目录与产物结构，为后续阶段提供可追溯的组织骨架。" },
-  { rid: "+N", name: "下一个角色", en: "your-role.md", body: "加一份角色 prompt 就多一种专长。引擎自动接管编排。", dark: true },
+  { rid: "R1", name: "行业研究员", en: "industry-researcher", body: "接联网工具按维度真检索，带来源 URL 落进报告。阶段 2 并发（多线并行）。" },
+  { rid: "R2", name: "对抗声称验证", en: "source-verifier · v2.4", body: "对每条断言独立三票裁决，反驳优先。站不住的论据当场出局。" },
+  { rid: "R3", name: "战略顾问", en: "strategy-advisor", body: "把验证过的发现合成报告，阶段 3 出结构化结论与建议。" },
+  { rid: "R4", name: "审稿编辑", en: "editor", body: "阶段 4 串行三筛 + 语言质量校验，代码裁决放行，不靠模型自评。" },
+  { rid: "R5", name: "设计师", en: "designer", body: "阶段 5 把报告排版交付，生成可分享的文档与方法论图。" },
+  { rid: "R6", name: "市场扫描员", en: "market-scanner", body: "阶段 6 增益，扫描热点与新增信号，回灌可追加的分析维度。" },
+  { rid: "R7", name: "信息架构师", en: "information-architect", body: "梳理目录与产物结构，为后续阶段提供可追溯的组织框架。" },
+  { rid: "+N", name: "下一个角色", en: "your-role.md", body: "加一份角色提示词就多一种专长。引擎自动接管编排。", dark: true },
 ];
 
 /* Nº 03 运行时三栏（demo RUNTIME）。 */
@@ -61,20 +61,20 @@ const RUNTIME: { rk: string; title: string; body: string; events?: string[] }[] 
   {
     rk: "事件流 · STREAM",
     title: "SDK 流归一成可审计事件",
-    body: "逐条 SDK 消息归一，前端实时看到 agent 状态、工具调用与 token 成本，不展示模型思考过程。",
-    events: ["status", "text_delta", "tool_use", "tool_result", "usage"],
+    body: "逐条 SDK 消息归一，前端实时看到 AI 状态、工具调用与 Token 用量，不展示模型思考过程。",
+    events: ["状态", "输出", "调用工具", "工具结果", "用量"],
   },
-  { rk: "编排 · ORCHESTRATION", title: "BullMQ 串 HITL 流水线", body: "Worker + FlowProducer 串 7 阶段人机协同流水线，MCP 工具联网，lineage 溯源 + 单写者锁挡并发写。" },
+  { rk: "编排 · ORCHESTRATION", title: "BullMQ 串 HITL 流水线", body: "Worker + FlowProducer 串 7 阶段人机协同流水线，工具联网，全链路溯源 + 单写者锁挡并发写。" },
 ];
 
 /* 跑马灯条目（demo strip）。 */
 const MARQUEE = [
-  "确定性脚手架",
-  "多角色 AGENT 编排",
+  "确定性初始化",
+  "多角色 AI 编排",
   "真实联网检索带来源",
   "对抗验证三票裁决",
   "单写者锁",
-  "LINEAGE 溯源",
+  "全链路溯源",
 ];
 
 export function LandingPage() {
@@ -150,7 +150,7 @@ export function LandingPage() {
           </div>
           <div className="flex items-center" style={{ gap: 28 }}>
             <a href="#crew" className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>角色</a>
-            <a href="#runtime" className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>运行时</a>
+            <a href="#runtime" className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>运行环境</a>
             <a href="#method" className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>方法论</a>
             <a
               href={GITHUB}
@@ -303,7 +303,7 @@ export function LandingPage() {
       {/* ─── Nº 02 角色编队 ─── */}
       <section id="crew" style={{ borderBottom: `2px solid ${LINE}` }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
-          <SecHead k="Nº 02 — CREW / SKILLS" title="7 个角色，各是一份 skill" />
+          <SecHead k="Nº 02 — CREW / SKILLS" title="7 个角色，各是一份能力包" />
           <div className="boule-crew" style={{ borderTop: `2px solid ${LINE}`, marginTop: 24 }}>
             {ROLES.map((r, i) => (
               <div
@@ -326,7 +326,7 @@ export function LandingPage() {
           <div className="flex flex-wrap items-center" style={{ gap: 16, padding: "22px 0 32px" }}>
             <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.1em", border: `2px solid ${LINE}`, background: INK, color: PAPER, padding: "7px 13px" }}>可扩展性</span>
             <p style={{ fontSize: 14, color: "#33332e", maxWidth: "62ch" }}>
-              新增一个角色 = 一份 <code style={{ fontFamily: MONO, background: BLUE, color: "#fff", padding: "1px 6px", fontSize: 12 }}>roles/your-role.md</code> 提示词 + 一条 dispatch 映射(<code style={{ fontFamily: MONO, background: BLUE, color: "#fff", padding: "1px 6px", fontSize: 12 }}>mapRoleToFile</code>)。不改引擎核心，fan-out 并发、串行放行、成本与事件流自动接上。
+              新增一个角色 = 一份 <code style={{ fontFamily: MONO, background: BLUE, color: "#fff", padding: "1px 6px", fontSize: 12 }}>roles/your-role.md</code> 提示词 + 一条调度映射(<code style={{ fontFamily: MONO, background: BLUE, color: "#fff", padding: "1px 6px", fontSize: 12 }}>mapRoleToFile</code>)。不改引擎核心，并发（多线并行）、串行质量校验、成本与事件流自动接上。
             </p>
           </div>
         </div>
@@ -335,7 +335,7 @@ export function LandingPage() {
       {/* ─── Nº 03 运行时 ─── */}
       <section id="runtime" style={{ borderBottom: `2px solid ${LINE}` }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
-          <SecHead k="Nº 03 — RUNTIME" title="底层怎么跑 agent" />
+          <SecHead k="Nº 03 — RUNTIME" title="底层怎么跑 AI" />
           <div style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(22px,3vw,34px)", letterSpacing: "-0.02em", padding: "30px 0 0", lineHeight: 1.05 }}>
             每个角色 = 一次 <b style={{ background: BLUE, color: PAPER, padding: "0 0.1em" }}>Claude Agent SDK</b>{" "}
             <code style={{ fontFamily: MONO, fontSize: "0.7em" }}>query()</code> spawn。
@@ -420,7 +420,7 @@ export function LandingPage() {
           <div className="flex flex-wrap items-end justify-between" style={{ marginTop: 30, gap: 20 }}>
             <div className="flex" style={{ gap: 22 }}>
               <a href="#crew" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>角色</a>
-              <a href="#runtime" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>运行时</a>
+              <a href="#runtime" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>运行环境</a>
               <a href="#method" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>方法论</a>
               <a href={GITHUB} target="_blank" rel="noopener" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>GitHub ↗</a>
               <a href="#login" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>登录</a>
@@ -455,15 +455,15 @@ EDITION 2026 · v1 · 开发代号 BOULE · 31.2306° N, 121.4737° E
 
 /* 方法论英文副标题（按 PHASE_LABELS 的 id 映射，demo 里 small 的那行）。 */
 const METHOD_KEY: Record<string, string> = {
-  phase0_init: "SCAFFOLD",
-  phase1_intake: "INTAKE",
-  phase1_5_axis: "AXIS",
-  phase2_research: "RESEARCH",
-  phase2_5_verify: "VERIFY",
-  phase3_synthesis: "SYNTHESIS",
-  phase4_review: "REVIEW",
-  phase5_delivery: "DELIVERY",
-  phase6_enrichment: "ENRICHMENT",
+  phase0_init: "初始化",
+  phase1_intake: "接案",
+  phase1_5_axis: "维度",
+  phase2_research: "调研",
+  phase2_5_verify: "验证",
+  phase3_synthesis: "综合",
+  phase4_review: "审校",
+  phase5_delivery: "交付",
+  phase6_enrichment: "补强",
 };
 
 
