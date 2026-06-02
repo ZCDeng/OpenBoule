@@ -199,7 +199,40 @@ function readChildRssKb(pid: number): number | null {
   }
 }
 
-export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<LiteParseOcrResult> {
+/** FIFO 计数信号量：限制同时在跑的 OCR 子进程数，避免突发上传 fork 风暴/OOM。 */
+export class Semaphore {
+  private active = 0;
+  private readonly waiters: Array<() => void> = [];
+  private readonly max: number;
+  constructor(max: number) {
+    this.max = max;
+  }
+  acquire(): Promise<void> {
+    if (this.active < this.max) {
+      this.active += 1;
+      return Promise.resolve();
+    }
+    return new Promise<void>((res) => this.waiters.push(res)); // 等待中不占增量，release 时直接交棒
+  }
+  release(): void {
+    const next = this.waiters.shift();
+    if (next) next(); // 槽位转交给排队者，active 不变
+    else this.active -= 1;
+  }
+}
+
+const ocrSemaphore = new Semaphore(config.references.ocrMaxConcurrent);
+
+export async function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<LiteParseOcrResult> {
+  await ocrSemaphore.acquire();
+  try {
+    return await runLiteParseOcrChild(input);
+  } finally {
+    ocrSemaphore.release();
+  }
+}
+
+function runLiteParseOcrChild(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<LiteParseOcrResult> {
   return new Promise((resolve, reject) => {
     const child = fork(OCR_CHILD_PATH, [], {
       execArgv: ["--experimental-transform-types", "--max-old-space-size=256"],
@@ -216,7 +249,7 @@ export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: s
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       settle(() => reject(new Error("LITEPARSE_OCR_TIMEOUT")));
-    }, config.references.parseTimeoutMs);
+    }, config.references.ocrTimeoutMs);
     const settle = (fn: () => void) => {
       if (settled) return;
       settled = true;

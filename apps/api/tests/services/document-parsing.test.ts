@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { config } from "../../src/config.ts";
-import { decideLiteParseOcr, parseReferenceDocument, parseVmRssKb } from "../../src/services/document-parsing.ts";
+import { decideLiteParseOcr, parseReferenceDocument, parseVmRssKb, Semaphore } from "../../src/services/document-parsing.ts";
 
 function escapePdfText(text: string): string {
   return text.replace(/[()\\]/g, "\\$&");
@@ -59,6 +59,22 @@ test("liteparse OCR decision fails loud for empty, missing, and low confidence",
   assert.equal(low.ok, false);
   assert.equal(low.shouldStoreOriginal, true);
   assert.match(low.error ?? "", /^LITEPARSE_LOW_CONFIDENCE_/);
+});
+
+test("Semaphore caps concurrency and hands slots to waiters FIFO", async () => {
+  const sem = new Semaphore(1);
+  const order: number[] = [];
+  await sem.acquire(); // slot 1 taken
+  let secondAcquired = false;
+  const second = sem.acquire().then(() => { secondAcquired = true; order.push(2); });
+  // 第二个 acquire 必须等待，不能在 release 前完成
+  await Promise.resolve();
+  assert.equal(secondAcquired, false);
+  order.push(1);
+  sem.release(); // 交棒给排队的第二个
+  await second;
+  assert.deepEqual(order, [1, 2]);
+  sem.release();
 });
 
 test("parseVmRssKb extracts VmRSS from /proc status, null otherwise", () => {

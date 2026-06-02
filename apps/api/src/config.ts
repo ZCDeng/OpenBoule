@@ -142,6 +142,12 @@ export const config = {
     // OCR 子进程 RSS 上限（MB）。--max-old-space-size 只管 V8 堆，PDFium/Tesseract 原生堆不受其约束；
     // 父进程看门狗按此值监控子进程 RSS，超限即 SIGKILL（仅 Linux /proc 可读时生效），防 PDF-bomb 撑爆容器。
     ocrMaxRssMb: positiveInteger("BOULE_OCR_MAX_RSS_MB", "1024"),
+    // OCR 专用超时（ms）。OCR 在 pdfjs 之后才进入，Tesseract 又比 pdfjs 慢，故与 parseTimeoutMs 分开，
+    // 默认略低（90s），避免单份扫描件占满请求连接太久。
+    ocrTimeoutMs: positiveInteger("BOULE_OCR_TIMEOUT_MS", "90000"),
+    // 同时在跑的 OCR 子进程上限。每份扫描件 fork 一个带原生 Tesseract 的 Node 进程（冷启 + 内存重），
+    // 无上限时突发上传会 fork 风暴/OOM。超限的调用排队等空位（FIFO），不直接失败。
+    ocrMaxConcurrent: positiveInteger("BOULE_OCR_MAX_CONCURRENT", "2"),
     ocrFallback: ocrFallback(),
   },
 
