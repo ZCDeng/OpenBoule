@@ -12,7 +12,7 @@ import { useAuth } from "../stores/auth.ts";
 import { ApiError } from "../lib/api.ts";
 import { ErrorBanner } from "../components/States.tsx";
 import { PHASE_LABELS } from "../lib/phases.ts";
-import { gsap, ScrollTrigger, shouldAnimate, useGSAP } from "../lib/gsap.ts";
+import { gsap, ScrollTrigger, SplitText, shouldAnimate, useGSAP } from "../lib/gsap.ts";
 
 /* ── 配色 / 字体栈（照搬 demo 的 :root） ── */
 const PAPER = "#F1F0EB";
@@ -101,11 +101,21 @@ export function LandingPage() {
     if (!shouldAnimate()) return;
     const hero = heroRef.current;
     if (!hero) return;
+    // PoC：Hero 标题用 SplitText 行遮罩 + 逐字硬边上浮揭示（替手动拆字）。
+    // useGSAP scope 会自动 revert SplitText 实例，无需手动清理。
+    const titleEl = hero.querySelector<HTMLElement>(".boule-hero-title");
+    const split = titleEl ? SplitText.create(titleEl, { type: "lines,chars", mask: "lines", reduceWhiteSpace: false }) : null;
+    // 「流水线」蓝块走单独「刷出」(clip wipe)，其余字逐字硬边上浮。
+    const riseChars = split ? split.chars.filter((c) => !(c as HTMLElement).closest(".boule-title-highlight")) : [];
+    if (split) gsap.set(".boule-title-highlight", { clipPath: "inset(0% 100% 0% 0%)" });
     const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
-    tl.from(".boule-hero-meta > *", { opacity: 0, y: 18, duration: 0.35, stagger: 0.06 })
-      .from(".boule-title-char", { opacity: 0, y: 72, rotation: 2, duration: 0.72, stagger: 0.025 }, "<0.08")
-      .from(".boule-title-highlight", { opacity: 0, scale: 0.9, rotation: -4, duration: 0.55, ease: "back.out(1.7)" }, "<0.32")
-      .from(".boule-hero-copy", { opacity: 0, y: 22, duration: 0.45 }, "<0.15")
+    tl.from(".boule-hero-meta > *", { opacity: 0, y: 18, duration: 0.35, stagger: 0.06 });
+    // EDITION 行(纯 ASCII)终端解码；中文不参与，避免乱码。
+    const edition = hero.querySelector<HTMLElement>(".boule-edition-scramble");
+    if (edition) tl.to(edition, { duration: 0.9, ease: "none", scrambleText: { text: edition.textContent ?? "", chars: "01<>/#·", speed: 0.5 } }, "<0.1");
+    if (riseChars.length) tl.from(riseChars, { yPercent: 120, duration: 0.72, ease: "power3.out", stagger: 0.02 }, "<0.1");
+    if (split) tl.to(".boule-title-highlight", { clipPath: "inset(0% 0% 0% 0%)", duration: 0.6, ease: "power2.inOut" }, "<0.22");
+    tl.from(".boule-hero-copy", { opacity: 0, y: 22, duration: 0.45 }, "<0.15")
       .from(".boule-hero-badge", { opacity: 0, scale: 0, duration: 0.62, stagger: 0.065, ease: "elastic.out(1, 0.55)" }, "<0.1")
       .from(".boule-hero-cta > *", { opacity: 0, x: -20, duration: 0.35, stagger: 0.08 }, "<0.18")
       .from(".boule-login-slab", { opacity: 0, y: 30, duration: 0.42 }, "<0.08");
@@ -124,6 +134,16 @@ export function LandingPage() {
     for (const section of sections) {
       const trigger = section.ref.current;
       if (!trigger) continue;
+      // 眉标 Nº 0X — XXX(纯 ASCII)滚入视口时终端解码。
+      const eyebrow = trigger.querySelector<HTMLElement>(".boule-sechead-k");
+      if (eyebrow) {
+        gsap.to(eyebrow, {
+          duration: 0.85,
+          ease: "none",
+          scrambleText: { text: eyebrow.textContent ?? "", chars: "01<>/#", speed: 0.6 },
+          scrollTrigger: { trigger, start: "top 80%", once: true },
+        });
+      }
       const targets = gsap.utils.toArray<HTMLElement>(section.targets, trigger);
       if (targets.length === 0) continue;
       gsap.from(targets, {
@@ -243,16 +263,12 @@ export function LandingPage() {
       <header ref={heroRef} style={{ borderBottom: `2px solid ${LINE}`, padding: "72px 0 56px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
           <div className="boule-hero-meta flex items-center" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.18em", color: MUT, gap: 14, marginBottom: 28 }}>
-            <span>EDITION 2026</span>—<b style={{ color: INK, fontWeight: 600 }}>OPENCONSULT · CLAUDE-ONLY AI CONSULTING WORKBENCH</b>—<span>开发代号 BOULE</span>
+            <span>EDITION 2026</span>—<b className="boule-edition-scramble" style={{ color: INK, fontWeight: 600 }}>OPENCONSULT · CLAUDE-ONLY AI CONSULTING WORKBENCH</b>—<span>开发代号 BOULE</span>
           </div>
 
-          <h1 style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(54px,9vw,128px)", lineHeight: 0.92, letterSpacing: "-0.045em", overflow: "hidden" }}>
-            {"把咨询做成".split("").map((ch, i) => <span key={`a-${i}`} className="boule-title-char" style={{ display: "inline-block" }}>{ch}</span>)}<br />
-            {"一条".split("").map((ch, i) => <span key={`b-${i}`} className="boule-title-char" style={{ display: "inline-block" }}>{ch}</span>)}
-            <span className="boule-title-highlight" style={{ background: BLUE, color: PAPER, padding: "0 0.12em", display: "inline-block", transform: "rotate(-1deg)" }}>
-              流水线
-            </span>
-            <span className="boule-title-char" style={{ display: "inline-block" }}>。</span>
+          <h1 className="boule-hero-title" style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(54px,9vw,128px)", lineHeight: 0.92, letterSpacing: "-0.045em" }}>
+            把咨询做成<br />
+            一条<span className="boule-title-highlight" style={{ background: BLUE, color: PAPER, padding: "0 0.12em", display: "inline-block", transform: "rotate(-1deg)" }}>流水线</span>。
           </h1>
 
           <div className="boule-hero-grid">
@@ -556,7 +572,7 @@ function ClaudeIcon({ size = 16 }: { size?: number }) {
 function SecHead({ k, title }: { k: string; title: string }) {
   return (
     <div className="flex flex-wrap items-baseline" style={{ gap: 18, padding: "34px 0 8px" }}>
-      <span style={{ fontFamily: MONO, fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: BLUE }}>{k}</span>
+      <span className="boule-sechead-k" style={{ fontFamily: MONO, fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: BLUE }}>{k}</span>
       <h2 style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(28px,4vw,46px)", letterSpacing: "-0.03em", lineHeight: 1 }}>{title}</h2>
     </div>
   );
