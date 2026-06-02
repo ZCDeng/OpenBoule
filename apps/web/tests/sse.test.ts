@@ -154,3 +154,21 @@ test("close 后不再重连", async () => {
   h.made[0]!.onerror?.(null);
   assert.equal(h.scheduled.length, 0); // 已 close，不安排重连
 });
+
+test("close 发生在 ticket await 期间：不创建游离 EventSource（防重复推送）", async () => {
+  const made: FakeES[] = [];
+  let resolveTicket!: (t: string) => void;
+  const client = new SseClient({
+    baseUrl: "/api/sse/workflows/w1",
+    ticketProvider: () => new Promise<string>((res) => { resolveTicket = res; }),
+    eventSourceFactory: (url) => { const es = new FakeES(url); made.push(es); return es; },
+    onEvent: () => {},
+    scheduler: (fn) => { void fn; return 0; },
+  });
+  void client.connect();    // 卡在 await ticketProvider()
+  await flush();
+  client.close();           // ticket 未到就关闭（StrictMode mount→unmount→mount）
+  resolveTicket("tk0");     // ticket 迟到
+  await flush();
+  assert.equal(made.length, 0); // 不应再建连接
+});
