@@ -45,6 +45,11 @@ function ratio(name: string, fallback: string): number {
   return n;
 }
 
+function ocrFallback(): "claude" | "none" {
+  const legacyDefault = optional("BOULE_ENABLE_CLAUDE_REFERENCE_OCR", "") === "1" ? "claude" : "none";
+  return optional("BOULE_OCR_FALLBACK", legacyDefault) === "claude" ? "claude" : "none";
+}
+
 function searchOrder(): ("aditly" | "anysearch")[] {
   const raw = optional("SEARCH_PROVIDER_ORDER", "aditly,anysearch");
   const out = raw.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -134,7 +139,7 @@ export const config = {
     ocrDpi: positiveInteger("BOULE_OCR_DPI", "200"),
     ocrConfidenceThreshold: ratio("BOULE_OCR_CONFIDENCE_THRESHOLD", "0.55"),
     storeOriginalConfidenceThreshold: ratio("BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD", "0.85"),
-    ocrFallback: optional("BOULE_OCR_FALLBACK", optional("BOULE_ENABLE_CLAUDE_REFERENCE_OCR", "") === "1" ? "claude" : "none") === "claude" ? "claude" : "none",
+    ocrFallback: ocrFallback(),
   },
 
   search: {

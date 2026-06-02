@@ -189,7 +189,7 @@ export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: s
       execArgv: ["--experimental-transform-types", "--max-old-space-size=256"],
       serialization: "advanced",
       stdio: ["ignore", "ignore", "pipe", "ipc"],
-      env: { ...process.env, TESSDATA_PREFIX: config.references.tessdataPath },
+      env: { TESSDATA_PREFIX: config.references.tessdataPath, PATH: process.env.PATH, NODE_ENV: process.env.NODE_ENV },
     });
     let settled = false;
     let stderr = "";
@@ -231,9 +231,6 @@ export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: s
 }
 
 async function extractScannedWithClaude(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<string> {
-  if (config.references.ocrFallback !== "claude") {
-    throw new Error("CLAUDE_OCR_FALLBACK_DISABLED");
-  }
   const prompt = {
     type: "user",
     message: {

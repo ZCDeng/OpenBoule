@@ -30,7 +30,10 @@ function averageConfidence(result: Awaited<ReturnType<LiteParse["parse"]>>): { c
       }
     }
   }
-  return { confidence: samples ? total / samples : null, samples };
+  // liteparse 透传 Tesseract 原生 0–100 置信度；归一到 0..1 以匹配 config 阈值（见 code-review 2026-06-03）。
+  const mean = samples ? total / samples : null;
+  const normalized = mean === null ? null : Math.min(1, Math.max(0, mean / 100));
+  return { confidence: normalized, samples };
 }
 
 async function handle(req: OcrRequest): Promise<OcrResponse> {

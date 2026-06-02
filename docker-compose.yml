@@ -80,7 +80,7 @@ services:
       BOULE_OCR_CONFIDENCE_THRESHOLD: ${BOULE_OCR_CONFIDENCE_THRESHOLD:-0.55}
       BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD: ${BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD:-0.85}
       # 默认不把客户扫描件发给 Claude；仅显式 claude 时作为 liteparse 空/低置信兜底。
-      BOULE_OCR_FALLBACK: ${BOULE_OCR_FALLBACK:-none}
+      BOULE_OCR_FALLBACK: ${BOULE_OCR_FALLBACK:-}
     # 组合根（U10 收尾）：先迁移再启动 Fastify + 引擎。
     command: ["sh", "-c", "pnpm --filter @boule/api db:migrate && pnpm --filter @boule/api start"]
 

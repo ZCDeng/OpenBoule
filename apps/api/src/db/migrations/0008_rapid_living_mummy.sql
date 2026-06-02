@@ -1,1 +1,1 @@
-ALTER TYPE "public"."reference_parse_source" ADD VALUE 'liteparse';
+ALTER TYPE "public"."reference_parse_source" ADD VALUE IF NOT EXISTS 'liteparse';

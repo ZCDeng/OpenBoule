@@ -61,6 +61,14 @@ test("liteparse OCR decision fails loud for empty, missing, and low confidence",
   assert.match(low.error ?? "", /^LITEPARSE_LOW_CONFIDENCE_/);
 });
 
+test("liteparse OCR decision wraps child error field", () => {
+  assert.deepEqual(decideLiteParseOcr({ text: "正文", confidence: 0.9, pages: 1, confidenceSamples: 2, error: "SIGKILL" }), {
+    ok: false,
+    shouldStoreOriginal: true,
+    error: "LITEPARSE_OCR_FAILED: SIGKILL",
+  });
+});
+
 test("liteparse OCR decision binds shouldStoreOriginal to confidence threshold", () => {
   const parsedButStored = Math.max(config.references.ocrConfidenceThreshold, config.references.storeOriginalConfidenceThreshold / 2);
   const parsedAndDiscarded = Math.min(1, Math.max(config.references.storeOriginalConfidenceThreshold, config.references.ocrConfidenceThreshold) + 0.01);
