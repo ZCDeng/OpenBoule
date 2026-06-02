@@ -1,5 +1,5 @@
-import { AppRoutes } from "./routes/index.tsx";
+import { PageTransition } from "./components/PageTransition.tsx";
 
 export function App() {
-  return <AppRoutes />;
+  return <PageTransition />;
 }

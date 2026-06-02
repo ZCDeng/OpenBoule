@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
 import { Skeleton, EmptyState, ErrorBanner } from "../components/States.tsx";
 import { Badge, Button, PageHeader, PageShell, Panel, TextInput } from "../components/Brutalist.tsx";
+import { useFadeIn } from "../hooks/useFadeIn.ts";
+import { useStaggerIn } from "../hooks/useStaggerIn.ts";
 
 interface Project { id: string; name: string; }
 
@@ -12,15 +14,21 @@ export function ProjectsPage() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
+  const pageRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["projects"], queryFn: () => api.json<{ projects: Project[] }>("/api/projects") });
   const create = useMutation({
     mutationFn: (n: string) => api.json<{ projectId: string }>("/api/projects", { method: "POST", body: JSON.stringify({ name: n }) }),
     onSuccess: () => { setName(""); void qc.invalidateQueries({ queryKey: ["projects"] }); },
   });
   const projects = data?.projects ?? [];
+  useFadeIn(pageRef);
+  useStaggerIn(listRef, ".boule-list-row", { dependencies: [data?.projects.length ?? 0, query] });
+
   const filtered = useMemo(() => projects.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase())), [projects, query]);
 
   return (
+    <div ref={pageRef}>
     <PageShell>
       <PageHeader eyebrow="Nº 01 — PROJECTS" title="项目控制台" action={
         <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) create.mutate(name.trim()); }} className="project-create-form">
@@ -52,7 +60,7 @@ export function ProjectsPage() {
         {data && projects.length === 0 && <EmptyState title="还没有项目" hint="创建第一个项目，开始一次咨询任务。" />}
         {data && projects.length > 0 && filtered.length === 0 && <EmptyState title="没有匹配项目" hint="换个关键词，或创建一条新的咨询生产线。" />}
         {filtered.length > 0 && (
-          <div className="boule-list project-list">
+          <div ref={listRef} className="boule-list project-list">
             {filtered.map((p, i) => (
               <Link key={p.id} to={`/projects/${p.id}`} className="boule-list-row project-list-row">
                 <div>
@@ -73,5 +81,6 @@ export function ProjectsPage() {
         </div>
       </Panel>
     </PageShell>
+    </div>
   );
 }

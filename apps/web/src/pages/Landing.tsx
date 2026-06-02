@@ -6,12 +6,13 @@
  * 登录 slab（Nº 00）内联复用 Login 同款真实逻辑（useAuth / api.json / setSession / ErrorBanner）。
  */
 
-import { useState, type CSSProperties, type FormEvent } from "react";
+import { useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
 import { ApiError } from "../lib/api.ts";
 import { ErrorBanner } from "../components/States.tsx";
 import { PHASE_LABELS } from "../lib/phases.ts";
+import { gsap, ScrollTrigger, shouldAnimate, useGSAP } from "../lib/gsap.ts";
 
 /* ── 配色 / 字体栈（照搬 demo 的 :root） ── */
 const PAPER = "#F1F0EB";
@@ -87,6 +88,54 @@ export function LandingPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
+  const capsRef = useRef<HTMLElement>(null);
+  const crewRef = useRef<HTMLElement>(null);
+  const runtimeRef = useRef<HTMLElement>(null);
+  const methodRef = useRef<HTMLElement>(null);
+  const githubRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
+
+  useGSAP(() => {
+    if (!shouldAnimate()) return;
+    const hero = heroRef.current;
+    if (!hero) return;
+    const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
+    tl.from(".boule-hero-meta > *", { opacity: 0, y: 18, duration: 0.35, stagger: 0.06 })
+      .from(".boule-title-char", { opacity: 0, y: 72, rotation: 2, duration: 0.72, stagger: 0.025 }, "<0.08")
+      .from(".boule-title-highlight", { opacity: 0, scale: 0.9, rotation: -4, duration: 0.55, ease: "back.out(1.7)" }, "<0.32")
+      .from(".boule-hero-copy", { opacity: 0, y: 22, duration: 0.45 }, "<0.15")
+      .from(".boule-hero-badge", { opacity: 0, scale: 0, duration: 0.62, stagger: 0.065, ease: "elastic.out(1, 0.55)" }, "<0.1")
+      .from(".boule-hero-cta > *", { opacity: 0, x: -20, duration: 0.35, stagger: 0.08 }, "<0.18")
+      .from(".boule-login-slab", { opacity: 0, y: 30, duration: 0.42 }, "<0.08");
+  }, { scope: heroRef });
+
+  useGSAP(() => {
+    if (!shouldAnimate()) return;
+    const sections = [
+      { ref: capsRef, targets: ".boule-cap-card", vars: { y: 30, stagger: 0.08, duration: 0.55 } },
+      { ref: crewRef, targets: ".boule-role-card", vars: { y: 30, rotateX: -10, stagger: 0.06, duration: 0.58 } },
+      { ref: runtimeRef, targets: ".boule-runtime-card, .boule-runtime-pill", vars: { y: 24, stagger: 0.07, duration: 0.5 } },
+      { ref: methodRef, targets: ".boule-method-row", vars: { x: -40, stagger: 0.055, duration: 0.46 } },
+      { ref: githubRef, targets: ".boule-gh-in", vars: { y: 20, duration: 0.48 } },
+      { ref: footerRef, targets: ".boule-footer-logo", vars: { scale: 0.95, duration: 0.55 } },
+    ];
+    for (const section of sections) {
+      const trigger = section.ref.current;
+      if (!trigger) continue;
+      const targets = gsap.utils.toArray<HTMLElement>(section.targets, trigger);
+      if (targets.length === 0) continue;
+      gsap.from(targets, {
+        opacity: 0,
+        transformOrigin: "50% 100%",
+        ease: "power2.out",
+        clearProps: "opacity,transform",
+        scrollTrigger: { trigger, start: "top 80%", once: true },
+        ...section.vars,
+      });
+    }
+    ScrollTrigger.refresh();
+  }, { scope: heroRef });
 
   // 登录/注册：复用 Login 同款真实逻辑（打 /api/auth/*，成功跳 /projects，失败用 ErrorBanner）。
   async function submit(e: FormEvent) {
@@ -107,6 +156,13 @@ export function LandingPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function scrollToSection(id: string) {
+    return (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      document.getElementById(id)?.scrollIntoView({ behavior: shouldAnimate() ? "smooth" : "auto", block: "start" });
+    };
   }
 
   const inputStyle: CSSProperties = {
@@ -149,9 +205,9 @@ export function LandingPage() {
             </span>
           </div>
           <div className="flex items-center" style={{ gap: 28 }}>
-            <a href="#crew" className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>角色</a>
-            <a href="#runtime" className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>运行环境</a>
-            <a href="#method" className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>方法论</a>
+            <a href="#crew" onClick={scrollToSection("crew")} className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>角色</a>
+            <a href="#runtime" onClick={scrollToSection("runtime")} className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>运行环境</a>
+            <a href="#method" onClick={scrollToSection("method")} className="boule-link" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em" }}>方法论</a>
             <a
               href={GITHUB}
               target="_blank"
@@ -163,6 +219,7 @@ export function LandingPage() {
             </a>
             <a
               href="#login"
+              onClick={scrollToSection("login")}
               style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em", border: `2px solid ${LINE}`, padding: "8px 18px", background: INK, color: PAPER }}
             >
               登录
@@ -172,27 +229,29 @@ export function LandingPage() {
       </nav>
 
       {/* ─── Hero + 登录 slab ─── */}
-      <header style={{ borderBottom: `2px solid ${LINE}`, padding: "72px 0 56px" }}>
+      <header ref={heroRef} style={{ borderBottom: `2px solid ${LINE}`, padding: "72px 0 56px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
-          <div className="flex items-center" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.18em", color: MUT, gap: 14, marginBottom: 28 }}>
+          <div className="boule-hero-meta flex items-center" style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.18em", color: MUT, gap: 14, marginBottom: 28 }}>
             <span>EDITION 2026</span>—<b style={{ color: INK, fontWeight: 600 }}>OPENCONSULT · CLAUDE-ONLY AI CONSULTING WORKBENCH</b>—<span>开发代号 BOULE</span>
           </div>
 
-          <h1 style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(54px,9vw,128px)", lineHeight: 0.92, letterSpacing: "-0.045em" }}>
-            把咨询做成<br />一条
-            <span style={{ background: BLUE, color: PAPER, padding: "0 0.12em", display: "inline-block", transform: "rotate(-1deg)" }}>
+          <h1 style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(54px,9vw,128px)", lineHeight: 0.92, letterSpacing: "-0.045em", overflow: "hidden" }}>
+            {"把咨询做成".split("").map((ch, i) => <span key={`a-${i}`} className="boule-title-char" style={{ display: "inline-block" }}>{ch}</span>)}<br />
+            {"一条".split("").map((ch, i) => <span key={`b-${i}`} className="boule-title-char" style={{ display: "inline-block" }}>{ch}</span>)}
+            <span className="boule-title-highlight" style={{ background: BLUE, color: PAPER, padding: "0 0.12em", display: "inline-block", transform: "rotate(-1deg)" }}>
               流水线
             </span>
-            。
+            <span className="boule-title-char" style={{ display: "inline-block" }}>。</span>
           </h1>
 
           <div className="boule-hero-grid">
             <div>
-              <p style={{ fontSize: 19, maxWidth: "46ch", color: "#1c1c1a" }}>
+              <p className="boule-hero-copy" style={{ fontSize: 19, maxWidth: "46ch", color: "#1c1c1a" }}>
                 9 个阶段，一支不睡觉的<b style={{ fontWeight: 600 }}>多角色创作团队</b>。Claude专用，不支持其它模型；需自带 Claude CLI 会话或 Anthropic Key。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。
               </p>
               <div className="flex flex-wrap" style={{ gap: 10, marginTop: 24 }}>
                 <span
+                  className="boule-hero-badge"
                   style={{
                     ...monoMeta,
                     fontSize: 11,
@@ -209,23 +268,23 @@ export function LandingPage() {
                 >
                   <ClaudeIcon size={15} /> Claude专用
                 </span>
-                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>9 阶段流水线</span>
-                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>真联网调研</span>
-                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>对抗验证三票</span>
-                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>确定性脚手架</span>
+                <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>9 阶段流水线</span>
+                <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>真联网调研</span>
+                <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>对抗验证三票</span>
+                <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>确定性脚手架</span>
               </div>
-              <div className="flex items-center" style={{ gap: 14, marginTop: 34 }}>
-                <a href="#login" style={{ fontFamily: DISP, fontWeight: 700, fontSize: 18, border: `2px solid ${LINE}`, padding: "14px 26px", background: BLUE, color: "#fff", display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <div className="boule-hero-cta flex items-center" style={{ gap: 14, marginTop: 34 }}>
+                <a href="#login" onClick={scrollToSection("login")} style={{ fontFamily: DISP, fontWeight: 700, fontSize: 18, border: `2px solid ${LINE}`, padding: "14px 26px", background: BLUE, color: "#fff", display: "inline-flex", alignItems: "center", gap: 10 }}>
                   开始 <span style={{ fontFamily: BODY }}>▸</span>
                 </a>
-                <a href="#method" style={{ fontFamily: DISP, fontWeight: 700, fontSize: 18, border: `2px solid ${LINE}`, padding: "14px 26px", background: "transparent", color: INK, display: "inline-flex", alignItems: "center" }}>
+                <a href="#method" onClick={scrollToSection("method")} style={{ fontFamily: DISP, fontWeight: 700, fontSize: 18, border: `2px solid ${LINE}`, padding: "14px 26px", background: "transparent", color: INK, display: "inline-flex", alignItems: "center" }}>
                   看方法论
                 </a>
               </div>
             </div>
 
             {/* 登录 slab（Nº 00）—— 真实登录逻辑 */}
-            <div id="login" style={{ border: `2px solid ${LINE}`, background: PAPER, alignSelf: "start" }}>
+            <div id="login" className="boule-login-slab" style={{ border: `2px solid ${LINE}`, background: PAPER, alignSelf: "start" }}>
               <div className="flex items-center justify-between" style={{ borderBottom: `2px solid ${LINE}`, padding: "14px 18px", background: INK, color: PAPER }}>
                 <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.14em" }}>
                   Nº 00 — {mode === "login" ? "进入工作台" : "注册账号"}
@@ -285,12 +344,12 @@ export function LandingPage() {
       </div>
 
       {/* ─── Nº 01 能力 ─── */}
-      <section id="caps" style={{ borderBottom: `2px solid ${LINE}` }}>
+      <section ref={capsRef} id="caps" style={{ borderBottom: `2px solid ${LINE}` }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
           <SecHead k="Nº 01 — CAPABILITIES" title="引擎做什么" />
           <div className="boule-caps" style={{ borderTop: `2px solid ${LINE}`, marginTop: 24 }}>
             {CAPABILITIES.map((c, i) => (
-              <div key={c.no} style={{ padding: "28px 24px 34px", borderRight: i === CAPABILITIES.length - 1 ? "none" : `2px solid ${LINE}` }}>
+              <div key={c.no} className="boule-cap-card" style={{ padding: "28px 24px 34px", borderRight: i === CAPABILITIES.length - 1 ? "none" : `2px solid ${LINE}` }}>
                 <div style={{ fontFamily: DISP, fontWeight: 800, fontSize: 42, color: BLUE, letterSpacing: "-0.04em", lineHeight: 1 }}>{c.no}</div>
                 <h3 style={{ fontFamily: DISP, fontWeight: 700, fontSize: 21, margin: "16px 0 10px", letterSpacing: "-0.01em" }}>{c.title}</h3>
                 <p style={{ fontSize: 14, color: "#33332e" }}>{c.body}</p>
@@ -301,13 +360,14 @@ export function LandingPage() {
       </section>
 
       {/* ─── Nº 02 角色编队 ─── */}
-      <section id="crew" style={{ borderBottom: `2px solid ${LINE}` }}>
+      <section ref={crewRef} id="crew" style={{ borderBottom: `2px solid ${LINE}` }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
           <SecHead k="Nº 02 — CREW / SKILLS" title="7 个角色，各是一份能力包" />
           <div className="boule-crew" style={{ borderTop: `2px solid ${LINE}`, marginTop: 24 }}>
             {ROLES.map((r, i) => (
               <div
                 key={r.rid}
+                className="boule-role-card"
                 style={{
                   padding: "24px 22px 28px",
                   borderRight: (i + 1) % 4 === 0 ? "none" : `2px solid ${LINE}`,
@@ -333,7 +393,7 @@ export function LandingPage() {
       </section>
 
       {/* ─── Nº 03 运行时 ─── */}
-      <section id="runtime" style={{ borderBottom: `2px solid ${LINE}` }}>
+      <section ref={runtimeRef} id="runtime" style={{ borderBottom: `2px solid ${LINE}` }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
           <SecHead k="Nº 03 — RUNTIME" title="底层怎么跑 AI" />
           <div style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(22px,3vw,34px)", letterSpacing: "-0.02em", padding: "30px 0 0", lineHeight: 1.05 }}>
@@ -341,13 +401,13 @@ export function LandingPage() {
             <code style={{ fontFamily: MONO, fontSize: "0.7em" }}>query()</code> spawn。
           </div>
           <div className="flex flex-wrap items-center" style={{ gap: 14, marginTop: 14, fontFamily: MONO, fontSize: 13 }}>
-            <span style={{ border: `2px solid ${LINE}`, padding: "8px 14px", fontWeight: 600 }}>Claude CLI 订阅会话</span>
+            <span className="boule-runtime-pill" style={{ border: `2px solid ${LINE}`, padding: "8px 14px", fontWeight: 600 }}>Claude CLI 订阅会话</span>
             <span style={{ color: BLUE, fontWeight: 800 }}>⇄ apiKeySource 自动识别 ⇄</span>
-            <span style={{ border: `2px solid ${LINE}`, padding: "8px 14px", fontWeight: 600 }}>ANTHROPIC_API_KEY</span>
+            <span className="boule-runtime-pill" style={{ border: `2px solid ${LINE}`, padding: "8px 14px", fontWeight: 600 }}>ANTHROPIC_API_KEY</span>
           </div>
           <div className="boule-rt" style={{ borderTop: `2px solid ${LINE}`, marginTop: 24 }}>
             {RUNTIME.map((c, i) => (
-              <div key={c.rk} style={{ padding: "26px 22px 30px", borderRight: i === RUNTIME.length - 1 ? "none" : `2px solid ${LINE}` }}>
+              <div key={c.rk} className="boule-runtime-card" style={{ padding: "26px 22px 30px", borderRight: i === RUNTIME.length - 1 ? "none" : `2px solid ${LINE}` }}>
                 <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.12em", color: BLUE, textTransform: "uppercase" }}>{c.rk}</div>
                 <h3 style={{ fontFamily: DISP, fontWeight: 700, fontSize: 20, margin: "12px 0 12px", letterSpacing: "-0.01em" }}>{c.title}</h3>
                 <p style={{ fontSize: 14, color: "#33332e" }}>{c.body}</p>
@@ -365,7 +425,7 @@ export function LandingPage() {
       </section>
 
       {/* ─── Nº 04 方法论（PHASE_LABELS 真数据，7+2 阶段） ─── */}
-      <section id="method" style={{ borderBottom: `2px solid ${LINE}`, paddingBottom: 8 }}>
+      <section ref={methodRef} id="method" style={{ borderBottom: `2px solid ${LINE}`, paddingBottom: 8 }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
           <SecHead k="Nº 04 — METHOD LOOP" title="从接案到交付的 7+2 阶段" />
           <div style={{ marginTop: 20 }}>
@@ -392,7 +452,7 @@ export function LandingPage() {
       </section>
 
       {/* ─── 蓝色 GitHub strip ─── */}
-      <div style={{ borderBottom: `2px solid ${LINE}`, background: BLUE, color: "#fff" }}>
+      <div ref={githubRef} style={{ borderBottom: `2px solid ${LINE}`, background: BLUE, color: "#fff" }}>
         <div className="boule-gh-in flex flex-wrap items-center justify-between" style={{ maxWidth: 1320, margin: "0 auto", padding: "26px 40px", gap: 16 }}>
           <div style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(20px,2.6vw,30px)", letterSpacing: "-0.02em" }}>
             源码开放在 GitHub
@@ -412,18 +472,18 @@ export function LandingPage() {
       </div>
 
       {/* ─── 巨号页脚 ─── */}
-      <footer style={{ padding: "56px 0 40px" }}>
+      <footer ref={footerRef} style={{ padding: "56px 0 40px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
-          <div style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(44px,9.5vw,128px)", letterSpacing: "-0.05em", lineHeight: 0.85 }}>
+          <div className="boule-footer-logo" style={{ fontFamily: DISP, fontWeight: 800, fontSize: "clamp(44px,9.5vw,128px)", letterSpacing: "-0.05em", lineHeight: 0.85 }}>
             OpenConsult<span style={{ color: BLUE }}>///</span>
           </div>
           <div className="flex flex-wrap items-end justify-between" style={{ marginTop: 30, gap: 20 }}>
             <div className="flex" style={{ gap: 22 }}>
-              <a href="#crew" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>角色</a>
-              <a href="#runtime" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>运行环境</a>
-              <a href="#method" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>方法论</a>
+              <a href="#crew" onClick={scrollToSection("crew")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>角色</a>
+              <a href="#runtime" onClick={scrollToSection("runtime")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>运行环境</a>
+              <a href="#method" onClick={scrollToSection("method")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>方法论</a>
               <a href={GITHUB} target="_blank" rel="noopener" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>GitHub ↗</a>
-              <a href="#login" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>登录</a>
+              <a href="#login" onClick={scrollToSection("login")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>登录</a>
             </div>
             <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", color: MUT, textAlign: "right" }}>
 EDITION 2026 · v1 · 开发代号 BOULE · 31.2306° N, 121.4737° E

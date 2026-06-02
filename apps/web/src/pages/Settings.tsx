@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
 import { ErrorBanner, Skeleton } from "../components/States.tsx";
 import { Badge, Button, DataRow, PageHeader, PageShell, Panel, PanelHeader, SelectInput, TextInput } from "../components/Brutalist.tsx";
+import { useFadeIn } from "../hooks/useFadeIn.ts";
+import { useStaggerIn } from "../hooks/useStaggerIn.ts";
 
 const MODE_LABELS: Record<string, string> = { local: "本地", team: "团队" };
 
@@ -23,6 +25,8 @@ export function SettingsPage() {
   const [scope, setScope] = useState<"read" | "write">("read");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const panelGroupRef = useRef<HTMLDivElement>(null);
 
   const runtime = useQuery({ queryKey: ["settings-runtime"], queryFn: () => api.json<RuntimeSettings>("/api/settings/runtime") });
   const keys = useQuery({ queryKey: ["api-keys"], queryFn: () => api.json<{ keys: ApiKeyRow[] }>("/api/api-keys") });
@@ -32,14 +36,17 @@ export function SettingsPage() {
   });
   const revoke = useMutation({ mutationFn: (id: string) => api.json(`/api/api-keys/${id}`, { method: "DELETE" }), onSuccess: () => void qc.invalidateQueries({ queryKey: ["api-keys"] }) });
   const data = runtime.data;
+  useFadeIn(pageRef);
+  useStaggerIn(panelGroupRef, ".boule-panel", { dependencies: [runtime.isLoading, keys.data?.keys.length ?? 0] });
 
   return (
+    <div ref={pageRef}>
     <PageShell wide>
       <PageHeader eyebrow="Nº 05 — CONTROL PLANE" title="配置与密钥">
         当前登录用户即配置管理员。这里展示运行环境、Claude 调用路径、检索服务商与个人 API Key。
       </PageHeader>
 
-      <div className="mt-8 space-y-8">
+      <div ref={panelGroupRef} className="mt-8 space-y-8">
         {runtime.isLoading ? <Skeleton rows={4} /> : runtime.isError || !data ? <ErrorBanner severity="P1" message="加载配置失败" onRetry={() => void runtime.refetch()} /> : (
           <div className="boule-grid boule-grid--2">
             <Panel>
@@ -109,5 +116,6 @@ export function SettingsPage() {
         </Panel>
       </div>
     </PageShell>
+    </div>
   );
 }

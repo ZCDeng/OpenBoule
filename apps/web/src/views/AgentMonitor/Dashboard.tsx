@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../stores/auth.ts";
 import { useWorkflow } from "../../stores/workflow.ts";
@@ -10,6 +10,7 @@ import { AgentJobList } from "./AgentJobList.tsx";
 import { VerdictView, type ClaimVerdict } from "./VerdictView.tsx";
 import { RealtimeEventFeed } from "../RunTimeline/RealtimeEventFeed.tsx";
 import type { SseEvent } from "../../lib/sse.ts";
+import { useCountUp } from "../../hooks/useCountUp.ts";
 
 export function Dashboard({ workflowId, currentPhase, events = [], verdicts = [] }: { workflowId: string; currentPhase?: string; events?: SseEvent[]; verdicts?: ClaimVerdict[] }) {
   const api = useAuth((s) => s.api);
@@ -40,5 +41,13 @@ function ProgressTab({ cost }: { cost: CostBreakdown }) {
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {
-  return <div className="border-2 border-black bg-[var(--boule-paper)] p-4 shadow-[4px_4px_0_#0B0B0B]"><div className="font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--boule-muted)]">{label}</div><div className="mt-1 font-[var(--boule-disp)] text-4xl font-black tracking-[-0.05em]">{value}</div></div>;
+  const valueRef = useRef<HTMLDivElement>(null);
+  const isMoney = value.startsWith("$");
+  const numeric = Number(value.replace(/[$,]/g, ""));
+  useCountUp(valueRef, numeric, {
+    decimals: isMoney ? 2 : 0,
+    prefix: isMoney ? "$" : "",
+    dependencies: [value],
+  });
+  return <div className="border-2 border-black bg-[var(--boule-paper)] p-4 shadow-[4px_4px_0_#0B0B0B]"><div className="font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--boule-muted)]">{label}</div><div ref={valueRef} className="mt-1 font-[var(--boule-disp)] text-4xl font-black tracking-[-0.05em]">{value}</div></div>;
 }

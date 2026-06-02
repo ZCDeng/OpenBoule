@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { Location } from "react-router-dom";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
 import { Layout } from "../components/Layout.tsx";
@@ -17,9 +18,9 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return isAuthed ? <Layout>{children}</Layout> : <Navigate to="/login" replace />;
 }
 
-export function AppRoutes() {
+export function AppRoutes({ location }: { location?: Location } = {}) {
   return (
-    <Routes>
+    <Routes location={location}>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/s/:token" element={<SharePage />} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
@@ -15,6 +15,7 @@ import { ErrorBanner } from "../components/States.tsx";
 import { ApiError } from "../lib/api.ts";
 import { Badge, PageHeader, PageShell, Panel } from "../components/Brutalist.tsx";
 import { phaseLabel, statusLabel } from "../lib/labels.ts";
+import { useFadeIn } from "../hooks/useFadeIn.ts";
 
 interface WorkflowStatus { id: string; currentPhase: string; status: string; mode: string | null; myRole?: "external" | "viewer" | "editor" | "owner"; }
 const STATUS_REFETCH_EVENTS = new Set(["workflow-status-changed", "workflow-completed", "workflow-recovered", "workflow-rerun-requested", "surface_request", "surface_response"]);
@@ -32,6 +33,8 @@ export function WorkflowPage() {
   const [tab, setTab] = useState<"timeline" | "monitor" | "docs" | "share">("timeline");
   const [busy, setBusy] = useState(false);
   const [decisionError, setDecisionError] = useState<{ severity: "P0" | "P1"; msg: string } | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  useFadeIn(pageRef);
   const status = useQuery({ queryKey: ["workflow", id], queryFn: () => api.json<WorkflowStatus>(`/api/workflows/${id}`) });
 
   useEffect(() => {
@@ -67,6 +70,7 @@ export function WorkflowPage() {
   ] as const;
 
   return (
+    <div ref={pageRef}>
     <PageShell wide>
       <PageHeader eyebrow="Nº 04 — LIVE RUN" title={`任务 · ${wf?.mode ?? "—"}`} action={<Badge tone={connection === "open" ? "blue" : offline ? "orange" : "plain"}>{connection === "open" ? "● 实时" : offline ? "○ 重连中" : "○ 未连接"}</Badge>}>
         当前阶段：<b>{wf ? phaseLabel(wf.currentPhase) : "加载中"}</b>；状态：<b>{statusLabel(wf?.status)}</b>。所有任务事件、文档与分享入口在同一个控制台内切换。
@@ -86,5 +90,6 @@ export function WorkflowPage() {
         </div>
       </Panel>
     </PageShell>
+    </div>
   );
 }

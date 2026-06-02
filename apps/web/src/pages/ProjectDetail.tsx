@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
@@ -8,6 +8,9 @@ import { ProjectReferencesPanel } from "../views/ProjectInputs/ProjectReferences
 import { PHASE_LABELS } from "../lib/phases.ts";
 import { Badge, Button, PageHeader, PageShell, Panel, PanelHeader, SelectInput, TextInput } from "../components/Brutalist.tsx";
 import { statusLabel } from "../lib/labels.ts";
+import { useFadeIn } from "../hooks/useFadeIn.ts";
+import { useStaggerIn } from "../hooks/useStaggerIn.ts";
+import { useCountUp } from "../hooks/useCountUp.ts";
 
 const LINK_MODE_LABELS: Record<string, string> = { gitUrl: "Git 地址", localDir: "本地目录" };
 
@@ -28,6 +31,9 @@ export function ProjectDetailPage() {
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [skippedReferences, setSkippedReferences] = useState<{ id: string; filename: string | null; parseStatus: "parsed" | "failed" | "partial" | "missing" }[]>([]);
   const [createdWorkflowId, setCreatedWorkflowId] = useState<string | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const ioRef = useRef<HTMLDivElement>(null);
+  const modeRef = useRef<HTMLDivElement>(null);
 
   const workflows = useQuery({
     queryKey: ["project-workflows", id],
@@ -60,8 +66,12 @@ export function ProjectDetailPage() {
   });
   const linkErr = link.error instanceof ApiError ? link.error.message : link.isError ? "链接失败" : null;
   const latest = workflows.data?.workflows[0];
+  useFadeIn(pageRef);
+  useStaggerIn(ioRef, ":scope > *");
+  useStaggerIn(modeRef, ".mode-card", { dependencies: [start.isPending] });
 
   return (
+    <div ref={pageRef}>
     <PageShell wide>
       <PageHeader eyebrow="Nº 02 — PROJECT BRIEF" title="项目任务">
         先强化输入：材料、仓库、模式；再追踪输出：任务状态、阶段事件、文档与分享。已勾选 <b>{selectedReferenceIds.length}</b> 份材料。
@@ -69,7 +79,7 @@ export function ProjectDetailPage() {
 
       <ProjectStatusHero loading={workflows.isLoading} error={workflows.isError} latest={latest} workflows={workflows.data?.workflows ?? []} onRefresh={() => void workflows.refetch()} />
 
-      <div className="project-io-strip mt-8" aria-label="输入输出流程">
+      <div ref={ioRef} className="project-io-strip mt-8" aria-label="输入输出流程">
         <IoStep n="01" t="输入材料" d="上传材料，解析后勾选固定" />
         <IoStep n="02" t="启动流水线" d="选择模式，生成一次可追溯任务" />
         <IoStep n="03" t="查询输出" d="进入监控、文档、分享和来源记录" />
@@ -92,7 +102,7 @@ export function ProjectDetailPage() {
                   {createdWorkflowId && <Button variant="secondary" onClick={() => nav(`/workflows/${createdWorkflowId}`)}>继续查看任务</Button>}
                 </div>
               )}
-              <div className="mode-grid">
+              <div ref={modeRef} className="mode-grid">
                 {MODES.map((m, i) => (
                   <button key={m.name} disabled={start.isPending} onClick={() => start.mutate(m.name)} className="mode-card">
                     <div className="mode-card__meta">MODE {String(i + 1).padStart(2, "0")}</div>
@@ -123,6 +133,7 @@ export function ProjectDetailPage() {
         </div>
       </div>
     </PageShell>
+    </div>
   );
 }
 
@@ -152,7 +163,10 @@ function ProjectStatusHero({ loading, error, latest, workflows, onRefresh }: { l
 }
 
 function StatusKpi({ label, value, small = false }: { label: string; value: string; small?: boolean }) {
-  return <div className="project-status-kpi"><span>{label}</span><b className={small ? "project-status-kpi__small" : ""}>{value}</b></div>;
+  const valueRef = useRef<HTMLElement>(null);
+  const numeric = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+  useCountUp(valueRef, numeric, { dependencies: [value] });
+  return <div className="project-status-kpi"><span>{label}</span><b ref={valueRef} className={small ? "project-status-kpi__small" : ""}>{value}</b></div>;
 }
 
 function IoStep({ n, t, d }: { n: string; t: string; d: string }) {

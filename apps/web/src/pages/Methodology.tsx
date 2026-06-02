@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Badge, Button, PageHeader, PageShell, Panel, PanelHeader } from "../components/Brutalist.tsx";
 import { PHASE_LABELS } from "../lib/phases.ts";
+import { useFadeIn } from "../hooks/useFadeIn.ts";
+import { useStaggerIn } from "../hooks/useStaggerIn.ts";
 
 const CAPABILITIES = [
   {
@@ -55,10 +57,15 @@ const PHASE_META: Record<string, { key: string; mode: string; in?: string; outpu
 
 export function MethodologyPage() {
   const [selected, setSelected] = useState<string>("phase2_research");
+  const pageRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
   const selectedPhase = PHASE_LABELS.find((p) => p.id === selected) ?? PHASE_LABELS[0]!;
   const selectedCaps = useMemo(() => CAPABILITIES.filter((c) => c.lands.includes(selected as never)), [selected]);
+  useFadeIn(pageRef);
+  useStaggerIn(cardsRef, ".method-cap-card", { dependencies: [selected] });
 
   return (
+    <div ref={pageRef}>
     <PageShell wide>
       <PageHeader eyebrow="Nº 03 — CAPABILITY → PIPELINE" title="能力不是卡片，是落到阶段的生产线">
         左侧是 6 个能力，右侧是 9 个阶段，中间用可点击蓝线说明“这个能力在哪一步变成输入、检索、验证和输出”。
@@ -86,7 +93,7 @@ export function MethodologyPage() {
       <div className="method-map mt-7">
         <Panel className="method-map__capabilities">
           <PanelHeader k="CAPABILITIES / 六能力" title="能力落点" >点击能力卡会高亮它连接到哪些阶段。</PanelHeader>
-          <div className="method-card-list">
+          <div ref={cardsRef} className="method-card-list">
             {CAPABILITIES.map((cap) => {
               const active = cap.lands.includes(selected as never);
               return (
@@ -154,6 +161,7 @@ export function MethodologyPage() {
         </Panel>
       </div>
     </PageShell>
+    </div>
   );
 }
 

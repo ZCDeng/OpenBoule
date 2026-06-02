@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton, ErrorBanner } from "../components/States.tsx";
@@ -5,10 +6,13 @@ import { ReportPublic } from "../views/PublicShare/ReportPublic.tsx";
 import { MethodologyPublic } from "../views/PublicShare/MethodologyPublic.tsx";
 import { Badge, PageHeader, PageShell, Panel } from "../components/Brutalist.tsx";
 import { scopeLabel } from "../lib/labels.ts";
+import { useFadeIn } from "../hooks/useFadeIn.ts";
 
 /** 签名分享只读页（U7/U10）。无登录，先取元数据判 scope，再用对应公开视图渲染。 */
 export function SharePage() {
   const { token } = useParams<{ token: string }>();
+  const pageRef = useRef<HTMLDivElement>(null);
+  useFadeIn(pageRef);
   const { data, isLoading, error } = useQuery({
     queryKey: ["share", token], retry: false,
     queryFn: async () => {
@@ -23,6 +27,7 @@ export function SharePage() {
   });
   const wide = data?.scope === "methodology";
   return (
+    <div ref={pageRef}>
     <PageShell wide={wide}>
       <PageHeader eyebrow="公开分享" title="Boule · 分享" action={data && <Badge tone="blue">{scopeLabel(data.scope)}</Badge>}>
         这是一个只读分享链接，无需登录即可查看。内容由 Boule 顾问工作台生成。
@@ -37,5 +42,6 @@ export function SharePage() {
         由 <span className="text-[var(--boule-ink)]">OpenConsult<span className="text-[var(--boule-blue)]">///</span> · Boule</span> 顾问工作台提供 · 安全只读分享
       </footer>
     </PageShell>
+    </div>
   );
 }
