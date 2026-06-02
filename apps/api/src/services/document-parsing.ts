@@ -1,5 +1,6 @@
 import { Worker } from "node:worker_threads";
 import { fork } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { config } from "../config.ts";
@@ -183,6 +184,21 @@ export function decideLiteParseOcr(result: LiteParseOcrResult): OcrDecision {
   };
 }
 
+/** 解析 Linux /proc/<pid>/status 的 VmRSS（kB）。读不到/格式不符返回 null。 */
+export function parseVmRssKb(status: string): number | null {
+  const m = status.match(/^VmRSS:\s+(\d+)\s*kB/m);
+  return m ? Number(m[1]) : null;
+}
+
+/** 读子进程当前 RSS（kB）。非 Linux / 进程已退出 / 无权限 → null（看门狗静默跳过，回落到超时保护）。 */
+function readChildRssKb(pid: number): number | null {
+  try {
+    return parseVmRssKb(readFileSync(`/proc/${pid}/status`, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<LiteParseOcrResult> {
   return new Promise((resolve, reject) => {
     const child = fork(OCR_CHILD_PATH, [], {
@@ -193,6 +209,7 @@ export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: s
     });
     let settled = false;
     let stderr = "";
+    let watchdog: ReturnType<typeof setInterval> | undefined;
     child.stderr?.on("data", (chunk) => {
       stderr = (stderr + String(chunk)).slice(-4096);
     });
@@ -204,8 +221,21 @@ export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: s
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (watchdog) clearInterval(watchdog);
       fn();
     };
+    // 原生堆看门狗：--max-old-space-size 管不到 PDFium/Tesseract 的原生内存，按 RSS 超限即杀子进程，
+    // 防恶意/超大 PDF 撑爆容器（plan R8）。仅 Linux 可读 /proc 时生效；其余环境回落到超时保护。
+    const rssLimitKb = config.references.ocrMaxRssMb * 1024;
+    watchdog = setInterval(() => {
+      if (child.pid === undefined) return;
+      const rssKb = readChildRssKb(child.pid);
+      if (rssKb !== null && rssKb > rssLimitKb) {
+        child.kill("SIGKILL");
+        settle(() => reject(new Error(`LITEPARSE_OCR_MEMORY_LIMIT_${Math.round(rssKb / 1024)}MB`)));
+      }
+    }, 500);
+    watchdog.unref?.();
     child.once("message", (msg: { ok: boolean; result?: LiteParseOcrResult; error?: string }) => {
       settle(() => {
         if (msg.ok && msg.result) resolve(msg.result);

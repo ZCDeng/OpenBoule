@@ -53,9 +53,15 @@ BOULE_OCR_FALLBACK=none
 
 `parse_source` Postgres enum 已新增 `liteparse`，迁移为 `apps/api/src/db/migrations/0008_rapid_living_mummy.sql`。
 
+## confidence 量级（实测，勿再改）
+
+liteparse 的 `TextItem.confidence` **实测已是 0..1**（`apps/api/scripts/ocr-calibrate.mjs`：清晰英文 OCR ≈0.95，糊掉的中文 ≈0.49），**不是** Tesseract 原生 0–100。`BOULE_OCR_CONFIDENCE_THRESHOLD`（0.55）/ `BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD`（0.85）就是按 0..1 设的，`averageConfidence` **直接取均值、不要除 100**。
+
+历史教训：2026-06-03 一轮 code-review 的 3 个 agent 靠反汇编断言 confidence 是 0–100，据此加了 `/100` 归一（commit 8dd5ea8），反而把门弄成"全判失败"。实测推翻了该断言。结论：confidence 量级这类事**以实测为准**，不信反汇编推断。
+
 ## 隔离与失败语义
 
-liteparse/PDFium/Tesseract 不在 API 主流程内直接执行；扫描 PDF OCR 通过 `document-ocr.child.ts` fork 子进程运行，并受 `REFERENCE_PARSE_TIMEOUT_MS`、`BOULE_OCR_MAX_PAGES`、`BOULE_OCR_DPI` 与 Node old-space 限制约束。
+liteparse/PDFium/Tesseract 不在 API 主流程内直接执行；扫描 PDF OCR 通过 `document-ocr.child.ts` fork 子进程运行，并受 `REFERENCE_PARSE_TIMEOUT_MS`、`BOULE_OCR_MAX_PAGES`、`BOULE_OCR_DPI` 约束。原生堆（PDFium/Tesseract，`--max-old-space-size` 管不到）由父进程 RSS 看门狗按 `BOULE_OCR_MAX_RSS_MB`（默认 1024）监控、超限 SIGKILL（仅 Linux /proc 可读时生效）；compose 另设 `mem_limit`/`pids_limit` 容器级兜底。
 
 判定规则：
 
@@ -65,6 +71,10 @@ liteparse/PDFium/Tesseract 不在 API 主流程内直接执行；扫描 PDF OCR 
 - confidence 达标：`parse_status=parsed`、`parse_source=liteparse`。
 - confidence 低于 `BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD`：保存原件供复查。
 
-## 未完成的质量门槛
+## 质量门槛与校准
 
-当前自动测试覆盖数字 PDF 不被 OCR 路影响，以及 confidence/fail-loud 判定。真实中文扫描件（表格、印章、低 DPI）仍需在有代表性的客户样本上做关键词命中率/CER/人工抽检评估；未达标时不要把 Claude fallback 退役。
+自动测试覆盖：数字 PDF 不被 OCR 路影响、confidence/fail-loud 判定、RSS 看门狗解析。
+
+阈值校准用 `apps/api/scripts/ocr-calibrate.mjs <pdf目录> [labels.json]`：跑真实扫描件、打印每份 confidence(0..1)/字符量/预览，给 good/bad 标签即算出可分阈值。脚本会按本文档锁定的 commit+sha256 自动下载语言包到 `apps/api/.tessdata`（已 gitignore）。
+
+**仍待办**：真实中文咨询扫描件（表格、印章、低 DPI）尚未在代表性样本上校准——合成样本只够确认量级与默认阈值方向（0.55 能挡住 0.49 的糊样本、放行 0.95 的清晰样本）。拿到客户样本前不要把 Claude fallback 退役。

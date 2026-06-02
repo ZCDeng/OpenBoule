@@ -28,3 +28,6 @@ spikes/.snapshot-cache/
 
 # understand-anything knowledge graph (machine-local, regenerable via /understand)
 .understand-anything/
+
+# OCR 校准脚本本地下载的 Tesseract 语言包（apps/api/scripts/ocr-calibrate.mjs，可重下）
+apps/api/.tessdata/

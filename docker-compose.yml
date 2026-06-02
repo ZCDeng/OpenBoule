@@ -47,6 +47,10 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: boule-api
     profiles: ["app"]
+    # 容器级兜底：OCR 子进程已有 RSS 看门狗（BOULE_OCR_MAX_RSS_MB），这里再封顶整容器内存与进程数，
+    # 防 PDF-bomb / fork 风暴拖垮宿主（plan R8）。值按部署机型可调。
+    mem_limit: ${BOULE_API_MEM_LIMIT:-2g}
+    pids_limit: ${BOULE_API_PIDS_LIMIT:-512}
     depends_on:
       postgres:
         condition: service_healthy

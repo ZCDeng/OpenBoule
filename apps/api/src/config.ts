@@ -139,6 +139,9 @@ export const config = {
     ocrDpi: positiveInteger("BOULE_OCR_DPI", "200"),
     ocrConfidenceThreshold: ratio("BOULE_OCR_CONFIDENCE_THRESHOLD", "0.55"),
     storeOriginalConfidenceThreshold: ratio("BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD", "0.85"),
+    // OCR 子进程 RSS 上限（MB）。--max-old-space-size 只管 V8 堆，PDFium/Tesseract 原生堆不受其约束；
+    // 父进程看门狗按此值监控子进程 RSS，超限即 SIGKILL（仅 Linux /proc 可读时生效），防 PDF-bomb 撑爆容器。
+    ocrMaxRssMb: positiveInteger("BOULE_OCR_MAX_RSS_MB", "1024"),
     ocrFallback: ocrFallback(),
   },
 

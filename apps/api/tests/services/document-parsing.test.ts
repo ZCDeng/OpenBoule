@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { config } from "../../src/config.ts";
-import { decideLiteParseOcr, parseReferenceDocument } from "../../src/services/document-parsing.ts";
+import { decideLiteParseOcr, parseReferenceDocument, parseVmRssKb } from "../../src/services/document-parsing.ts";
 
 function escapePdfText(text: string): string {
   return text.replace(/[()\\]/g, "\\$&");
@@ -59,6 +59,13 @@ test("liteparse OCR decision fails loud for empty, missing, and low confidence",
   assert.equal(low.ok, false);
   assert.equal(low.shouldStoreOriginal, true);
   assert.match(low.error ?? "", /^LITEPARSE_LOW_CONFIDENCE_/);
+});
+
+test("parseVmRssKb extracts VmRSS from /proc status, null otherwise", () => {
+  const status = "Name:\tnode\nVmPeak:\t  900000 kB\nVmRSS:\t  524288 kB\nThreads:\t11\n";
+  assert.equal(parseVmRssKb(status), 524288);
+  assert.equal(parseVmRssKb("VmHWM:\t 1000 kB\n"), null);
+  assert.equal(parseVmRssKb(""), null);
 });
 
 test("liteparse OCR decision wraps child error field", () => {
