@@ -25,7 +25,7 @@ export function SharePage() {
   return (
     <PageShell wide={wide}>
       <PageHeader eyebrow="公开分享" title="Boule · 分享" action={data && <Badge tone="blue">{scopeLabel(data.scope)}</Badge>}>
-        签名只读链接。报告与方法论分享使用与首页一致的公开展示外壳。
+        这是一个只读分享链接，无需登录即可查看。内容由 Boule 顾问工作台生成。
       </PageHeader>
       <div className="mt-8">
         {isLoading && <Skeleton rows={3} />}
@@ -33,6 +33,9 @@ export function SharePage() {
         {data && token && data.scope === "report" && <Panel><div className="boule-panel-body"><ReportPublic token={token} /></div></Panel>}
         {data && data.scope === "methodology" && <Panel><div className="boule-panel-body"><MethodologyPublic /></div></Panel>}
       </div>
+      <footer className="mt-10 border-t-2 border-black pt-5 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--boule-muted)]">
+        由 <span className="text-[var(--boule-ink)]">OpenConsult<span className="text-[var(--boule-blue)]">///</span> · Boule</span> 顾问工作台提供 · 安全只读分享
+      </footer>
     </PageShell>
   );
 }
