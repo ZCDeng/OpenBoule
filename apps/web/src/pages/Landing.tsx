@@ -17,6 +17,7 @@ import { PHASE_LABELS } from "../lib/phases.ts";
 const PAPER = "#F1F0EB";
 const INK = "#0B0B0B";
 const BLUE = "#1A18EE";
+const CLAUDE_ORANGE = "#D97757";
 const LINE = "#0B0B0B";
 const MUT = "#6A6A63";
 const DISP = '"Helvetica Neue","Arial Black","PingFang SC","Source Han Sans SC",sans-serif';
@@ -188,10 +189,26 @@ export function LandingPage() {
           <div className="boule-hero-grid">
             <div>
               <p style={{ fontSize: 19, maxWidth: "46ch", color: "#1c1c1a" }}>
-                9 个阶段，一支不睡觉的<b style={{ fontWeight: 600 }}>多角色创作团队</b>。专为 Claude 设计，不支持其它模型；需自带 Claude CLI 会话或 Anthropic Key。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。
+                9 个阶段，一支不睡觉的<b style={{ fontWeight: 600 }}>多角色创作团队</b>。Claude专用，不支持其它模型；需自带 Claude CLI 会话或 Anthropic Key。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。
               </p>
               <div className="flex flex-wrap" style={{ gap: 10, marginTop: 24 }}>
-                <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px", background: INK, color: PAPER }}>Claude-only</span>
+                <span
+                  style={{
+                    ...monoMeta,
+                    fontSize: 11,
+                    letterSpacing: "0.06em",
+                    border: `2px solid ${LINE}`,
+                    padding: "6px 12px",
+                    background: CLAUDE_ORANGE,
+                    color: "#fff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    boxShadow: `4px 4px 0 ${LINE}`,
+                  }}
+                >
+                  <ClaudeIcon size={15} /> Claude专用
+                </span>
                 <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>9 阶段流水线</span>
                 <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>真联网调研</span>
                 <span style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>对抗验证三票</span>
@@ -448,6 +465,19 @@ const METHOD_KEY: Record<string, string> = {
   phase5_delivery: "DELIVERY",
   phase6_enrichment: "ENRICHMENT",
 };
+
+
+function ClaudeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" style={{ flex: "0 0 auto" }}>
+      <path
+        fill="currentColor"
+        d="M12 1.8c.86 3.52 1.84 5.48 3.2 6.84s3.32 2.34 6.84 3.2c-3.52.86-5.48 1.84-6.84 3.2s-2.34 3.32-3.2 6.84c-.86-3.52-1.84-5.48-3.2-6.84s-3.32-2.34-6.84-3.2c3.52-.86 5.48-1.84 6.84-3.2s2.34-3.32 3.2-6.84Z"
+      />
+      <circle cx="12" cy="11.84" r="2.15" fill="#0B0B0B" opacity="0.18" />
+    </svg>
+  );
+}
 
 /* section 标题（Nº 编号 + 大标题）。 */
 function SecHead({ k, title }: { k: string; title: string }) {

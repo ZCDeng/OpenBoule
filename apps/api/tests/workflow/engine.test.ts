@@ -11,10 +11,16 @@
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { Queue } from "bullmq";
 import { WorkflowEngine, CheckpointConflictError } from "../../src/workflow/engine.ts";
-import { createConnection, PHASE_QUEUE } from "../../src/workflow/queues.ts";
+import { createConnection } from "../../src/workflow/queues.ts";
+
+// 唯一队列名：隔离并行测试文件，且不与生产队列 boule-phase 同名——
+// 否则本机在跑的 dev server worker 会抢测试 phase job、用真 runner 跑失败、
+// 占住 phase_attempts.idempotency_key，导致测试 worker 跳过、永不 checkpoint（见 e2e.test.ts 同款隔离）。
+const TEST_QUEUE = `boule-phase-engine-${randomUUID()}`;
 import { PHASE_IDS } from "../../src/workflow/state.ts";
 import type { AgentRunner } from "../../src/workflow/phases/index.ts";
 import { seedWorkflow, cleanup, db } from "./_helpers.ts";
@@ -71,7 +77,7 @@ async function waitForStatus(wf: string, status: string, timeoutMs = 20000): Pro
 
 before(async () => {
   const conn = createConnection();
-  const q = new Queue(PHASE_QUEUE, { connection: conn as never });
+  const q = new Queue(TEST_QUEUE, { connection: conn as never });
   await q.obliterate({ force: true }); // 清残留 job
   await q.close();
   await conn.quit();
@@ -79,6 +85,7 @@ before(async () => {
   engine = new WorkflowEngine(db, {
     agentRunner: runner,
     workerId: "w-test",
+    queueName: TEST_QUEUE,
     leaseSeconds: 30,
     heartbeatSeconds: 5,
     editorCount: 3,
