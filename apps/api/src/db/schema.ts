@@ -58,7 +58,7 @@ export const artifactStatus = pgEnum("artifact_status", [
 // U4 Git-linked workspace 来源（code-review #7：DB 层枚举约束，不只靠 app 层 route 守卫）。
 export const projectLinkMode = pgEnum("link_mode", ["gitUrl", "localDir"]);
 export const referenceParseStatus = pgEnum("reference_parse_status", ["parsed", "failed", "partial"]);
-export const referenceParseSource = pgEnum("reference_parse_source", ["local-js", "anthropic"]);
+export const referenceParseSource = pgEnum("reference_parse_source", ["local-js", "anthropic", "liteparse"]);
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 

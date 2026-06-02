@@ -1,10 +1,11 @@
 import { Worker } from "node:worker_threads";
+import { fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { config } from "../config.ts";
 
 export type ParseSignal = "text" | "empty" | "partial";
-export type ParseSource = "local-js" | "anthropic";
+export type ParseSource = "local-js" | "anthropic" | "liteparse";
 export type ParseStatus = "parsed" | "failed" | "partial";
 
 export interface LocalParseResult {
@@ -23,6 +24,7 @@ export interface ReferenceParseResult {
 
 const TEXT_MIME_RE = /^(text\/|application\/(json|xml|csv|x-yaml|yaml))/i;
 const WORKER_URL = new URL("./document-parsing.worker.ts", import.meta.url);
+const OCR_CHILD_PATH = fileURLToPath(new URL("./document-ocr.child.ts", import.meta.url));
 
 export function isTextLikeMime(mimeType: string): boolean {
   return TEXT_MIME_RE.test(mimeType);
@@ -47,7 +49,7 @@ export async function parseReferenceDocument(input: { buffer: Buffer; mimeType: 
     return { body: local.text, parseStatus: "parsed", parseSource: "local-js", shouldStoreOriginal: false };
   }
 
-  // 仅 PDF 才送 Claude OCR：Office 扫描件无法作为合法 Anthropic document media_type 发送，直接走本地文本的 partial/failed 映射。
+  // 仅 PDF 才进入 OCR 分支：Office 扫描件无法作为合法 Anthropic document media_type 发送，继续按本地文本 partial/failed 映射。
   if (input.mimeType !== "application/pdf") {
     return {
       body: local.text,
@@ -58,24 +60,50 @@ export async function parseReferenceDocument(input: { buffer: Buffer; mimeType: 
     };
   }
 
-  try {
-    const body = await extractScannedWithClaude(input);
-    if (!body.trim()) throw new Error("CLAUDE_EMPTY_TEXT");
+  const liteparse = await extractScannedWithLiteParse(input).catch((err): LiteParseOcrResult => ({
+    text: "",
+    confidence: null,
+    pages: 0,
+    confidenceSamples: 0,
+    error: err instanceof Error ? err.message : String(err),
+  }));
+  const liteparseDecision = decideLiteParseOcr(liteparse);
+  if (liteparseDecision.ok) {
     return {
-      body: body.trim(),
-      parseStatus: local.signal === "partial" ? "partial" : "parsed",
-      parseSource: "anthropic",
-      shouldStoreOriginal: true,
-    };
-  } catch (err) {
-    return {
-      body: local.text,
-      parseStatus: local.signal === "partial" && local.text ? "partial" : "failed",
-      parseSource: local.text ? "local-js" : null,
-      shouldStoreOriginal: local.signal === "partial",
-      error: err instanceof Error ? err.message : String(err),
+      body: liteparse.text.trim(),
+      parseStatus: "parsed",
+      parseSource: "liteparse",
+      shouldStoreOriginal: liteparseDecision.shouldStoreOriginal,
     };
   }
+
+  if (config.references.ocrFallback === "claude") {
+    try {
+      const body = await extractScannedWithClaude(input);
+      if (!body.trim()) throw new Error("CLAUDE_EMPTY_TEXT");
+      return {
+        body: body.trim(),
+        parseStatus: "parsed",
+        parseSource: "anthropic",
+        shouldStoreOriginal: true,
+      };
+    } catch (err) {
+      const claudeError = err instanceof Error ? err.message : String(err);
+      return fallbackPdfParseResult(local, `${liteparseDecision.error ?? "LITEPARSE_OCR_FAILED"}; CLAUDE_FALLBACK_FAILED: ${claudeError}`);
+    }
+  }
+
+  return fallbackPdfParseResult(local, liteparseDecision.error ?? "LITEPARSE_OCR_FAILED");
+}
+
+function fallbackPdfParseResult(local: LocalParseResult, error: string): ReferenceParseResult {
+  return {
+    body: local.text,
+    parseStatus: local.signal === "partial" && local.text ? "partial" : "failed",
+    parseSource: local.text ? "local-js" : null,
+    shouldStoreOriginal: local.signal === "partial",
+    error,
+  };
 }
 
 export function parseDigitalDocument(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<LocalParseResult> {
@@ -118,9 +146,93 @@ interface ClaudeQueryMessage {
   result?: unknown;
 }
 
+export interface LiteParseOcrResult {
+  text: string;
+  confidence: number | null;
+  pages: number;
+  confidenceSamples: number;
+  error?: string;
+}
+
+export interface OcrDecision {
+  ok: boolean;
+  shouldStoreOriginal: boolean;
+  error?: string;
+}
+
+export function decideLiteParseOcr(result: LiteParseOcrResult): OcrDecision {
+  if (result.error) {
+    return { ok: false, shouldStoreOriginal: true, error: `LITEPARSE_OCR_FAILED: ${result.error}` };
+  }
+  if (!result.text.trim()) {
+    return { ok: false, shouldStoreOriginal: true, error: "LITEPARSE_EMPTY_TEXT" };
+  }
+  if (result.confidence === null) {
+    return { ok: false, shouldStoreOriginal: true, error: "LITEPARSE_CONFIDENCE_UNAVAILABLE" };
+  }
+  if (result.confidence < config.references.ocrConfidenceThreshold) {
+    return {
+      ok: false,
+      shouldStoreOriginal: true,
+      error: `LITEPARSE_LOW_CONFIDENCE_${result.confidence.toFixed(3)}`,
+    };
+  }
+  return {
+    ok: true,
+    shouldStoreOriginal: result.confidence < config.references.storeOriginalConfidenceThreshold,
+  };
+}
+
+export function extractScannedWithLiteParse(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<LiteParseOcrResult> {
+  return new Promise((resolve, reject) => {
+    const child = fork(OCR_CHILD_PATH, [], {
+      execArgv: ["--experimental-transform-types", "--max-old-space-size=256"],
+      serialization: "advanced",
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
+      env: { ...process.env, TESSDATA_PREFIX: config.references.tessdataPath },
+    });
+    let settled = false;
+    let stderr = "";
+    child.stderr?.on("data", (chunk) => {
+      stderr = (stderr + String(chunk)).slice(-4096);
+    });
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      settle(() => reject(new Error("LITEPARSE_OCR_TIMEOUT")));
+    }, config.references.parseTimeoutMs);
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+    child.once("message", (msg: { ok: boolean; result?: LiteParseOcrResult; error?: string }) => {
+      settle(() => {
+        if (msg.ok && msg.result) resolve(msg.result);
+        else reject(new Error(msg.error ?? "LITEPARSE_OCR_FAILED"));
+      });
+    });
+    child.once("error", (err) => {
+      settle(() => reject(err));
+    });
+    child.once("exit", (code, signal) => {
+      if (settled) return;
+      const suffix = stderr.trim() ? `: ${stderr.trim()}` : "";
+      settle(() => reject(new Error(`LITEPARSE_OCR_PROCESS_EXIT_${signal ?? code}${suffix}`)));
+    });
+    child.send({
+      buffer: input.buffer,
+      language: config.references.ocrLanguage,
+      tessdataPath: config.references.tessdataPath,
+      maxPages: config.references.ocrMaxPages,
+      dpi: config.references.ocrDpi,
+    });
+  });
+}
+
 async function extractScannedWithClaude(input: { buffer: Buffer; mimeType: string; filename: string }): Promise<string> {
-  if (!config.references.claudeReferenceOcrEnabled) {
-    throw new Error("CLAUDE_REFERENCE_OCR_DISABLED");
+  if (config.references.ocrFallback !== "claude") {
+    throw new Error("CLAUDE_OCR_FALLBACK_DISABLED");
   }
   const prompt = {
     type: "user",

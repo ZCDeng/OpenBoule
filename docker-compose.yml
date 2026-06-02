@@ -72,6 +72,15 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       TRUTH_SOURCE_REPO: ${TRUTH_SOURCE_REPO:-ZCDeng/consulting-team}
+      # liteparse 本地 OCR：默认仅扫描/图像型 PDF 分支使用；数字 PDF 仍走 pdfjs。
+      TESSDATA_PREFIX: ${TESSDATA_PREFIX:-/opt/tessdata}
+      BOULE_OCR_LANGUAGE: ${BOULE_OCR_LANGUAGE:-chi_sim+eng}
+      BOULE_OCR_MAX_PAGES: ${BOULE_OCR_MAX_PAGES:-100}
+      BOULE_OCR_DPI: ${BOULE_OCR_DPI:-200}
+      BOULE_OCR_CONFIDENCE_THRESHOLD: ${BOULE_OCR_CONFIDENCE_THRESHOLD:-0.55}
+      BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD: ${BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD:-0.85}
+      # 默认不把客户扫描件发给 Claude；仅显式 claude 时作为 liteparse 空/低置信兜底。
+      BOULE_OCR_FALLBACK: ${BOULE_OCR_FALLBACK:-none}
     # 组合根（U10 收尾）：先迁移再启动 Fastify + 引擎。
     command: ["sh", "-c", "pnpm --filter @boule/api db:migrate && pnpm --filter @boule/api start"]
 

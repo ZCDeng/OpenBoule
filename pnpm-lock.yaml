@@ -26,6 +26,9 @@ importers:
       '@fastify/multipart':
         specifier: ^10.0.0
         version: 10.0.0
+      '@llamaindex/liteparse':
+        specifier: 2.0.4
+        version: 2.0.4
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -782,6 +785,31 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
+  '@llamaindex/liteparse-darwin-arm64@2.0.4':
+    resolution: {integrity: sha512-FXrXXr8nXgu36dbXtjDh+SedvESodBt1dc+j8zKQvlX3/V1Cuu4RuePvCIHe+cTd1rQxx/YVUDI9EX3JMh2nyA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@llamaindex/liteparse-linux-arm64-gnu@2.0.4':
+    resolution: {integrity: sha512-mYUxHD5O746agBK7PVh96Fo+p+5v47qxBMBQLJpYjjT6HC3yqGPqDXXefDdiMSq80bqz6M6istgWIPNUmLOafg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@llamaindex/liteparse-linux-x64-gnu@2.0.4':
+    resolution: {integrity: sha512-Tf6oi4G8wikExWnSImj98RwXlRUY3VBWejOm0XQENMH/1B2C0frHTOaUuXCq8U3/Ms4h4eAnWpuB8wT2PDC+yw==}
+    cpu: [x64]
+    os: [linux]
+
+  '@llamaindex/liteparse-win32-x64-msvc@2.0.4':
+    resolution: {integrity: sha512-vuhJN6Odc0zF3dVGSI3dy5vWt9/+bN2yi26ZYmXlTrKtZYNuSx06tDXZvZBG/4AQGI6m6E82KsCnRGRAc91V6Q==}
+    cpu: [x64]
+    os: [win32]
+
+  '@llamaindex/liteparse@2.0.4':
+    resolution: {integrity: sha512-wXI+GrYRb7jTPDBxst6RcvK6AI4UXqQP+7RvNhmB9yZERlIz6c1fRdCrlvkHEpMKj850LxgzAcawVMT+UiQwlw==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
+
   '@modelcontextprotocol/sdk@1.29.0':
     resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
     engines: {node: '>=18'}
@@ -1442,6 +1470,10 @@ packages:
   cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
     engines: {node: '>=0.10.0'}
+
+  commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
+    engines: {node: '>=18'}
 
   content-disposition@1.1.0:
     resolution: {integrity: sha512-5jRCH9Z/+DRP7rkvY83B+yGIGX96OYdJmzngqnw2SBSxqCFPd0w2km3s5iawpGX8krnwSGmF0FW5Nhr0Hfai3g==}
@@ -3038,6 +3070,27 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@llamaindex/liteparse-darwin-arm64@2.0.4':
+    optional: true
+
+  '@llamaindex/liteparse-linux-arm64-gnu@2.0.4':
+    optional: true
+
+  '@llamaindex/liteparse-linux-x64-gnu@2.0.4':
+    optional: true
+
+  '@llamaindex/liteparse-win32-x64-msvc@2.0.4':
+    optional: true
+
+  '@llamaindex/liteparse@2.0.4':
+    dependencies:
+      commander: 12.1.0
+    optionalDependencies:
+      '@llamaindex/liteparse-darwin-arm64': 2.0.4
+      '@llamaindex/liteparse-linux-arm64-gnu': 2.0.4
+      '@llamaindex/liteparse-linux-x64-gnu': 2.0.4
+      '@llamaindex/liteparse-win32-x64-msvc': 2.0.4
+
   '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
       '@hono/node-server': 1.19.14(hono@4.12.23)
@@ -3639,6 +3692,8 @@ snapshots:
   cluster-key-slot@1.1.1: {}
 
   cluster-key-slot@1.1.2: {}
+
+  commander@12.1.0: {}
 
   content-disposition@1.1.0: {}
 

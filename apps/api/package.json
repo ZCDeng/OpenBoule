@@ -21,6 +21,7 @@
     "@boule/shared": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/multipart": "^10.0.0",
+    "@llamaindex/liteparse": "2.0.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "bullmq": "^5.77.6",
     "drizzle-orm": "^0.38.0",

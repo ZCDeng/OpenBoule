@@ -29,6 +29,22 @@ function numeric(name: string, fallback: string): number {
   return n;
 }
 
+function positiveInteger(name: string, fallback: string): number {
+  const n = numeric(name, fallback);
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new Error(`环境变量 ${name} 必须是正整数（当前 "${process.env[name]}"，见 .env.example）`);
+  }
+  return n;
+}
+
+function ratio(name: string, fallback: string): number {
+  const n = numeric(name, fallback);
+  if (n < 0 || n > 1) {
+    throw new Error(`环境变量 ${name} 必须在 0..1 之间（当前 "${process.env[name]}"，见 .env.example）`);
+  }
+  return n;
+}
+
 function searchOrder(): ("aditly" | "anysearch")[] {
   const raw = optional("SEARCH_PROVIDER_ORDER", "aditly,anysearch");
   const out = raw.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -112,7 +128,13 @@ export const config = {
     officeMaxBytes: numeric("REFERENCE_OFFICE_MAX_BYTES", "5242880"),
     projectMaxBytes: numeric("REFERENCE_PROJECT_MAX_BYTES", "104857600"),
     parseTimeoutMs: numeric("REFERENCE_PARSE_TIMEOUT_MS", "120000"),
-    claudeReferenceOcrEnabled: optional("BOULE_ENABLE_CLAUDE_REFERENCE_OCR", "") === "1",
+    ocrLanguage: optional("BOULE_OCR_LANGUAGE", "chi_sim+eng"),
+    tessdataPath: optional("TESSDATA_PREFIX", "/opt/tessdata"),
+    ocrMaxPages: positiveInteger("BOULE_OCR_MAX_PAGES", "100"),
+    ocrDpi: positiveInteger("BOULE_OCR_DPI", "200"),
+    ocrConfidenceThreshold: ratio("BOULE_OCR_CONFIDENCE_THRESHOLD", "0.55"),
+    storeOriginalConfidenceThreshold: ratio("BOULE_STORE_ORIGINAL_CONFIDENCE_THRESHOLD", "0.85"),
+    ocrFallback: optional("BOULE_OCR_FALLBACK", optional("BOULE_ENABLE_CLAUDE_REFERENCE_OCR", "") === "1" ? "claude" : "none") === "claude" ? "claude" : "none",
   },
 
   search: {

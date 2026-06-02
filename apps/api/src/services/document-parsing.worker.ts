@@ -82,8 +82,8 @@ async function extractOfficeText(buffer: Buffer, mimeType: string): Promise<Pars
 
 async function extractPdfText(buffer: Buffer): Promise<ParseResult> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  // Buffer 本身就是 Uint8Array，直接传底层视图，省一次 new Uint8Array 拷贝。
-  const loadingTask = pdfjs.getDocument({ data: buffer, disableWorker: true, isEvalSupported: false, useSystemFonts: true } as any);
+  // pdfjs 6 明确拒绝 Buffer；传 Uint8Array，避免数字 PDF happy-path 误进 OCR/failed。
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer), disableWorker: true, isEvalSupported: false, useSystemFonts: true } as any);
   const doc = await loadingTask.promise;
   const pages: string[] = [];
   let imageLikeObjects = 0;

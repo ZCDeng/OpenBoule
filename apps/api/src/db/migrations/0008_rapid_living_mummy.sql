@@ -1,0 +1,1 @@
+ALTER TYPE "public"."reference_parse_source" ADD VALUE 'liteparse';
