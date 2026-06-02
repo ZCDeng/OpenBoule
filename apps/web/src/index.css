@@ -43,6 +43,8 @@ button, input, select, textarea { font: inherit; }
 .boule-lede { max-width: 68ch; margin-top: 14px; color: #33332e; font-size: 16px; }
 .boule-grid { display: grid; gap: 18px; }
 .boule-grid--2 { grid-template-columns: 1fr; }
+/* 项目详情两栏顶部对齐：材料为空时左栏按自身高度，不被右栏（B+C）拉高。 */
+.project-detail-grid { align-items: start; }
 .boule-grid--3 { grid-template-columns: 1fr; }
 .boule-panel { border: 2px solid var(--boule-line); background: var(--boule-paper); box-shadow: 6px 6px 0 var(--boule-line); }
 .boule-panel--dark { background: var(--boule-ink); color: var(--boule-paper); }

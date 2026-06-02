@@ -82,6 +82,7 @@ export function LandingPage() {
   const nav = useNavigate();
   const api = useAuth((s) => s.api);
   const setSession = useAuth((s) => s.setSession);
+  const isAuthed = useAuth((s) => s.isAuthed());
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -152,7 +153,7 @@ export function LandingPage() {
       setSession(res.userId, { accessToken: res.accessToken, refreshToken: res.refreshToken });
       nav("/projects");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "登录失败");
+      setError(err instanceof ApiError ? err.message : "无法连接服务器，请检查网络后重试");
     } finally {
       setBusy(false);
     }
@@ -217,13 +218,23 @@ export function LandingPage() {
             >
               GitHub ↗
             </a>
-            <a
-              href="#login"
-              onClick={scrollToSection("login")}
-              style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em", border: `2px solid ${LINE}`, padding: "8px 18px", background: INK, color: PAPER }}
-            >
-              登录
-            </a>
+            {isAuthed ? (
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); nav("/projects"); }}
+                style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em", border: `2px solid ${LINE}`, padding: "8px 18px", background: BLUE, color: PAPER }}
+              >
+                进入工作台 →
+              </a>
+            ) : (
+              <a
+                href="#login"
+                onClick={scrollToSection("login")}
+                style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em", border: `2px solid ${LINE}`, padding: "8px 18px", background: INK, color: PAPER }}
+              >
+                登录
+              </a>
+            )}
           </div>
         </div>
       </nav>
@@ -483,7 +494,9 @@ export function LandingPage() {
               <a href="#runtime" onClick={scrollToSection("runtime")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>运行环境</a>
               <a href="#method" onClick={scrollToSection("method")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>方法论</a>
               <a href={GITHUB} target="_blank" rel="noopener" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>GitHub ↗</a>
-              <a href="#login" onClick={scrollToSection("login")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>登录</a>
+              {isAuthed
+                ? <a href="#" onClick={(e) => { e.preventDefault(); nav("/projects"); }} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>进入工作台</a>
+                : <a href="#login" onClick={scrollToSection("login")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>登录</a>}
             </div>
             <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", color: MUT, textAlign: "right" }}>
 EDITION 2026 · v1 · 开发代号 BOULE · 31.2306° N, 121.4737° E
