@@ -56,6 +56,17 @@ export function SelectInput(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`boule-input ${props.className ?? ""}`} />;
 }
 
+/** 行内提示条（替代各处手抄的橙/红警告块）。tone: warn=橙(默认) / danger=红 / info=墨。 */
+export function Banner({ children, tone = "warn", action }: { children: ReactNode; tone?: "warn" | "danger" | "info"; action?: ReactNode }) {
+  const bg = tone === "danger" ? "bg-[var(--boule-red)]" : tone === "info" ? "bg-[var(--boule-ink)]" : "bg-[var(--boule-orange)]";
+  return (
+    <div role={tone === "danger" ? "alert" : "status"} className={`flex flex-wrap items-center justify-between gap-3 border-2 border-black ${bg} px-4 py-3 text-sm text-white shadow-[4px_4px_0_var(--boule-ink)]`}>
+      <div className="min-w-0">{children}</div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
 export function DataRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="boule-data-row">

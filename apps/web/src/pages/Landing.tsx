@@ -238,13 +238,13 @@ export function LandingPage() {
                   {mode === "register" && (
                     <>
                       <label style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.1em", color: MUT, display: "block", margin: "0 0 6px" }}>姓名</label>
-                      <input style={inputStyle} id="boule-name" name="name" autoComplete="name" placeholder="你的名字" value={name} onChange={(e) => setName(e.target.value)} />
+                      <input style={inputStyle} id="boule-name" name="name" aria-label="姓名" autoComplete="name" placeholder="你的名字" value={name} onChange={(e) => setName(e.target.value)} />
                     </>
                   )}
                   <label style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.1em", color: MUT, display: "block", margin: "0 0 6px" }}>邮箱</label>
-                  <input style={inputStyle} id="boule-email" name="email" autoComplete="email" type="email" placeholder="you@studio.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <input style={inputStyle} id="boule-email" name="email" aria-label="邮箱" autoComplete="email" type="email" placeholder="you@studio.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                   <label style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.1em", color: MUT, display: "block", margin: "0 0 6px" }}>密码</label>
-                  <input style={inputStyle} id="boule-password" name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <input style={inputStyle} id="boule-password" name="password" aria-label="密码" autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
                   <button
                     type="submit"
                     disabled={busy}

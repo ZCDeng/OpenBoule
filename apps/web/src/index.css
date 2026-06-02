@@ -23,6 +23,7 @@ h1, h2, h3 {
   --boule-orange: #d97757;
   --boule-muted: #6a6a63;
   --boule-line: #0b0b0b;
+  --boule-red: #dc2626;
   --boule-disp: "Helvetica Neue", "Arial Black", "PingFang SC", "Source Han Sans SC", sans-serif;
   --boule-body: -apple-system, "PingFang SC", "Source Han Sans SC", "Segoe UI", sans-serif;
   --boule-mono: "SF Mono", "JetBrains Mono", ui-monospace, "Menlo", monospace;
@@ -60,7 +61,7 @@ button, input, select, textarea { font: inherit; }
 .boule-btn:disabled { cursor: default; opacity: .55; }
 .boule-btn--primary { background: var(--boule-blue); color: #fff; }
 .boule-btn--secondary { background: var(--boule-paper); color: var(--boule-ink); }
-.boule-btn--danger { background: #dc2626; color: #fff; }
+.boule-btn--danger { background: var(--boule-red); color: #fff; }
 .boule-input { width: 100%; min-height: 42px; border: 2px solid var(--boule-line); border-radius: 0; background: transparent; padding: 10px 12px; color: var(--boule-ink); outline: none; }
 .boule-input:focus { box-shadow: 4px 4px 0 var(--boule-blue); }
 .boule-data-row { display: grid; grid-template-columns: 112px 1fr; gap: 12px; border-top: 2px solid var(--boule-line); padding: 10px 0; font-size: 14px; }

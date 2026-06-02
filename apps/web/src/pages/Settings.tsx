@@ -20,8 +20,9 @@ export function SettingsPage() {
   const api = useAuth((s) => s.api);
   const qc = useQueryClient();
   const [name, setName] = useState("");
-  const [scope, setScope] = useState<"read" | "write">("write");
+  const [scope, setScope] = useState<"read" | "write">("read");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const runtime = useQuery({ queryKey: ["settings-runtime"], queryFn: () => api.json<RuntimeSettings>("/api/settings/runtime") });
   const keys = useQuery({ queryKey: ["api-keys"], queryFn: () => api.json<{ keys: ApiKeyRow[] }>("/api/api-keys") });
@@ -89,7 +90,7 @@ export function SettingsPage() {
             </div>
             {createKey.isError && <ErrorBanner severity="P1" message="创建 API Key 失败" />}
             {revoke.isError && <ErrorBanner severity="P1" message="撤销 API Key 失败" />}
-            {createdKey && <div className="border-2 border-black bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><code className="mt-2 block break-all font-[var(--boule-mono)] text-xs">{createdKey}</code></div>}
+            {createdKey && <div className="border-2 border-black bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
             {keys.isLoading ? <Skeleton rows={3} /> : keys.isError ? <ErrorBanner severity="P1" message="加载 API Keys 失败" onRetry={() => void keys.refetch()} /> : (
               <div className="boule-list shadow-none">
                 {(keys.data?.keys ?? []).map((key) => (

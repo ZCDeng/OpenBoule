@@ -13,7 +13,7 @@ import { debounce } from "../../lib/debounce.ts";
 import { ApiClient, ApiError } from "../../lib/api.ts";
 import { ErrorBanner } from "../../components/States.tsx";
 import { statusLabel } from "../../lib/labels.ts";
-import { Badge, Button } from "../../components/Brutalist.tsx";
+import { Badge, Banner, Button } from "../../components/Brutalist.tsx";
 
 type LockState = { kind: "acquiring" } | { kind: "held" } | { kind: "locked"; holder: string; ttlSec: number };
 type SaveState = "idle" | "saving" | "saved" | "local-fallback";
@@ -131,7 +131,7 @@ export function Editor({
   return (
     <div className="space-y-2">
       {lock.kind === "locked" && (
-        <div className="border-2 border-black bg-[var(--boule-orange)] p-3 text-sm text-white shadow-[4px_4px_0_#0B0B0B]">
+        <Banner tone="warn">
           {readOnly ? (
             <span>正在只读查看历史版本或锁定文档。</span>
           ) : (
@@ -141,12 +141,9 @@ export function Editor({
               <Button type="button" variant="secondary" className="ml-2" onClick={() => editor?.setEditable(false)}>
                 只读查看
               </Button>
-              <Button type="button" variant="secondary" disabled className="ml-2" title="当前未实现后端排队">
-                排队等编辑
-              </Button>
             </>
           )}
-        </div>
+        </Banner>
       )}
       {save === "local-fallback" && <ErrorBanner severity="P1" message="保存失败，将保存在本地，恢复后同步" />}
 

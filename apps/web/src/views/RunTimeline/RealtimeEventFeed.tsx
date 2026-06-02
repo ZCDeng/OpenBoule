@@ -8,7 +8,7 @@ const TONE_CLASS: Record<WorkflowEventItem["tone"], string> = {
   blue: "bg-[var(--boule-blue)] text-white",
   green: "bg-black text-white",
   amber: "bg-[var(--boule-orange)] text-white",
-  red: "bg-red-600 text-white",
+  red: "bg-[var(--boule-red)] text-white",
 };
 
 export function RealtimeEventFeed({ events, currentPhase, offline, limit = 30, compact = false, phaseOnly = false }: { events: readonly SseEvent[]; currentPhase?: string; offline?: boolean; limit?: number; compact?: boolean; phaseOnly?: boolean }) {
