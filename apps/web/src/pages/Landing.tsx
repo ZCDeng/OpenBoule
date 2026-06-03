@@ -3,14 +3,13 @@
  * 视觉真值源：_design/landing-brutalist-demo.html（用户已批准）。
  * 设计语言：电光蓝 #1A18EE 单一 accent、近黑 #0B0B0B、骨白 #F1F0EB、原始 2px 黑边无圆角、
  * 超大粗体 grotesque、非对称网格、巨号编号、黑色跑马灯。不引外部字体/CDN，字体栈照搬 demo。
- * 登录 slab（Nº 00）内联复用 Login 同款真实逻辑（useAuth / api.json / setSession / ErrorBanner）。
+ * Nº 00 slab 是「本地起跑」三步安装卡（Boule 是依赖终端的本机软件，不是 SaaS：装好直接跑，
+ * MODE=local 免登录单机起）。团队登录降级走导航栏按钮 → 独立 /login 页，落地页不再内联表单。
  */
 
-import { useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from "react";
+import { useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
-import { ApiError } from "../lib/api.ts";
-import { ErrorBanner } from "../components/States.tsx";
 import { PHASE_LABELS } from "../lib/phases.ts";
 import { gsap, ScrollTrigger, SplitText, shouldAnimate, useGSAP } from "../lib/gsap.ts";
 
@@ -26,6 +25,22 @@ const BODY = '-apple-system,"PingFang SC","Source Han Sans SC","Segoe UI",sans-s
 const MONO = '"SF Mono","JetBrains Mono",ui-monospace,"Menlo",monospace';
 
 const GITHUB = "https://github.com/ZCDeng/OpenBoule";
+
+/* Nº 00 本地起跑三步（命令照搬 README「快速开始」，可真实跑通）。 */
+const QUICKSTART: { no: string; title: string; cmd: string; note?: string }[] = [
+  { no: "01", title: "克隆仓库", cmd: "git clone …/OpenBoule.git && cd OpenBoule", note: "需要 Node ≥22 + pnpm + Docker" },
+  { no: "02", title: "起基础设施", cmd: "cp .env.example .env && docker compose up -d", note: "Postgres 16 + Redis" },
+  { no: "03", title: "装依赖并启动", cmd: "pnpm install && pnpm dev", note: "api@3100 · web@5173" },
+];
+/* 「复制全部」给完整可粘贴序列（含完整 clone URL 与 .env 步骤）。 */
+const QUICKSTART_SCRIPT = [
+  "git clone https://github.com/ZCDeng/OpenBoule.git",
+  "cd OpenBoule",
+  "cp .env.example .env",
+  "docker compose up -d",
+  "pnpm install",
+  "pnpm dev",
+].join("\n");
 
 /* ── 复用样式片段 ── */
 const monoMeta: CSSProperties = {
@@ -80,15 +95,8 @@ const MARQUEE = [
 
 export function LandingPage() {
   const nav = useNavigate();
-  const api = useAuth((s) => s.api);
-  const setSession = useAuth((s) => s.setSession);
   const isAuthed = useAuth((s) => s.isAuthed());
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const capsRef = useRef<HTMLElement>(null);
   const crewRef = useRef<HTMLElement>(null);
@@ -118,7 +126,7 @@ export function LandingPage() {
     tl.from(".boule-hero-copy", { opacity: 0, y: 22, duration: 0.45 }, "<0.15")
       .from(".boule-hero-badge", { opacity: 0, scale: 0, duration: 0.62, stagger: 0.065, ease: "elastic.out(1, 0.55)" }, "<0.1")
       .from(".boule-hero-cta > *", { opacity: 0, x: -20, duration: 0.35, stagger: 0.08 }, "<0.18")
-      .from(".boule-login-slab", { opacity: 0, y: 30, duration: 0.42 }, "<0.08");
+      .from(".boule-install-slab", { opacity: 0, y: 30, duration: 0.42 }, "<0.08");
   }, { scope: heroRef });
 
   useGSAP(() => {
@@ -158,24 +166,14 @@ export function LandingPage() {
     ScrollTrigger.refresh();
   }, { scope: heroRef });
 
-  // 登录/注册：复用 Login 同款真实逻辑（打 /api/auth/*，成功跳 /projects，失败用 ErrorBanner）。
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
+  // 「复制全部」：把可粘贴的完整起跑命令写进剪贴板，1.8s 复位提示。剪贴板不可用时静默。
+  async function copyAll() {
     try {
-      const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-      const body = mode === "login" ? { email, password } : { email, password, name };
-      const res = await api.json<{ userId: string; accessToken: string; refreshToken: string }>(path, {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      setSession(res.userId, { accessToken: res.accessToken, refreshToken: res.refreshToken });
-      nav("/projects");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "无法连接服务器，请检查网络后重试");
-    } finally {
-      setBusy(false);
+      await navigator.clipboard.writeText(QUICKSTART_SCRIPT);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* 非安全上下文 / 旧浏览器无 clipboard API：放弃复制，命令仍可手抄 */
     }
   }
 
@@ -185,17 +183,6 @@ export function LandingPage() {
       document.getElementById(id)?.scrollIntoView({ behavior: shouldAnimate() ? "smooth" : "auto", block: "start" });
     };
   }
-
-  const inputStyle: CSSProperties = {
-    width: "100%",
-    border: `2px solid ${LINE}`,
-    background: "transparent",
-    padding: "12px",
-    fontFamily: BODY,
-    fontSize: 15,
-    borderRadius: 0,
-    marginBottom: 16,
-  };
 
   return (
     <div style={{ background: PAPER, color: INK, fontFamily: BODY, lineHeight: 1.5, minHeight: "100vh" }}>
@@ -248,11 +235,11 @@ export function LandingPage() {
               </a>
             ) : (
               <a
-                href="#login"
-                onClick={scrollToSection("login")}
+                href="/login"
+                onClick={(e) => { e.preventDefault(); nav("/login"); }}
                 style={{ ...monoMeta, fontSize: 12, letterSpacing: "0.1em", border: `2px solid ${LINE}`, padding: "8px 18px", background: INK, color: PAPER }}
               >
-                登录
+                团队登录
               </a>
             )}
           </div>
@@ -301,8 +288,8 @@ export function LandingPage() {
                 <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>确定性脚手架</span>
               </div>
               <div className="boule-hero-cta flex items-center" style={{ gap: 14, marginTop: 34 }}>
-                <a href="#login" onClick={scrollToSection("login")} style={{ fontFamily: DISP, fontWeight: 700, fontSize: 18, border: `2px solid ${LINE}`, padding: "14px 26px", background: BLUE, color: "#fff", display: "inline-flex", alignItems: "center", gap: 10 }}>
-                  开始 <span style={{ fontFamily: BODY }}>▸</span>
+                <a href="#install" onClick={scrollToSection("install")} style={{ fontFamily: DISP, fontWeight: 700, fontSize: 18, border: `2px solid ${LINE}`, padding: "14px 26px", background: BLUE, color: "#fff", display: "inline-flex", alignItems: "center", gap: 10 }}>
+                  本地起跑 <span style={{ fontFamily: BODY }}>▸</span>
                 </a>
                 <a href="#method" onClick={scrollToSection("method")} style={{ fontFamily: DISP, fontWeight: 700, fontSize: 18, border: `2px solid ${LINE}`, padding: "14px 26px", background: "transparent", color: INK, display: "inline-flex", alignItems: "center" }}>
                   看方法论
@@ -310,44 +297,51 @@ export function LandingPage() {
               </div>
             </div>
 
-            {/* 登录 slab（Nº 00）—— 真实登录逻辑 */}
-            <div id="login" className="boule-login-slab" style={{ border: `2px solid ${LINE}`, background: PAPER, alignSelf: "start" }}>
+            {/* 安装 slab（Nº 00）—— 本地起跑三步，不是登录。Boule 是依赖终端的本机软件，装好直接跑。 */}
+            <div id="install" className="boule-install-slab" style={{ border: `2px solid ${LINE}`, background: PAPER, alignSelf: "start" }}>
               <div className="flex items-center justify-between" style={{ borderBottom: `2px solid ${LINE}`, padding: "14px 18px", background: INK, color: PAPER }}>
-                <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.14em" }}>
-                  Nº 00 — {mode === "login" ? "进入工作台" : "注册账号"}
-                </span>
-                <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.14em" }}>↵</span>
+                <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.14em" }}>Nº 00 — 本地起跑</span>
+                <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.14em", color: "#9a9a93" }}>LOCAL · ~3 MIN</span>
               </div>
-              <div style={{ padding: "22px 18px" }}>
-                {error && <div style={{ marginBottom: 14 }}><ErrorBanner severity="P0" message={error} /></div>}
-                <form onSubmit={submit}>
-                  {mode === "register" && (
-                    <>
-                      <label style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.1em", color: MUT, display: "block", margin: "0 0 6px" }}>姓名</label>
-                      <input style={inputStyle} id="boule-name" name="name" aria-label="姓名" autoComplete="name" placeholder="你的名字" value={name} onChange={(e) => setName(e.target.value)} />
-                    </>
-                  )}
-                  <label style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.1em", color: MUT, display: "block", margin: "0 0 6px" }}>邮箱</label>
-                  <input style={inputStyle} id="boule-email" name="email" aria-label="邮箱" autoComplete="email" type="email" placeholder="you@studio.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  <label style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.1em", color: MUT, display: "block", margin: "0 0 6px" }}>密码</label>
-                  <input style={inputStyle} id="boule-password" name="password" aria-label="密码" autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-                  <button
-                    type="submit"
-                    disabled={busy}
-                    style={{ width: "100%", border: `2px solid ${LINE}`, background: BLUE, color: "#fff", fontFamily: DISP, fontWeight: 700, fontSize: 16, padding: 13, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}
+              <div style={{ padding: "8px 0 0" }}>
+                {QUICKSTART.map((s, i) => (
+                  <div
+                    key={s.no}
+                    className="flex"
+                    style={{ gap: 14, padding: "16px 18px", borderTop: i === 0 ? "none" : `2px solid ${LINE}`, alignItems: "baseline" }}
                   >
-                    {busy ? "处理中…" : mode === "login" ? "登录" : "注册"}
-                  </button>
-                </form>
-                <div style={{ marginTop: 14, ...monoMeta, fontSize: 11, letterSpacing: "0.06em", color: MUT, textAlign: "center" }}>
-                  {mode === "login" ? "没有账号? " : "已有账号? "}
+                    <span style={{ fontFamily: DISP, fontWeight: 800, fontSize: 30, lineHeight: 1, letterSpacing: "-0.04em", color: BLUE, flex: "0 0 auto" }}>{s.no}</span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontFamily: DISP, fontWeight: 700, fontSize: 16, letterSpacing: "-0.01em" }}>{s.title}</div>
+                      <code style={{ fontFamily: MONO, fontSize: 12, color: INK, background: "#e4e3dc", border: `1.5px solid ${LINE}`, padding: "4px 8px", display: "block", marginTop: 7, overflowX: "auto", whiteSpace: "nowrap" }}>
+                        <span style={{ color: BLUE }}>$</span> {s.cmd}
+                      </code>
+                      {s.note && <div style={{ ...monoMeta, fontSize: 10, letterSpacing: "0.06em", color: MUT, marginTop: 5 }}>{s.note}</div>}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ borderTop: `2px solid ${LINE}`, padding: "12px 18px", background: "#e4e3dc" }}>
+                  <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.04em", color: "#33332e", lineHeight: 1.55 }}>
+                    本机单用户？跑 <code style={{ background: BLUE, color: "#fff", padding: "1px 6px", fontSize: 11 }}>MODE=local pnpm dev</code>{" "}
+                    跳过登录、只监听 127.0.0.1。不是 SaaS，无需注册。
+                  </div>
+                </div>
+                <div className="flex" style={{ gap: 0, borderTop: `2px solid ${LINE}` }}>
                   <button
                     type="button"
-                    onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }}
-                    style={{ color: BLUE, borderBottom: `1px solid ${BLUE}`, background: "transparent", cursor: "pointer", ...monoMeta, fontSize: 11, letterSpacing: "0.06em" }}
+                    onClick={copyAll}
+                    style={{ flex: 1, border: "none", borderRight: `2px solid ${LINE}`, background: copied ? INK : BLUE, color: "#fff", fontFamily: DISP, fontWeight: 700, fontSize: 15, padding: 13, cursor: "pointer", transition: "background .15s" }}
                   >
-                    {mode === "login" ? "注册 →" : "← 登录"}
+                    {copied ? "已复制 ✓" : "复制全部命令"}
                   </button>
+                  <a
+                    href={GITHUB}
+                    target="_blank"
+                    rel="noopener"
+                    style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: INK, fontFamily: DISP, fontWeight: 700, fontSize: 15, padding: "13px 18px" }}
+                  >
+                    GitHub ↗
+                  </a>
                 </div>
               </div>
             </div>
@@ -512,7 +506,7 @@ export function LandingPage() {
               <a href={GITHUB} target="_blank" rel="noopener" className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>GitHub ↗</a>
               {isAuthed
                 ? <a href="#" onClick={(e) => { e.preventDefault(); nav("/projects"); }} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>进入工作台</a>
-                : <a href="#login" onClick={scrollToSection("login")} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>登录</a>}
+                : <a href="/login" onClick={(e) => { e.preventDefault(); nav("/login"); }} className="boule-link" style={{ ...monoMeta, fontSize: 12 }}>团队登录</a>}
             </div>
             <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", color: MUT, textAlign: "right" }}>
 EDITION 2026 · v1 · 开发代号 BOULE · 31.2306° N, 121.4737° E
