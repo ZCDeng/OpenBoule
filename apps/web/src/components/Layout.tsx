@@ -10,7 +10,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const connection = useWorkflow((s) => s.connection);
   const location = useLocation();
   return (
-    <div className="min-h-screen bg-[var(--boule-paper)] text-[var(--boule-ink)]">
+    <div className="min-h-screen bg-[var(--boule-paper)] text-[var(--app-fg)]">
       <Navigation />
       <CommandPalette />
       <OfflineBanner reconnecting={connection === "reconnecting"} />

@@ -49,5 +49,5 @@ function Kpi({ label, value }: { label: string; value: string }) {
     prefix: isMoney ? "$" : "",
     dependencies: [value],
   });
-  return <div className="border-2 border-black bg-[var(--boule-paper)] p-4 shadow-[4px_4px_0_#0B0B0B]"><div className="font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--boule-muted)]">{label}</div><div ref={valueRef} className="mt-1 font-[var(--boule-disp)] text-4xl font-black tracking-[-0.05em]">{value}</div></div>;
+  return <div className="border-2 border-[var(--app-fg)] bg-[var(--boule-paper)] p-4 shadow-[4px_4px_0_var(--app-fg)]"><div className="font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--boule-muted)]">{label}</div><div ref={valueRef} className="mt-1 font-[var(--boule-disp)] text-4xl font-black tracking-[-0.05em]">{value}</div></div>;
 }

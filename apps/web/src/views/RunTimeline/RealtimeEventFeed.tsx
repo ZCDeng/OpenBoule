@@ -8,7 +8,7 @@ import { gsap, shouldAnimate } from "../../lib/gsap.ts";
 const TONE_CLASS: Record<WorkflowEventItem["tone"], string> = {
   neutral: "bg-[var(--boule-paper)]",
   blue: "bg-[var(--boule-blue)] text-white",
-  green: "bg-black text-white",
+  green: "bg-[var(--panel-dark-bg)] text-white",
   amber: "bg-[var(--boule-orange)] text-white",
   red: "bg-[var(--boule-red)] text-white",
 };
@@ -40,16 +40,16 @@ export function RealtimeEventFeed({ events, currentPhase, offline, limit = 30, c
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between gap-3 border-b-2 border-black pb-2">
+      <div className="flex items-center justify-between gap-3 border-b-2 border-[var(--app-fg)] pb-2">
         <h3 className="font-[var(--boule-disp)] text-2xl font-black tracking-[-0.03em]">实时事件流</h3>
         {offline && <Badge tone="orange">数据暂停更新</Badge>}
       </div>
-      {items.length === 0 ? <p className="border-2 border-dashed border-black p-4 font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)]">暂无实时事件</p> : (
+      {items.length === 0 ? <p className="border-2 border-dashed border-[var(--app-fg)] p-4 font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)]">暂无实时事件</p> : (
         <ol ref={listRef} className="space-y-2">
           {items.map((item) => {
             const active = currentPhase && item.phase === currentPhase;
             return (
-              <li key={item.id} data-event-id={item.id} className={`border-2 border-black p-3 text-sm shadow-[3px_3px_0_#0B0B0B] ${TONE_CLASS[item.tone]} ${active ? "outline outline-2 outline-[var(--boule-blue)]" : ""}`}>
+              <li key={item.id} data-event-id={item.id} className={`border-2 border-[var(--app-fg)] p-3 text-sm shadow-[3px_3px_0_var(--app-fg)] ${TONE_CLASS[item.tone]} ${active ? "outline outline-2 outline-[var(--boule-blue)]" : ""}`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-[var(--boule-disp)] font-black tracking-[-0.02em]">{item.title}</span>
                   {item.phase && <span className="border border-current px-1.5 py-0.5 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em]">{phaseLabel(item.phase)}</span>}

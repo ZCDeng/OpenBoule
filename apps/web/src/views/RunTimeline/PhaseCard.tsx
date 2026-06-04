@@ -26,12 +26,12 @@ export interface PhaseCardProps {
 export function PhaseCard(props: PhaseCardProps) {
   const meta = STATUS_META[props.status];
   return (
-    <div className={`relative border-2 border-black bg-[var(--boule-paper)] p-4 ${props.current ? "shadow-[6px_6px_0_#1A18EE]" : "shadow-[4px_4px_0_#0B0B0B]"}`}>
+    <div className={`relative border-2 border-[var(--app-fg)] bg-[var(--boule-paper)] p-4 ${props.current ? "shadow-[6px_6px_0_var(--boule-blue)]" : "shadow-[4px_4px_0_var(--app-fg)]"}`}>
       <div className="flex items-start gap-3">
-        <div className="mt-1 h-3 w-3 shrink-0 border-2 border-black bg-[var(--boule-blue)]" />
+        <div className="mt-1 h-3 w-3 shrink-0 border-2 border-[var(--app-fg)] bg-[var(--boule-blue)]" />
         <div className="min-w-0 flex-1">
           <h3 className="font-[var(--boule-disp)] text-xl font-black tracking-[-0.03em]">{props.label}</h3>
-          <p className="mt-1 text-xs text-[#33332e]">{props.note}</p>
+          <p className="mt-1 text-xs text-[var(--text-2)]">{props.note}</p>
         </div>
         <Badge tone={meta.tone}>{meta.label}</Badge>
       </div>

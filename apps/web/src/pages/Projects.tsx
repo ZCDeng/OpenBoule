@@ -79,7 +79,7 @@ export function ProjectsPage() {
                   <div className="truncate text-[15px] font-semibold">{p.name}</div>
                   <div className="mt-0.5 flex items-center gap-2 truncate font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">
                     <span>{p.status ? statusLabel(p.status) : "草稿"}</span>
-                    {p.currentPhase && (<><span className="text-[#c4c4ba]">·</span><span className="truncate">{phaseLabel(p.currentPhase)}</span></>)}
+                    {p.currentPhase && (<><span className="text-[var(--text-on-dark-dim)]">·</span><span className="truncate">{phaseLabel(p.currentPhase)}</span></>)}
                   </div>
                 </div>
                 <span className="shrink-0 font-[var(--boule-mono)] text-[11px] tabular-nums text-[var(--boule-muted)]">{relativeTime(p.updatedAt ?? p.createdAt)}</span>

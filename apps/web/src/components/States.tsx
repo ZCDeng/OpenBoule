@@ -33,7 +33,7 @@ export function ErrorBanner({ severity, message, onRetry }: { severity: "P0" | "
   const tone = {
     P0: "bg-[var(--boule-red)] text-white",
     P1: "bg-[var(--boule-orange)] text-white",
-    P2: "bg-[var(--boule-paper)] text-black",
+    P2: "bg-[var(--boule-paper)] text-[var(--app-fg)]",
   }[severity];
   return (
     <div className={`flex items-center justify-between gap-4 rounded-[var(--surface-radius-sm)] border border-[var(--hairline-strong)] px-4 py-3 text-sm ${tone}`} role="alert">
