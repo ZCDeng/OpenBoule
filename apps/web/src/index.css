@@ -106,6 +106,14 @@ button, input, select, textarea { font: inherit; }
 .boule-badge--draft { color: var(--status-draft); border-color: var(--status-draft); }
 .boule-badge--running::before, .boule-badge--attention::before, .boule-badge--done::before, .boule-badge--failed::before, .boule-badge--draft::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
+/* 独立状态点（行式列表用，8px 圆点；tone 同 Badge status tone） */
+.boule-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.boule-dot--running { background: var(--status-running); }
+.boule-dot--attention { background: var(--status-attention); }
+.boule-dot--done { background: var(--status-done); }
+.boule-dot--failed { background: var(--status-failed); }
+.boule-dot--draft { background: var(--status-draft); }
+
 /* 按钮：mono 大写、发丝边、零硬投、hover 提升 */
 .boule-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--hairline-strong); border-radius: var(--surface-radius-sm); padding: 9px 15px; font-family: var(--boule-mono); font-weight: 500; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; line-height: 1; cursor: pointer; background: var(--surface-bg); color: var(--boule-ink); box-shadow: var(--surface-shadow); transition: background var(--ease), border-color var(--ease); }
 .boule-btn:hover:not(:disabled) { background: var(--surface-bg-raise); border-color: var(--boule-ink); }

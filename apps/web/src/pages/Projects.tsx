@@ -6,8 +6,18 @@ import { Skeleton, EmptyState, ErrorBanner } from "../components/States.tsx";
 import { Badge, Button, PageHeader, PageShell, Panel, TextInput } from "../components/Brutalist.tsx";
 import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
+import { projectStatusTone } from "../lib/derive.ts";
+import { relativeTime } from "../lib/time.ts";
+import { phaseLabel, statusLabel } from "../lib/labels.ts";
 
-interface Project { id: string; name: string; }
+interface Project {
+  id: string;
+  name: string;
+  status?: string | null;
+  currentPhase?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
 
 export function ProjectsPage() {
   const api = useAuth((s) => s.api);
@@ -63,12 +73,16 @@ export function ProjectsPage() {
           <div ref={listRef} className="boule-list project-list">
             {filtered.map((p, i) => (
               <Link key={p.id} to={`/projects/${p.id}`} className="boule-list-row" aria-label={`打开项目 ${p.name}`}>
-                <span className="w-9 shrink-0 font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">N{String(i + 1).padStart(2, "0")}</span>
+                <span className="w-8 shrink-0 font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">N{String(i + 1).padStart(2, "0")}</span>
+                <span className={`boule-dot boule-dot--${projectStatusTone(p.status)}`} aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-semibold">{p.name}</div>
-                  <div className="mt-0.5 truncate font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">{p.id}</div>
+                  <div className="mt-0.5 flex items-center gap-2 truncate font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">
+                    <span>{p.status ? statusLabel(p.status) : "草稿"}</span>
+                    {p.currentPhase && (<><span className="text-[#c4c4ba]">·</span><span className="truncate">{phaseLabel(p.currentPhase)}</span></>)}
+                  </div>
                 </div>
-                <span className="shrink-0 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.1em] text-[var(--boule-muted)]">OPEN →</span>
+                <span className="shrink-0 font-[var(--boule-mono)] text-[11px] tabular-nums text-[var(--boule-muted)]">{relativeTime(p.updatedAt ?? p.createdAt)}</span>
               </Link>
             ))}
           </div>
