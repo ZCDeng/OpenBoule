@@ -62,12 +62,13 @@ export function ProjectsPage() {
         {filtered.length > 0 && (
           <div ref={listRef} className="boule-list project-list">
             {filtered.map((p, i) => (
-              <Link key={p.id} to={`/projects/${p.id}`} className="boule-list-row project-list-row">
-                <div>
-                  <div className="font-[var(--boule-disp)] text-2xl font-black tracking-[-0.03em]">{p.name}</div>
-                  <div className="mt-1 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] opacity-60">PROJECT · {String(i + 1).padStart(2, "0")} · 输入 → 任务 → 输出</div>
+              <Link key={p.id} to={`/projects/${p.id}`} className="boule-list-row" aria-label={`打开项目 ${p.name}`}>
+                <span className="w-9 shrink-0 font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">N{String(i + 1).padStart(2, "0")}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[15px] font-semibold">{p.name}</div>
+                  <div className="mt-0.5 truncate font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">{p.id}</div>
                 </div>
-                <div className="project-list-row__actions"><Badge tone="blue">详情</Badge><Badge tone="orange">监控/文档 →</Badge></div>
+                <span className="shrink-0 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.1em] text-[var(--boule-muted)]">OPEN →</span>
               </Link>
             ))}
           </div>
