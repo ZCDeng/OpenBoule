@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenConsult · 咨询工作台</title>
+    <!-- 防暗色闪烁：首帧前按 localStorage 偏好 + 系统设置解析出主题，先写好 data-theme。 -->
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem("boule.theme") || "system";
+          var dark = p === "dark" || (p === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.setAttribute("data-theme", "dark");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

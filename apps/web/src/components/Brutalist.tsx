@@ -58,7 +58,7 @@ export function SelectInput(props: SelectHTMLAttributes<HTMLSelectElement>) {
 
 /** 行内提示条（替代各处手抄的橙/红警告块）。tone: warn=橙(默认) / danger=红 / info=墨。 */
 export function Banner({ children, tone = "warn", action }: { children: ReactNode; tone?: "warn" | "danger" | "info"; action?: ReactNode }) {
-  const bg = tone === "danger" ? "bg-[var(--boule-red)]" : tone === "info" ? "bg-[var(--boule-ink)]" : "bg-[var(--boule-orange)]";
+  const bg = tone === "danger" ? "bg-[var(--boule-red)]" : tone === "info" ? "bg-[var(--panel-dark-bg)]" : "bg-[var(--boule-orange)]";
   return (
     <div role={tone === "danger" ? "alert" : "status"} className={`flex flex-wrap items-center justify-between gap-3 rounded-[var(--surface-radius-sm)] border border-[var(--hairline-strong)] ${bg} px-4 py-3 text-sm text-white`}>
       <div className="min-w-0">{children}</div>

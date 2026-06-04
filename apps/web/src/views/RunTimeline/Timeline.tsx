@@ -18,13 +18,13 @@ export function Timeline(props: TimelineProps) {
   return (
     <div className="space-y-5">
       {props.offline && <ErrorBanner severity="P1" message="连接中断，进度可能延迟" />}
-      <ol className="space-y-4 border-l-4 border-black pl-6">
+      <ol className="space-y-4 border-l-4 border-[var(--app-fg)] pl-6">
         {PHASE_LABELS.map((p, i) => {
           const status = phaseStatus(p.id, props.currentPhase!, props.workflowStatus ?? "running");
           const current = p.id === props.currentPhase;
           return (
             <li key={p.id} className="relative">
-              <span className="absolute -left-[39px] top-4 grid h-7 w-7 place-items-center border-2 border-black bg-[var(--boule-paper)] font-[var(--boule-mono)] text-[10px] font-black">{String(i + 1).padStart(2, "0")}</span>
+              <span className="absolute -left-[39px] top-4 grid h-7 w-7 place-items-center border-2 border-[var(--app-fg)] bg-[var(--boule-paper)] font-[var(--boule-mono)] text-[10px] font-black">{String(i + 1).padStart(2, "0")}</span>
               <PhaseCard label={p.label} note={p.note} status={status} current={current} belowThreshold={props.belowThresholdPhases?.has(p.id)} canDecide={props.canDecide} busy={props.busy} onDecide={props.onDecide} />
               {current && currentPhaseEvents.length > 0 && <div className="mt-3"><RealtimeEventFeed events={props.events ?? []} currentPhase={props.currentPhase} offline={props.offline} limit={5} compact phaseOnly /></div>}
             </li>

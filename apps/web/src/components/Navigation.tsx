@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
+import { useTheme, type ThemePref } from "../stores/theme.ts";
 import { Badge } from "./Brutalist.tsx";
 
 const NAV = [
@@ -8,6 +9,30 @@ const NAV = [
   { to: "/methodology", label: "方法论", k: "METHOD" },
   { to: "/settings", label: "配置", k: "CONFIG" },
 ];
+
+const THEME_META: Record<ThemePref, { glyph: string; label: string }> = {
+  system: { glyph: "◐", label: "跟随系统" },
+  light: { glyph: "○", label: "亮色" },
+  dark: { glyph: "●", label: "暗色" },
+};
+
+function ThemeToggle() {
+  const pref = useTheme((s) => s.pref);
+  const cycle = useTheme((s) => s.cycle);
+  const meta = THEME_META[pref];
+  return (
+    <button
+      type="button"
+      onClick={cycle}
+      title={`主题：${meta.label}（点击切换）`}
+      aria-label={`主题：${meta.label}，点击切换`}
+      className="flex items-center gap-2 rounded-[var(--surface-radius-sm)] border border-[var(--hairline-strong)] px-3 py-1.5 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] transition-colors hover:bg-[var(--surface-bg-raise)]"
+    >
+      <span aria-hidden className="text-[13px] leading-none text-[var(--boule-blue)]">{meta.glyph}</span>
+      <span className="hidden lg:inline">{meta.label}</span>
+    </button>
+  );
+}
 
 export function Navigation() {
   const loc = useLocation();
@@ -31,6 +56,7 @@ export function Navigation() {
           })}
         </div>
         <div className="ml-auto flex items-center gap-3">
+          <ThemeToggle />
           <span className="hidden sm:block"><Badge tone="orange">Claude专用</Badge></span>
           <button onClick={logout} className="hidden rounded-[var(--surface-radius-sm)] border border-[var(--hairline-strong)] px-4 py-1.5 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] transition-colors hover:bg-[var(--surface-bg-raise)] md:block">
             登出

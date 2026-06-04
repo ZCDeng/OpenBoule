@@ -34,12 +34,12 @@ export function SharePage() {
       </PageHeader>
       <div className="mt-8">
         {isLoading && <Skeleton rows={3} />}
-        {error && <Panel><div className="boule-panel-body space-y-4"><ErrorBanner severity="P0" message={error instanceof Error ? error.message : "无法访问"} /><p className="text-sm text-[#33332e]">如需继续查看，请联系顾问重新分享。</p></div></Panel>}
+        {error && <Panel><div className="boule-panel-body space-y-4"><ErrorBanner severity="P0" message={error instanceof Error ? error.message : "无法访问"} /><p className="text-sm text-[var(--text-2)]">如需继续查看，请联系顾问重新分享。</p></div></Panel>}
         {data && token && data.scope === "report" && <Panel><div className="boule-panel-body"><ReportPublic token={token} /></div></Panel>}
         {data && data.scope === "methodology" && <Panel><div className="boule-panel-body"><MethodologyPublic /></div></Panel>}
       </div>
-      <footer className="mt-10 border-t-2 border-black pt-5 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--boule-muted)]">
-        由 <span className="text-[var(--boule-ink)]">OpenConsult<span className="text-[var(--boule-blue)]">///</span> · Boule</span> 顾问工作台提供 · 安全只读分享
+      <footer className="mt-10 border-t-2 border-[var(--app-fg)] pt-5 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--boule-muted)]">
+        由 <span className="text-[var(--app-fg)]">OpenConsult<span className="text-[var(--boule-blue)]">///</span> · Boule</span> 顾问工作台提供 · 安全只读分享
       </footer>
     </PageShell>
     </div>

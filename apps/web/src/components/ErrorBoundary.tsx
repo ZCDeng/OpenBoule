@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <div className="mx-auto max-w-2xl px-6 py-16">
-          <div className="border-2 border-black bg-[var(--boule-paper)] p-6 shadow-[4px_4px_0_#0B0B0B]">
+          <div className="border-2 border-[var(--app-fg)] bg-[var(--boule-paper)] p-6 shadow-[4px_4px_0_var(--app-fg)]">
             <p className="font-[var(--boule-mono)] text-xs uppercase tracking-[0.12em] text-[var(--boule-red)]">
               RENDER ERROR
             </p>
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<
             <button
               type="button"
               onClick={() => this.setState({ error: null })}
-              className="mt-4 border-2 border-black bg-[var(--boule-blue)] px-4 py-2 font-[var(--boule-disp)] font-black text-white shadow-[3px_3px_0_#0B0B0B]"
+              className="mt-4 border-2 border-[var(--app-fg)] bg-[var(--boule-blue)] px-4 py-2 font-[var(--boule-disp)] font-black text-white shadow-[3px_3px_0_var(--app-fg)]"
             >
               重试 →
             </button>

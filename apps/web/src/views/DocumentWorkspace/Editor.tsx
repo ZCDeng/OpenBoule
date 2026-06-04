@@ -147,7 +147,7 @@ export function Editor({
       )}
       {save === "local-fallback" && <ErrorBanner severity="P1" message="保存失败，将保存在本地，恢复后同步" />}
 
-      <div className="border-2 border-black px-3 py-2 shadow-[3px_3px_0_#0B0B0B]">
+      <div className="border-2 border-[var(--app-fg)] px-3 py-2 shadow-[3px_3px_0_var(--app-fg)]">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="font-[var(--boule-disp)] font-black tracking-[-0.02em]">{meta.phaseLabel}</span>
           <span>{meta.type}</span>
@@ -162,7 +162,7 @@ export function Editor({
         <span>{save === "saving" ? "保存中…" : save === "saved" ? "已保存" : ""}</span>
       </div>
 
-      <div className="prose max-w-none border-2 border-black bg-[var(--boule-paper)] p-4 shadow-[5px_5px_0_#0B0B0B]">
+      <div className="prose max-w-none border-2 border-[var(--app-fg)] bg-[var(--boule-paper)] p-4 shadow-[5px_5px_0_var(--app-fg)]">
         <EditorContent editor={editor} />
       </div>
     </div>

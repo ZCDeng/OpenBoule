@@ -58,7 +58,7 @@ export function SettingsPage() {
                   <DataRow label="运行环境" value={data.agent.runtime} />
                   <DataRow label="调用方式" value={data.agent.invocationMode} />
                 </dl>
-                <p className="mt-4 text-sm text-[#33332e]">OpenConsult/Boule 是 Claude-only 工作台：不支持其它模型；模型调用由服务端环境和 Agent SDK 认证状态决定。</p>
+                <p className="mt-4 text-sm text-[var(--text-2)]">OpenConsult/Boule 是 Claude-only 工作台：不支持其它模型；模型调用由服务端环境和 Agent SDK 认证状态决定。</p>
               </div>
             </Panel>
             <Panel>
@@ -70,7 +70,7 @@ export function SettingsPage() {
                   <DataRow label="URL" value={data.search.url ?? "off"} />
                   <DataRow label="工具" value={data.search.tools.length ? data.search.tools.join(", ") : "无"} />
                 </dl>
-                <p className="mt-4 text-sm text-[#33332e]">{data.search.disabledBehavior}。密钥只存在服务端，不会回传到此页。</p>
+                <p className="mt-4 text-sm text-[var(--text-2)]">{data.search.disabledBehavior}。密钥只存在服务端，不会回传到此页。</p>
               </div>
             </Panel>
             <Panel className="md:col-span-2">
@@ -78,7 +78,7 @@ export function SettingsPage() {
               <div className="boule-panel-body grid gap-3 md:grid-cols-2">
                 <code className="boule-code">{data.cli.mcpCommand}</code>
                 <code className="boule-code">{data.cli.submitExample}</code>
-                <p className="text-sm text-[#33332e] md:col-span-2">API Key 走 <code>{data.apiKeys.auth}</code>；{data.apiKeys.management}。</p>
+                <p className="text-sm text-[var(--text-2)] md:col-span-2">API Key 走 <code>{data.apiKeys.auth}</code>；{data.apiKeys.management}。</p>
               </div>
             </Panel>
           </div>
@@ -97,11 +97,11 @@ export function SettingsPage() {
             </div>
             {createKey.isError && <ErrorBanner severity="P1" message="创建 API Key 失败" />}
             {revoke.isError && <ErrorBanner severity="P1" message="撤销 API Key 失败" />}
-            {createdKey && <div className="border-2 border-black bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
+            {createdKey && <div className="border-2 border-[var(--app-fg)] bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
             {keys.isLoading ? <Skeleton rows={3} /> : keys.isError ? <ErrorBanner severity="P1" message="加载 API Keys 失败" onRetry={() => void keys.refetch()} /> : (
               <div className="boule-list shadow-none">
                 {(keys.data?.keys ?? []).map((key) => (
-                  <div key={key.id} className="boule-list-row hover:bg-[var(--boule-paper)] hover:text-black">
+                  <div key={key.id} className="boule-list-row hover:bg-[var(--boule-paper)] hover:text-[var(--app-fg)]">
                     <div className="min-w-0">
                       <div className="font-[var(--boule-disp)] text-xl font-black tracking-[-0.02em]">{key.name}</div>
                       <div className="mt-1 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.1em] text-[var(--boule-muted)]">{key.prefix} · {key.scope === "write" ? "读写" : "只读"} · {key.lastUsedAt ? `最近使用 ${new Date(key.lastUsedAt).toLocaleString()}` : "未使用"}</div>

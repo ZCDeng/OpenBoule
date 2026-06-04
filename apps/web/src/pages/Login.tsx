@@ -39,7 +39,7 @@ export function LoginPage() {
   return (
     <PageShell>
       <div className="grid gap-8 lg:grid-cols-[1.15fr_.85fr] lg:items-end">
-        <header className="border-b-2 border-black pb-8">
+        <header className="border-b-2 border-[var(--app-fg)] pb-8">
           <div className="boule-eyebrow">Nº 00 — 登录</div>
           <h1 className="boule-title">进入<br />咨询流水线。</h1>
           <p className="boule-lede">Claude-only 工作台。注册后即可创建项目、上传材料、启动 7+2 阶段咨询任务。</p>
@@ -51,7 +51,7 @@ export function LoginPage() {
         </header>
 
         <Panel>
-          <div className="flex items-center justify-between border-b-2 border-black bg-black px-5 py-4 text-white">
+          <div className="flex items-center justify-between border-b-2 border-[var(--app-fg)] bg-[var(--panel-dark-bg)] px-5 py-4 text-white">
             <span className="font-[var(--boule-mono)] text-xs uppercase tracking-[0.16em]">{mode === "login" ? "登录" : "注册"}</span>
             <span className="font-[var(--boule-mono)] text-xs">↵</span>
           </div>
@@ -63,7 +63,7 @@ export function LoginPage() {
               <TextInput aria-label="密码" placeholder="密码" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
               <Button disabled={busy} className="w-full">{busy ? "处理中…" : mode === "login" ? "登录" : "注册"}</Button>
             </form>
-            <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }} className="mt-5 w-full border-b-2 border-black pb-1 text-center font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)] hover:text-black">
+            <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }} className="mt-5 w-full border-b-2 border-[var(--app-fg)] pb-1 text-center font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)] hover:text-[var(--app-fg)]">
               {mode === "login" ? "没有账号？注册 →" : "已有账号？← 登录"}
             </button>
           </div>
