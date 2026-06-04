@@ -29,6 +29,44 @@ h1, h2, h3 {
   --boule-mono: "SF Mono", "JetBrains Mono", ui-monospace, "Menlo", monospace;
 }
 
+/* ───────────────────────────────────────────────────────────────
+   控制台化形态语义层（U2 · 性格=终端寄存器）。真值源 = _design/console-workbench-demo.html。
+   配色/字体（上方 --boule-*）不动；这里只定义「形态数值」与「状态点色」，
+   各 .boule-* class 在 U3 改引用这些变量，不再写死字面量（KTD-1）。
+   一处改形态、全站生效。
+   ─────────────────────────────────────────────────────────────── */
+:root {
+  /* 形态：硬发丝线 + 零柔阴影 + 小圆角 + 紧凑行（替 brutalist 2px 硬边 / 6px 硬投 / 整行反色） */
+  --surface-radius: 4px;       /* 面板/卡片 */
+  --surface-radius-sm: 3px;    /* 行/按钮/标签/输入 */
+  --hairline-color: rgba(11, 11, 11, .16);   /* 结构发丝线 */
+  --hairline-strong: rgba(11, 11, 11, .30);  /* 面板外框/分区（作色值用） */
+  --hairline: 1px solid var(--hairline-color);
+  --surface-canvas: #ece9e1;   /* 控制台画布底（比 paper 略沉，像终端底） */
+  --surface-bg: #f7f5ef;       /* 面板/行底（比画布亮，拉层次） */
+  --surface-bg-raise: #fbfaf6; /* hover 提升 */
+  --surface-shadow: none;      /* 零柔阴影——平/脆/仪表化 */
+  --accent-rail: var(--boule-blue);          /* 选中/激活左轨 3px */
+  --row-hover-bg: rgba(26, 24, 238, .045);   /* 行 hover（替整行反色） */
+  --row-selected-bg: rgba(26, 24, 238, .08);
+  --space-row-y: 9px;
+  --space-row-x: 14px;
+  --ease: 120ms ease-out;      /* 微交互；GSAP 只管编排（KTD-8） */
+
+  /* 状态点色（KTD-4，仅 8px 圆点/标签用色；正文 95% 中性灰阶；文案过 lib/labels.ts） */
+  --boule-success: #2f8f5f;                  /* 完成 = 低饱和绿（新增） */
+  --status-running: var(--boule-blue);       /* running / enqueued */
+  --status-attention: var(--boule-orange);   /* paused_for_approval / needs_approval */
+  --status-done: var(--boule-success);       /* completed / approved / published */
+  --status-failed: var(--boule-red);         /* failed / rejected / below_threshold */
+  --status-draft: #9a9a90;                   /* draft / stale / 中性终态 */
+}
+
+/* 暗色接入点（KTD-5：本轮亮色优先，暗色 Deferred，仅留位不实现）
+:root[data-theme="dark"] {
+  --surface-canvas: …; --surface-bg: …; --hairline-color: …; …
+} */
+
 body { background: var(--boule-paper); color: var(--boule-ink); }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }

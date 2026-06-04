@@ -1,13 +1,10 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
-export const PAPER = "#F1F0EB";
-export const INK = "#0B0B0B";
-export const BLUE = "#1A18EE";
-export const CLAUDE_ORANGE = "#D97757";
-export const MUTED = "#6A6A63";
-export const DISP = '"Helvetica Neue","Arial Black","PingFang SC","Source Han Sans SC",sans-serif';
-export const BODY = '-apple-system,"PingFang SC","Source Han Sans SC","Segoe UI",sans-serif';
-export const MONO = '"SF Mono","JetBrains Mono",ui-monospace,"Menlo",monospace';
+/*
+ * 颜色/字体单一真值源 = index.css :root 的 --boule-* CSS 变量（U2 收敛，KTD-1）。
+ * 原先此处导出的 PAPER/INK/BLUE/… JS 常量与 CSS 变量重复且零消费者，已移除。
+ * 组件薄壳一律走 .boule-* class / var(--boule-*)，不在 JS 里再抄一份色值。
+ */
 
 export function PageShell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return <div className={wide ? "boule-page boule-page--wide" : "boule-page"}>{children}</div>;

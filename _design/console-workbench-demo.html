@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Boule 控制台化内页 · 终端寄存器 · 设计真值源 (U1)</title>
+<style>
+  /* ───────────────────────────────────────────────────────────
+     性格 = 终端寄存器（Terminal register）。
+     保留 landing 配色 + mono 基因；硬发丝线 / 零柔阴影 / 编号行 /
+     大写 mono 状态标签 / 电光蓝左轨。形态语义层 + 状态色 = U2 token 输入。
+     ─────────────────────────────────────────────────────────── */
+  :root {
+    /* —— 保留：配色（与 index.css 一致）—— */
+    --boule-paper: #f1f0eb;
+    --boule-ink: #0b0b0b;
+    --boule-blue: #1a18ee;
+    --boule-orange: #d97757;
+    --boule-muted: #6a6a63;
+    --boule-red: #dc2626;
+    --boule-disp: "Helvetica Neue", "Arial Black", "PingFang SC", "Source Han Sans SC", sans-serif;
+    --boule-body: -apple-system, "PingFang SC", "Source Han Sans SC", "Segoe UI", sans-serif;
+    --boule-mono: "SF Mono", "JetBrains Mono", ui-monospace, "Menlo", monospace;
+
+    /* —— 新增：状态色（KTD-4）—— */
+    --boule-success: #2f8f5f;
+    --status-running: var(--boule-blue);
+    --status-attention: var(--boule-orange);
+    --status-done: var(--boule-success);
+    --status-failed: var(--boule-red);
+    --status-draft: #9a9a90;
+
+    /* —— 新增：形态语义层（终端寄存器默认值，KTD-1）—— */
+    --surface-radius: 4px;        /* 面板：小圆角，有手感不软 */
+    --surface-radius-sm: 3px;     /* 行/按钮/标签 */
+    --hairline-color: rgba(11,11,11,.16);     /* 硬发丝线（结构） */
+    --hairline-strong: rgba(11,11,11,.30);    /* 强发丝线（面板外框/分区） */
+    --hairline: 1px solid var(--hairline-color);
+    --surface-canvas: #ece9e1;    /* 控制台画布（比 paper 略沉，像终端底） */
+    --surface-bg: #f7f5ef;        /* 面板/行底（比画布亮，拉层次） */
+    --surface-bg-raise: #fbfaf6;  /* hover 提升 */
+    --accent-rail: var(--boule-blue);  /* 选中/激活左轨 */
+    --shadow: none;               /* 零柔阴影——平、脆、仪表化 */
+    --row-hover-bg: rgba(26,24,238,.045);
+    --row-selected-bg: rgba(26,24,238,.08);
+    --space-row-y: 9px;
+    --space-row-x: 14px;
+    --ease: 120ms ease-out;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--surface-canvas); color: var(--boule-ink);
+    font-family: var(--boule-body); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 28px 96px; }
+  .mono { font-family: var(--boule-mono); }
+  .doc-eyebrow { font-family: var(--boule-mono); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--boule-blue); }
+  h1.doc-title { font-family: var(--boule-disp); font-weight: 800; font-size: 40px; letter-spacing: -.035em; margin: 8px 0 6px; }
+  .doc-lede { color: #44443e; max-width: 70ch; margin: 0 0 8px; }
+  .sec { margin-top: 54px; }
+  .sec > h2 { font-family: var(--boule-disp); font-weight: 800; font-size: 22px; letter-spacing: -.02em; margin: 0 0 4px; }
+  .sec > h2 .sec-no { font-family: var(--boule-mono); font-size: 13px; font-weight: 400; color: var(--boule-blue); margin-right: 10px; letter-spacing: .04em; }
+  .sec > .sec-note { color: var(--boule-muted); font-size: 13px; margin: 0 0 18px; }
+  .sec-divider { height: 1px; background: var(--hairline-strong); border: 0; margin: 8px 0 0; }
+
+  /* ── 面板：终端窗口（硬框 + 顶栏） ── */
+  .c-panel {
+    background: var(--surface-bg);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--surface-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .c-panel__bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-bottom: var(--hairline);
+    background: var(--surface-canvas);
+    font-family: var(--boule-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--boule-muted);
+  }
+  .c-panel__bar .led { width: 7px; height: 7px; border-radius: 50%; background: var(--boule-blue); flex: none; }
+  .c-panel__bar .spacer { flex: 1; }
+  .c-panel__head { padding: 14px 16px; border-bottom: var(--hairline); }
+  .c-panel__head h3 { font-family: var(--boule-disp); font-weight: 800; font-size: 17px; margin: 0; letter-spacing: -.015em; }
+  .c-panel__head p { margin: 4px 0 0; font-family: var(--boule-mono); font-size: 11.5px; color: var(--boule-muted); letter-spacing: .02em; }
+  .c-panel__body { padding: 6px; }
+
+  /* ── 行式列表（终端寄存器） ── */
+  .c-list { display: flex; flex-direction: column; }
+  .c-row {
+    position: relative; display: flex; align-items: center; gap: 12px;
+    padding: var(--space-row-y) var(--space-row-x) var(--space-row-y) 16px;
+    border-radius: var(--surface-radius-sm);
+    border-bottom: var(--hairline);
+    cursor: pointer; transition: background var(--ease);
+    background: transparent;
+  }
+  .c-row:last-child { border-bottom: 0; }
+  .c-row:hover { background: var(--row-hover-bg); }
+  .c-row--selected { background: var(--row-selected-bg); }
+  .c-row::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--accent-rail); opacity: 0; transition: opacity var(--ease);
+  }
+  .c-row--selected::before, .c-row:hover::before { opacity: 1; }
+  .c-row:hover::before { opacity: .4; }
+  .c-row--selected::before { opacity: 1; }
+  .c-row__no { flex: none; font-family: var(--boule-mono); font-size: 11px; color: #b0b0a6; letter-spacing: .02em; width: 30px; }
+  .c-row__dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+  .c-row__main { min-width: 0; flex: 1; }
+  .c-row__title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c-row__meta { display: flex; gap: 8px; margin-top: 2px; font-family: var(--boule-mono); font-size: 11px; color: var(--boule-muted); letter-spacing: .02em; }
+  .c-row__meta .sep { color: #c4c4ba; }
+  .c-row__time { flex: none; font-family: var(--boule-mono); font-size: 11px; color: var(--boule-muted); font-variant-numeric: tabular-nums; min-width: 56px; text-align: right; }
+
+  /* ── 状态：大写 mono 标签（替代柔 pill） ── */
+  .c-tag {
+    flex: none; display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--boule-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: var(--surface-radius-sm);
+    border: 1px solid currentColor; line-height: 1;
+    min-width: 96px; justify-content: center;
+  }
+  .c-tag__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .tag-running { color: var(--status-running); }
+  .tag-attention { color: var(--status-attention); }
+  .tag-done { color: var(--status-done); }
+  .tag-failed { color: var(--status-failed); }
+  .tag-draft { color: var(--status-draft); }
+  /* 独立色点（行内极简用） */
+  .dot-running { background: var(--status-running); } .dot-attention { background: var(--status-attention); }
+  .dot-done { background: var(--status-done); } .dot-failed { background: var(--status-failed); } .dot-draft { background: var(--status-draft); }
+
+  /* ── 按钮 ── */
+  .c-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border: 1px solid var(--hairline-strong); border-radius: var(--surface-radius-sm);
+    padding: 8px 14px; font-family: var(--boule-mono); font-weight: 500; font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
+    cursor: pointer; background: var(--surface-bg); color: var(--boule-ink);
+    transition: background var(--ease), border-color var(--ease);
+  }
+  .c-btn:hover { background: var(--surface-bg-raise); border-color: var(--boule-ink); }
+  .c-btn--primary { background: var(--boule-blue); color: #fff; border-color: var(--boule-blue); }
+  .c-btn--primary:hover { background: #1310c4; border-color: #1310c4; }
+  .c-btn--danger { background: var(--boule-red); color: #fff; border-color: var(--boule-red); }
+  .c-btn--ghost { background: transparent; }
+
+  /* ── 输入（带 mono 提示符） ── */
+  .c-field { display: flex; align-items: center; gap: 8px; border: 1px solid var(--hairline-strong); border-radius: var(--surface-radius-sm); background: var(--surface-bg); padding: 0 10px; transition: border-color var(--ease), box-shadow var(--ease); }
+  .c-field:focus-within { border-color: var(--boule-blue); box-shadow: 0 0 0 2px rgba(26,24,238,.14); }
+  .c-field .prompt { font-family: var(--boule-mono); font-size: 13px; color: var(--boule-blue); }
+  .c-input { flex: 1; min-height: 36px; border: 0; background: transparent; padding: 8px 0; color: var(--boule-ink); outline: none; font: inherit; }
+  .c-input::placeholder { color: #b0b0a6; }
+
+  /* ── data-row ── */
+  .c-data__row { display: grid; grid-template-columns: 116px 1fr; gap: 12px; padding: 9px 0; border-bottom: var(--hairline); }
+  .c-data__row:last-child { border-bottom: 0; }
+  .c-data__row dt { font-family: var(--boule-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--boule-muted); }
+  .c-data__row dd { margin: 0; }
+
+  /* ── 状态态 ── */
+  .c-state { text-align: center; padding: 38px 20px; }
+  .c-state__icon { font-family: var(--boule-mono); font-size: 13px; letter-spacing: .2em; color: var(--boule-muted); }
+  .c-state__title { font-family: var(--boule-disp); font-weight: 800; font-size: 17px; color: var(--boule-ink); margin: 10px 0 4px; }
+  .c-state__hint { font-size: 13px; color: var(--boule-muted); }
+
+  /* ── 规格表 ── */
+  .spec-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 760px) { .spec-grid { grid-template-columns: 1fr 1fr; } }
+  table.spec { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.spec th, table.spec td { text-align: left; padding: 7px 10px; border-bottom: var(--hairline); vertical-align: middle; }
+  table.spec th { font-family: var(--boule-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--boule-muted); }
+  table.spec code { font-family: var(--boule-mono); font-size: 11px; background: var(--surface-canvas); padding: 1px 5px; border-radius: 3px; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,.12); vertical-align: middle; margin-right: 6px; }
+
+  /* ── ⌘K 命令栏 ── */
+  .palette-stage { background: rgba(11,11,11,.30); border-radius: var(--surface-radius); padding: 36px 20px; display: flex; justify-content: center; }
+  .palette { width: 100%; max-width: 540px; background: var(--surface-bg); border-radius: var(--surface-radius); overflow: hidden; border: 1px solid var(--boule-ink); }
+  .palette__bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-bottom: var(--hairline); background: var(--surface-canvas); font-family: var(--boule-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--boule-muted); }
+  .palette__bar .led { width: 7px; height: 7px; border-radius: 50%; background: var(--boule-blue); }
+  .palette__input-wrap { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: var(--hairline); }
+  .palette__input-wrap .prompt { font-family: var(--boule-mono); color: var(--boule-blue); font-size: 15px; }
+  .palette__input { flex: 1; border: 0; outline: none; font: inherit; font-size: 15px; background: transparent; color: var(--boule-ink); }
+  .palette__list { max-height: 320px; overflow: auto; padding: 6px; }
+  .palette__group { font-family: var(--boule-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--boule-muted); padding: 10px 10px 4px; }
+  .palette__item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--surface-radius-sm); cursor: pointer; position: relative; }
+  .palette__item[aria-selected="true"] { background: var(--row-selected-bg); }
+  .palette__item[aria-selected="true"]::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--accent-rail); }
+  .palette__item .ic { width: 16px; text-align: center; font-family: var(--boule-mono); color: var(--boule-muted); font-size: 12px; }
+  .palette__item .lbl { flex: 1; font-size: 13.5px; }
+  .palette__item .hint { font-family: var(--boule-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #b0b0a6; }
+  .palette__foot { display: flex; gap: 16px; padding: 8px 14px; border-top: var(--hairline); background: var(--surface-canvas); font-family: var(--boule-mono); font-size: 10.5px; letter-spacing: .04em; color: var(--boule-muted); }
+  kbd { font-family: var(--boule-mono); font-size: 10px; border: 1px solid var(--hairline-strong); border-bottom-width: 2px; border-radius: 3px; padding: 1px 5px; background: var(--surface-bg); }
+
+  .two-col { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media (min-width: 820px) { .two-col { grid-template-columns: 1fr 1fr; } }
+  .stack { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .compare { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 680px) { .compare { grid-template-columns: 1fr 1fr; } }
+  .compare__cell h4 { font-family: var(--boule-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--boule-muted); margin: 0 0 8px; }
+  .legacy-box { border: 2px solid var(--boule-ink); box-shadow: 6px 6px 0 var(--boule-ink); padding: 14px; background: var(--boule-paper); font-family: var(--boule-disp); font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="doc-eyebrow">BOULE · 内页控制台化 · U1 设计真值源 · 终端寄存器</div>
+    <h1 class="doc-title">终端寄存器 — 视觉 & token 规格</h1>
+    <p class="doc-lede">保留 landing 配色与 mono 基因，把硬边/硬投影/整行反色压成工具化密度：硬发丝线 + 零柔阴影 + 编号行 + 大写 mono 状态标签 + 电光蓝左轨。本页是 Projects 标杆页 + 共享组件 + ⌘K 的视觉真值源，规格表数值即 U2 token 输入。</p>
+  </header>
+
+  <!-- ════ 0. TOKEN ════ -->
+  <section class="sec">
+    <h2><span class="sec-no">§0</span>形态 & 状态色规格（U2 token 输入）</h2>
+    <p class="sec-note">配色/字体照搬现有 <code>--boule-*</code>，此处只列新增项。</p>
+    <div class="spec-grid">
+      <div class="c-panel">
+        <div class="c-panel__bar"><span class="led"></span>FORM_TOKENS<span class="spacer"></span>index.css :root</div>
+        <div class="c-panel__body" style="padding:0 6px">
+          <table class="spec">
+            <thead><tr><th>变量</th><th>值</th><th>用途</th></tr></thead>
+            <tbody>
+              <tr><td><code>--surface-radius</code></td><td><code>4px</code></td><td>面板（小圆角有手感）</td></tr>
+              <tr><td><code>--surface-radius-sm</code></td><td><code>3px</code></td><td>行/按钮/标签</td></tr>
+              <tr><td><code>--hairline</code></td><td><code>1px /.16</code></td><td>结构发丝线</td></tr>
+              <tr><td><code>--hairline-strong</code></td><td><code>1px /.30</code></td><td>面板外框/分区</td></tr>
+              <tr><td><code>--shadow</code></td><td><code>none</code></td><td>零柔阴影（平/脆/仪表）</td></tr>
+              <tr><td><code>--surface-canvas</code></td><td><code>#ece9e1</code></td><td>控制台画布底</td></tr>
+              <tr><td><code>--surface-bg</code></td><td><code>#f7f5ef</code></td><td>面板/行底</td></tr>
+              <tr><td><code>--accent-rail</code></td><td><code>--boule-blue</code></td><td>选中/激活左轨 3px</td></tr>
+              <tr><td><code>--space-row-y/-x</code></td><td><code>9px / 14px</code></td><td>行内距（收紧）</td></tr>
+              <tr><td><code>--ease</code></td><td><code>120ms ease-out</code></td><td>微交互（KTD-8）</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="c-panel">
+        <div class="c-panel__bar"><span class="led"></span>STATUS_COLORS<span class="spacer"></span>KTD-4</div>
+        <div class="c-panel__body" style="padding:0 6px">
+          <table class="spec">
+            <thead><tr><th>语义</th><th>色</th><th>状态码（labels.ts）</th></tr></thead>
+            <tbody>
+              <tr><td>RUNNING 进行中</td><td><span class="swatch" style="background:var(--status-running)"></span><code>--boule-blue</code></td><td><code>running / enqueued</code></td></tr>
+              <tr><td>APPROVAL 需注意</td><td><span class="swatch" style="background:var(--status-attention)"></span><code>--boule-orange</code></td><td><code>paused_for_approval</code></td></tr>
+              <tr><td>DONE 完成</td><td><span class="swatch" style="background:var(--status-done)"></span><code>--boule-success ✚</code></td><td><code>completed / approved</code></td></tr>
+              <tr><td>FAILED 失败</td><td><span class="swatch" style="background:var(--status-failed)"></span><code>--boule-red</code></td><td><code>failed / rejected</code></td></tr>
+              <tr><td>DRAFT 草稿</td><td><span class="swatch" style="background:var(--status-draft)"></span><code>#9a9a90</code></td><td><code>draft / stale</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ 1. Projects ════ -->
+  <section class="sec">
+    <h2><span class="sec-no">§1</span>Projects 标杆页（终端寄存器）</h2>
+    <p class="sec-note">行 = Nº 编号 + 状态点 + 标题 + mono 元信息 + mono 状态标签 + 相对时间(tabular)。N02 为选中态。</p>
+    <div class="c-panel">
+      <div class="c-panel__bar"><span class="led"></span>PROJECTS<span class="spacer"></span>06 项 · 02 RUNNING</div>
+      <div class="c-panel__head" style="display:flex;align-items:center;gap:12px">
+        <div class="c-field" style="flex:1;max-width:240px"><span class="prompt">/</span><input class="c-input" placeholder="搜索项目…" /></div>
+        <span class="spacer" style="flex:1"></span>
+        <button class="c-btn c-btn--primary">＋ 新建项目</button>
+      </div>
+      <div class="c-panel__body">
+        <div class="c-list">
+          <div class="c-row">
+            <span class="c-row__no">N01</span><span class="c-row__dot dot-running"></span>
+            <div class="c-row__main"><div class="c-row__title">新能源汽车出海市场尽调</div>
+              <div class="c-row__meta"><span>PH2·调研</span><span class="sep">/</span><span>3 docs</span></div></div>
+            <span class="c-tag tag-running"><span class="c-tag__dot"></span>RUNNING</span>
+            <span class="c-row__time">2m</span>
+          </div>
+          <div class="c-row c-row--selected">
+            <span class="c-row__no">N02</span><span class="c-row__dot dot-attention"></span>
+            <div class="c-row__main"><div class="c-row__title">区域零售并购方案评估</div>
+              <div class="c-row__meta"><span>PH4·终审</span><span class="sep">/</span><span>12 docs</span></div></div>
+            <span class="c-tag tag-attention"><span class="c-tag__dot"></span>APPROVAL</span>
+            <span class="c-row__time">1h</span>
+          </div>
+          <div class="c-row">
+            <span class="c-row__no">N03</span><span class="c-row__dot dot-done"></span>
+            <div class="c-row__main"><div class="c-row__title">SaaS 定价策略复盘</div>
+              <div class="c-row__meta"><span>报告已发布</span><span class="sep">/</span><span>8 docs</span></div></div>
+            <span class="c-tag tag-done"><span class="c-tag__dot"></span>DONE</span>
+            <span class="c-row__time">昨天</span>
+          </div>
+          <div class="c-row">
+            <span class="c-row__no">N04</span><span class="c-row__dot dot-failed"></span>
+            <div class="c-row__main"><div class="c-row__title">供应链风险压力测试</div>
+              <div class="c-row__meta"><span>PH3·综合</span><span class="sep">/</span><span>5 docs</span></div></div>
+            <span class="c-tag tag-failed"><span class="c-tag__dot"></span>FAILED</span>
+            <span class="c-row__time">3d</span>
+          </div>
+          <div class="c-row">
+            <span class="c-row__no">N05</span><span class="c-row__dot dot-draft"></span>
+            <div class="c-row__main"><div class="c-row__title">未命名草稿</div>
+              <div class="c-row__meta"><span>未启动</span><span class="sep">/</span><span>0 docs</span></div></div>
+            <span class="c-tag tag-draft"><span class="c-tag__dot"></span>DRAFT</span>
+            <span class="c-row__time">上周</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare" style="margin-top:18px">
+      <div class="compare__cell"><h4>空态</h4>
+        <div class="c-panel"><div class="c-panel__bar"><span class="led" style="background:var(--status-draft)"></span>PROJECTS<span class="spacer"></span>EMPTY</div><div class="c-state"><div class="c-state__icon">[ 00 PROJECTS ]</div><div class="c-state__title">还没有项目</div><div class="c-state__hint">新建第一个项目，开始你的咨询工作流。</div><div style="margin-top:14px"><button class="c-btn c-btn--primary">＋ 新建项目</button></div></div></div>
+      </div>
+      <div class="compare__cell"><h4>错误态</h4>
+        <div class="c-panel" style="border-color:var(--boule-red)"><div class="c-panel__bar" style="color:var(--boule-red)"><span class="led" style="background:var(--boule-red)"></span>PROJECTS<span class="spacer"></span>ERR</div><div class="c-state"><div class="c-state__icon" style="color:var(--boule-red)">[ FETCH_FAILED ]</div><div class="c-state__title">加载失败</div><div class="c-state__hint">无法获取项目列表，请检查网络后重试。</div><div style="margin-top:14px"><button class="c-btn c-btn--ghost">重试</button></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ 2. 组件 ════ -->
+  <section class="sec">
+    <h2><span class="sec-no">§2</span>共享组件控制台形态</h2>
+    <p class="sec-note">映射 U3 要重写的 .boule-panel / -btn / -badge / -input / -data-row。</p>
+    <div class="two-col">
+      <div class="c-panel">
+        <div class="c-panel__bar"><span class="led"></span>BUTTONS · STATUS_TAGS</div>
+        <div class="c-panel__body" style="padding:16px">
+          <div class="stack" style="margin-bottom:14px">
+            <button class="c-btn c-btn--primary">主操作</button>
+            <button class="c-btn">次操作</button>
+            <button class="c-btn c-btn--ghost">幽灵</button>
+            <button class="c-btn c-btn--danger">危险</button>
+          </div>
+          <div class="stack">
+            <span class="c-tag tag-running"><span class="c-tag__dot"></span>RUNNING</span>
+            <span class="c-tag tag-attention"><span class="c-tag__dot"></span>APPROVAL</span>
+            <span class="c-tag tag-done"><span class="c-tag__dot"></span>DONE</span>
+            <span class="c-tag tag-failed"><span class="c-tag__dot"></span>FAILED</span>
+            <span class="c-tag tag-draft"><span class="c-tag__dot"></span>DRAFT</span>
+          </div>
+        </div>
+      </div>
+      <div class="c-panel">
+        <div class="c-panel__bar"><span class="led"></span>INPUT · DATA_ROWS</div>
+        <div class="c-panel__body" style="padding:16px">
+          <div class="c-field" style="margin-bottom:14px"><span class="prompt">&gt;</span><input class="c-input" placeholder="输入项目名称…" /></div>
+          <dl style="margin:0">
+            <div class="c-data__row"><dt>状态</dt><dd><span class="c-tag tag-running"><span class="c-tag__dot"></span>RUNNING</span></dd></div>
+            <div class="c-data__row"><dt>当前阶段</dt><dd>阶段 2 · 调研</dd></div>
+            <div class="c-data__row"><dt>更新于</dt><dd class="mono" style="font-variant-numeric:tabular-nums">2 分钟前</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare" style="margin-top:18px">
+      <div class="compare__cell"><h4>旧 · brutalist（替换前）</h4>
+        <div class="legacy-box">硬边 2px · 硬投 6px · 整行反色</div>
+      </div>
+      <div class="compare__cell"><h4>新 · 终端寄存器（替换后）</h4>
+        <div class="c-panel"><div class="c-panel__bar"><span class="led"></span>CONSOLE</div><div class="c-panel__body" style="padding:16px;font-family:var(--boule-mono);font-size:12px;letter-spacing:.02em">硬发丝线 1px · 零阴影 · 编号行 · mono 标签 · 电光蓝左轨</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ 3. ⌘K ════ -->
+  <section class="sec">
+    <h2><span class="sec-no">§3</span>⌘K 命令栏</h2>
+    <p class="sec-note">combobox + listbox，分组 RECENT / COMMANDS / PROJECTS（消费 lib/command-registry）。当前项 aria-selected + 蓝左轨。</p>
+    <div class="palette-stage">
+      <div class="palette" role="combobox" aria-expanded="true">
+        <div class="palette__bar"><span class="led"></span>COMMAND<span style="flex:1"></span>⌘K</div>
+        <div class="palette__input-wrap"><span class="prompt">&gt;</span><input class="palette__input" value="尽调" readonly /></div>
+        <div class="palette__list" role="listbox">
+          <div class="palette__group">RECENT</div>
+          <div class="palette__item"><span class="ic">↗</span><span class="lbl">方法论</span><span class="hint">NAV</span></div>
+          <div class="palette__group">COMMANDS</div>
+          <div class="palette__item"><span class="ic">▤</span><span class="lbl">项目</span><span class="hint">NAV</span></div>
+          <div class="palette__group">PROJECTS</div>
+          <div class="palette__item" aria-selected="true"><span class="ic" style="color:var(--boule-blue)">●</span><span class="lbl">新能源汽车出海市场<b>尽调</b></span><span class="hint">RUNNING</span></div>
+        </div>
+        <div class="palette__foot"><span><kbd>↑</kbd><kbd>↓</kbd> SELECT</span><span><kbd>↵</kbd> GO</span><span><kbd>esc</kbd> CLOSE</span></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="sec-divider" style="margin-top:54px" />
+  <p class="sec-note" style="margin-top:16px">定稿后：§0 数值落 <code>apps/web/src/index.css :root</code>（U2）；§1–2 形态落 <code>.boule-*</code> 重写（U3）；§1 落 <code>Projects.tsx</code>（U6）；§3 落 <code>CommandPalette.tsx</code>（U5）。</p>
+</div>
+</body>
+</html>
