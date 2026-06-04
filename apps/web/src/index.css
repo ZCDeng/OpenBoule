@@ -270,3 +270,28 @@ button, input, select, textarea { font: inherit; }
 .boule-page input:focus-visible,
 .boule-page select:focus-visible,
 .boule-page textarea:focus-visible { outline: 2px solid var(--boule-blue); outline-offset: 2px; border-radius: var(--surface-radius-sm); }
+
+/* ── ⌘K 命令栏（U5，终端寄存器形态；cmdk 渲染 combobox/listbox）── */
+.boule-cmdk-overlay { position: fixed; inset: 0; z-index: 100; display: flex; justify-content: center; align-items: flex-start; padding: 14vh 20px 20px; background: rgba(11, 11, 11, .32); animation: cmdk-fade var(--ease); }
+.boule-cmdk-palette { width: 100%; max-width: 560px; background: var(--surface-bg); border: 1px solid var(--boule-ink); border-radius: var(--surface-radius); overflow: hidden; animation: cmdk-pop 140ms ease-out; }
+.boule-cmdk-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-bottom: var(--hairline); background: var(--surface-canvas); font-family: var(--boule-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--boule-muted); }
+.boule-cmdk-led { width: 7px; height: 7px; border-radius: 50%; background: var(--boule-blue); }
+.boule-cmdk-input-wrap { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: var(--hairline); }
+.boule-cmdk-prompt { font-family: var(--boule-mono); color: var(--boule-blue); font-size: 15px; }
+.boule-cmdk-input { flex: 1; border: 0; outline: none; font: inherit; font-size: 15px; background: transparent; color: var(--boule-ink); }
+.boule-cmdk-input::placeholder { color: #b0b0a6; }
+.boule-cmdk-list { max-height: 340px; overflow: auto; padding: 6px; }
+.boule-cmdk-empty { padding: 28px 12px; text-align: center; font-family: var(--boule-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--boule-muted); }
+.boule-cmdk-group [cmdk-group-heading] { font-family: var(--boule-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--boule-muted); padding: 10px 10px 4px; }
+.boule-cmdk-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--surface-radius-sm); cursor: pointer; position: relative; }
+.boule-cmdk-item[data-selected="true"] { background: var(--row-selected-bg); }
+.boule-cmdk-item[data-selected="true"]::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--accent-rail); }
+.boule-cmdk-item__lbl { flex: 1; font-size: 13.5px; }
+.boule-cmdk-item__hint { font-family: var(--boule-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #b0b0a6; }
+.boule-cmdk-foot { display: flex; gap: 16px; padding: 8px 14px; border-top: var(--hairline); background: var(--surface-canvas); font-family: var(--boule-mono); font-size: 10.5px; letter-spacing: .04em; color: var(--boule-muted); }
+.boule-cmdk-foot kbd { font-family: var(--boule-mono); font-size: 10px; border: 1px solid var(--hairline-strong); border-bottom-width: 2px; border-radius: 3px; padding: 1px 5px; background: var(--surface-bg); margin-right: 2px; }
+@keyframes cmdk-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cmdk-pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .boule-cmdk-overlay, .boule-cmdk-palette { animation: none; }
+}
