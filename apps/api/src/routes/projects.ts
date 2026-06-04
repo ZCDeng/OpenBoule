@@ -27,12 +27,22 @@ export function registerProjectRoutes(app: FastifyInstance, deps: AppDeps): void
 
   app.get("/api/projects", { preHandler: authenticate }, async (req, reply) => {
     const user = getUser(req)!;
+    // 行状态点：带上「最近活跃 workflow」（updated_at 最新）的 status/phase/time；
+    // 无 workflow → null（前端归为草稿），排序回落 project.created_at。
     const res = await db.execute(sql`
-      SELECT DISTINCT p.id, p.name
+      SELECT p.id, p.name, p.created_at AS "createdAt",
+             w.status, w.current_phase AS "currentPhase", w.updated_at AS "updatedAt"
         FROM projects p
         LEFT JOIN project_members m ON m.project_id = p.id AND m.user_id = ${user.userId}
+        LEFT JOIN LATERAL (
+          SELECT status, current_phase, updated_at
+            FROM workflows wf
+           WHERE wf.project_id = p.id
+           ORDER BY wf.updated_at DESC, wf.created_at DESC
+           LIMIT 1
+        ) w ON TRUE
        WHERE p.owner_id = ${user.userId} OR m.user_id IS NOT NULL
-       ORDER BY p.id`);
+       ORDER BY COALESCE(w.updated_at, p.created_at) DESC`);
     return reply.send({ projects: (res as unknown as { rows: unknown[] }).rows });
   });
 

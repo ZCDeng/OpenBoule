@@ -52,6 +52,37 @@ export function isBelowThreshold(artifactStatus: string | null | undefined): boo
   return artifactStatus === "below_threshold";
 }
 
+// ── 项目列表状态点（U6 follow-up：行状态点色，KTD-4）──
+
+export type StatusTone = "running" | "attention" | "done" | "failed" | "draft";
+
+/**
+ * 项目「最近 workflow」的 status 码 → 状态点 tone（映射 Badge 的 status tone）。
+ * 实际 workflow_status 枚举只有 running/paused_for_approval/approved/rejected；
+ * 其余码（enqueued/completed/failed/… 来自 labels.ts 语境）做防御性归并；
+ * 无 workflow（null）/未知 → draft 灰。
+ */
+export function projectStatusTone(status: string | null | undefined): StatusTone {
+  switch (status) {
+    case "running":
+    case "enqueued":
+      return "running";
+    case "paused_for_approval":
+    case "needs_approval":
+      return "attention";
+    case "approved":
+    case "completed":
+    case "published":
+      return "done";
+    case "rejected":
+    case "failed":
+    case "below_threshold":
+      return "failed";
+    default:
+      return "draft";
+  }
+}
+
 // ── 方法论图布局（线性链，确定性手算，不引 ELK.js）──
 
 export interface LaidOutNode {
