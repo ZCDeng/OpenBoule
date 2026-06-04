@@ -42,12 +42,12 @@ export function ProjectsPage() {
       <Panel className="mt-8">
         <div className="project-console-bar boule-panel-body">
           <div>
-            <Badge tone="blue">输入</Badge>
+            <div><Badge tone="blue">输入</Badge></div>
             <b>先定义要解决的问题</b>
             <small>项目名建议包含客户、场景和交付物，例如“物业 AI 战略报告”。</small>
           </div>
           <div>
-            <Badge tone="orange">检索</Badge>
+            <div><Badge tone="orange">检索</Badge></div>
             <b>再检索已有输出</b>
             <TextInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索项目 / 输出主题" />
           </div>
