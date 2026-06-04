@@ -37,7 +37,10 @@ export function PanelHeader({ k, title, children }: { k: string; title: string; 
   );
 }
 
-export function Badge({ children, tone = "plain" }: { children: ReactNode; tone?: "plain" | "blue" | "orange" | "dark" }) {
+/** 徽章。plain/blue/orange/dark = 强调标签；running/attention/done/failed/draft = 状态点芯片
+ *  （CSS 自动出 8px 状态点色，见 index.css；语义经 lib/labels.ts，不直出枚举码）。 */
+export type BadgeTone = "plain" | "blue" | "orange" | "dark" | "running" | "attention" | "done" | "failed" | "draft";
+export function Badge({ children, tone = "plain" }: { children: ReactNode; tone?: BadgeTone }) {
   return <span className={`boule-badge boule-badge--${tone}`}>{children}</span>;
 }
 
@@ -57,7 +60,7 @@ export function SelectInput(props: SelectHTMLAttributes<HTMLSelectElement>) {
 export function Banner({ children, tone = "warn", action }: { children: ReactNode; tone?: "warn" | "danger" | "info"; action?: ReactNode }) {
   const bg = tone === "danger" ? "bg-[var(--boule-red)]" : tone === "info" ? "bg-[var(--boule-ink)]" : "bg-[var(--boule-orange)]";
   return (
-    <div role={tone === "danger" ? "alert" : "status"} className={`flex flex-wrap items-center justify-between gap-3 border-2 border-black ${bg} px-4 py-3 text-sm text-white shadow-[4px_4px_0_var(--boule-ink)]`}>
+    <div role={tone === "danger" ? "alert" : "status"} className={`flex flex-wrap items-center justify-between gap-3 rounded-[var(--surface-radius-sm)] border border-[var(--hairline-strong)] ${bg} px-4 py-3 text-sm text-white`}>
       <div className="min-w-0">{children}</div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
