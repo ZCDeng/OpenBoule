@@ -42,7 +42,7 @@ export function LoginPage() {
         <header className="border-b-2 border-[var(--app-fg)] pb-8">
           <div className="boule-eyebrow">Nº 00 — 登录</div>
           <h1 className="boule-title">进入<br />咨询流水线。</h1>
-          <p className="boule-lede">Claude-only 工作台。注册后即可创建项目、上传材料、启动 7+2 阶段咨询任务。</p>
+          <p className="boule-lede">Claude-only 工作台。注册后即可创建项目、上传材料、启动 7+3 阶段咨询任务。</p>
           <div className="mt-6 flex flex-wrap gap-2">
             <Badge tone="orange">Claude专用</Badge>
             <Badge>登录会话</Badge>

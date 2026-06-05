@@ -14,8 +14,8 @@ const CAPABILITIES = [
   {
     no: "02",
     title: "多角色 AI 编排",
-    body: "7+2 阶段流程：并发（多线并行）、串行质量校验、每个角色都有可追踪职责。",
-    lands: ["phase1_5_axis", "phase2_research", "phase3_synthesis", "phase4_review"],
+    body: "7+3 阶段流程：并发（多线并行）、串行质量校验、每个角色都有可追踪职责。",
+    lands: ["phase1_5_axis", "phase2_research", "phase3_synthesis", "phase3_5_review", "phase4_review"],
   },
   {
     no: "03",
@@ -26,8 +26,8 @@ const CAPABILITIES = [
   {
     no: "04",
     title: "对抗验证三票",
-    body: "来源核验对每条关键断言独立裁决，反驳优先，站不住的论据出局。",
-    lands: ["phase2_5_verify", "phase4_review"],
+    body: "来源核验对每条关键断言独立裁决，反驳优先，站不住的论据出局；方案级评审同样三票合议。",
+    lands: ["phase2_5_verify", "phase3_5_review", "phase4_review"],
   },
   {
     no: "05",
@@ -46,10 +46,11 @@ const CAPABILITIES = [
 const PHASE_META: Record<string, { key: string; mode: string; in?: string; output: string; gate?: boolean }> = {
   phase0_init: { key: "初始化 · 0 TOKEN", mode: "确定性", in: "2项输入", output: "项目结构 / 输入槽 / 数据源" },
   phase1_intake: { key: "单角色 · 接案", mode: "单角色", output: "可执行需求" },
-  phase1_5_axis: { key: "单角色 · 插入校验", mode: "+2 校验", output: "3–5 个分析维度", gate: true },
+  phase1_5_axis: { key: "单角色 · 插入校验", mode: "+3 校验", output: "3–5 个分析维度", gate: true },
   phase2_research: { key: "并发 · 4–8 多线并行", mode: "并发", in: "3项输入", output: "研究纪要 + 来源 URL" },
-  phase2_5_verify: { key: "验证 · 三票", mode: "+2 校验", in: "1项输入", output: "断言裁决矩阵", gate: true },
+  phase2_5_verify: { key: "验证 · 三票", mode: "+3 校验", in: "1项输入", output: "断言裁决矩阵", gate: true },
   phase3_synthesis: { key: "单角色 · 纯推理", mode: "综合", in: "1项输入", output: "战略报告草案" },
+  phase3_5_review: { key: "合议 · 五视角评审", mode: "+3 校验", in: "1项输入", output: "ship / revise / rework 裁决", gate: true },
   phase4_review: { key: "串行 · 审校 1-2-3", mode: "串行", in: "1项输入", output: "三筛后可发布稿" },
   phase5_delivery: { key: "单角色 · 签名分享", mode: "交付", in: "1项输入", output: "文档 / 分享链接 / 方法图" },
   phase6_enrichment: { key: "单角色 · 可跳过", mode: "回灌", output: "热点扫描与追加输入" },
@@ -68,7 +69,7 @@ export function MethodologyPage() {
     <div ref={pageRef}>
     <PageShell wide>
       <PageHeader eyebrow="Nº 03 — CAPABILITY → PIPELINE" title="能力不是卡片，是落到阶段的生产线">
-        左侧是 6 个能力，右侧是 9 个阶段，中间用可点击蓝线说明“这个能力在哪一步变成输入、检索、验证和输出”。
+        左侧是 6 个能力，右侧是 10 个阶段，中间用可点击蓝线说明“这个能力在哪一步变成输入、检索、验证和输出”。
       </PageHeader>
 
       <section className="method-hero mt-8" aria-label="方法论总览">
@@ -85,7 +86,7 @@ export function MethodologyPage() {
 
       <div className="mt-6 flex flex-wrap gap-2">
         <Badge tone="blue">6 项能力</Badge>
-        <Badge>9 个阶段</Badge>
+        <Badge>10 个阶段</Badge>
         <Badge tone="orange">输入已强化</Badge>
         <Badge>输出可检索</Badge>
       </div>
@@ -116,7 +117,7 @@ export function MethodologyPage() {
         </div>
 
         <Panel className="method-map__pipeline">
-          <PanelHeader k="PIPELINE / 九阶段" title="阶段推进" >黑色竖向是流水线推进；蓝左条是 +2 插入的质量校验。</PanelHeader>
+          <PanelHeader k="PIPELINE / 十阶段" title="阶段推进" >黑色竖向是流水线推进；蓝左条是 +3 插入的质量校验。</PanelHeader>
           <ol className="method-phase-list">
             {PHASE_LABELS.map((phase, i) => {
               const meta = PHASE_META[phase.id];

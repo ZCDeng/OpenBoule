@@ -7,7 +7,15 @@
  * 三形态：single（单角色）/ fanout（Phase 2 并发 researcher + aggregator）/ serial（Phase 4 editor-1→2→3 + 放行闸）。
  */
 
-import { evaluateReviewGate, type EditorRound, type GateVerdict } from "../state.ts";
+import {
+  evaluateReviewGate,
+  evaluateReviewPanel,
+  REVIEW_LENSES,
+  type EditorRound,
+  type GateVerdict,
+  type ReviewLens,
+  type PanelVerdict,
+} from "../state.ts";
 
 export interface AgentRunSpec {
   workflowId: string;
@@ -122,6 +130,46 @@ export async function runSerialReview(
       type: "final-report",
       body: bestText,
       status: verdict.ship ? "published" : "below_threshold",
+    },
+    verdict,
+  };
+}
+
+// ── panel：Phase 3.5 评审合议（N 视角实质评审 + readiness 裁决）──
+
+/**
+ * 5 视角实质评审 → 合议裁决（report v1 是否能进 Phase 4）。视角名透传作各 reviewer 的具体评审任务
+ * （类比 fanout 的 axis-threading）。缺评分的视角记为有硬伤（mustFix=1, composite=0），防缺数据误 ship。
+ * artifact 体是 readiness + 逐视角裁决的 JSON；非 ship 标 below_threshold，engine 据 readiness 走 gate。
+ */
+export async function runReviewPanel(
+  agentRunner: AgentRunner,
+  args: { workflowId: string; phase: string; lenses?: readonly string[] },
+): Promise<{ artifact: PhaseArtifact; verdict: PanelVerdict }> {
+  const lensNames = args.lenses ?? REVIEW_LENSES;
+  const results: ReviewLens[] = [];
+  for (let i = 0; i < lensNames.length; i++) {
+    const lens = lensNames[i]!;
+    const r = await agentRunner({
+      workflowId: args.workflowId,
+      phase: args.phase,
+      role: `reviewer-${i + 1}`,
+      task: lens, // 视角透传：第 i 个 reviewer 用第 i 个视角审 report v1
+      childIndex: i + 1,
+    });
+    results.push(
+      r.score
+        ? { lens, composite: r.score.composite, mustFix: r.score.mustFix, debates: 0 }
+        : { lens, composite: 0, mustFix: 1, debates: 0 },
+    );
+  }
+
+  const verdict = evaluateReviewPanel(results);
+  return {
+    artifact: {
+      type: "review-verdict",
+      body: JSON.stringify({ readiness: verdict.readiness, reason: verdict.reason, lenses: results }),
+      status: verdict.readiness === "ship" ? "draft" : "below_threshold",
     },
     verdict,
   };

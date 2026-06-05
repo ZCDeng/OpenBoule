@@ -88,6 +88,8 @@ export async function rolePolicyWithSearchProbe(roleFile: string): Promise<RoleP
 export function mapRoleToFile(role: string, phase: string): string {
   if (role.startsWith("researcher-")) return "industry-researcher";
   if (role.startsWith("editor-")) return "editor";
+  // phase3.5 评审合议：N 视角 reviewer 复用对抗验证 role（source-verifier），视角经 task 透传。
+  if (role.startsWith("reviewer-")) return "source-verifier";
   switch (phase) {
     case "phase0_init":
     case "phase1_intake":
@@ -99,6 +101,8 @@ export function mapRoleToFile(role: string, phase: string): string {
       return "source-verifier";
     case "phase3_synthesis":
       return "strategy-advisor";
+    case "phase3_5_review":
+      return "source-verifier";
     case "phase4_review":
       return "editor";
     case "phase5_delivery":
@@ -260,10 +264,13 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
     );
 
     // editor 角色：用 U5 语言闸门算 languageGateFailed 喂 Phase 4 放行闸（KTD-21：代码裁决）
+    // reviewer 角色（phase3.5）：产 composite/mustFix 占位喂评审合议；真实质量分由后续质量评分接入。
     let score: { composite: number; mustFix: number; languageGateFailed: boolean } | undefined;
     if (spec.role.startsWith("editor-")) {
       const gate = languageGate(result.finalText, loadPmConfig(snapshot).jargonPatterns);
       score = { composite: result.ok ? 0.85 : 0, mustFix: 0, languageGateFailed: !gate.passed };
+    } else if (spec.role.startsWith("reviewer-")) {
+      score = { composite: result.ok ? 0.85 : 0, mustFix: 0, languageGateFailed: false };
     }
 
     return { ok: result.ok, text: result.finalText, score, errorCode: result.errorCode };

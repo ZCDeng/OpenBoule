@@ -53,7 +53,7 @@ const monoMeta: CSSProperties = {
 /* Nº 01 能力矩阵（demo CAPABILITIES，4 列等权）。 */
 const CAPABILITIES: { no: string; title: string; body: string }[] = [
   { no: "01", title: "确定性初始化", body: "阶段 0 秒级建立项目结构与目录，不调模型、不耗 Token。该用代码答的判断，绝不空转 AI。" },
-  { no: "02", title: "多角色 AI 编排", body: "调研 / 综合 / 审校 / 设计按 7+2 阶段流程分工，并发（多线并行）、串行质量校验，合议交付。" },
+  { no: "02", title: "多角色 AI 编排", body: "调研 / 综合 / 评审 / 审校 / 设计按 7+3 阶段流程分工，并发（多线并行）、串行质量校验，合议交付。" },
   { no: "03", title: "真实联网检索", body: "调研接 Aditly 真检索：安思派深度搜索、博查实时信息、Jina 静态提取、Reach 动态抓取。带来源 URL 落进报告，不靠模型记忆编造，可超训练截止时点。" },
   { no: "04", title: "对抗验证三票", body: "来源核验对每条断言独立三票裁决，反驳优先。站不住的论据当场出局，不让似是而非过关。" },
   { no: "05", title: "AI 用户访谈", body: "atypica-research 生成 3–5 个 AI 用户深度访谈，抽取用户痛点与决策动机。明确标注为模拟来源，占比 ≤20%，诊断模式禁用。" },
@@ -62,8 +62,8 @@ const CAPABILITIES: { no: string; title: string; body: string }[] = [
 /* Nº 02 角色编队（demo CREW，7 个真角色 + 第 8 张黑色扩展卡）。 */
 const ROLES: { rid: string; name: string; en: string; body: string; dark?: boolean }[] = [
   { rid: "R1", name: "行业研究员", en: "industry-researcher", body: "接联网工具按维度真检索，带来源 URL 落进报告。阶段 2 并发（多线并行）。" },
-  { rid: "R2", name: "对抗声称验证", en: "source-verifier · v2.4", body: "对每条断言独立三票裁决，反驳优先。站不住的论据当场出局。" },
-  { rid: "R3", name: "战略顾问", en: "strategy-advisor", body: "把验证过的发现合成报告，阶段 3 出结构化结论与建议。" },
+  { rid: "R2", name: "对抗声称验证", en: "source-verifier · v2.5", body: "对每条断言独立三票裁决，反驳优先。站不住的论据当场出局；阶段 3.5 评审合议同源驱动。" },
+  { rid: "R3", name: "战略顾问", en: "strategy-advisor", body: "把验证过的发现合成报告，阶段 3 出结构化结论与建议；阶段 3.5 评审判返工时据裁决重写。" },
   { rid: "R4", name: "审稿编辑", en: "editor", body: "阶段 4 串行三筛 + 语言质量校验，代码裁决放行，不靠模型自评。" },
   { rid: "R5", name: "设计师", en: "designer", body: "阶段 5 把报告排版交付，生成可分享的文档与方法论图。" },
   { rid: "R6", name: "市场扫描员", en: "market-scanner", body: "阶段 6 增益，扫描热点与新增信号，回灌可追加的分析维度。" },
@@ -80,7 +80,7 @@ const RUNTIME: { rk: string; title: string; body: string; events?: string[] }[] 
     body: "逐条 SDK 消息归一，前端实时看到 AI 状态、工具调用与 Token 用量，不展示模型思考过程。",
     events: ["状态", "输出", "调用工具", "工具结果", "用量"],
   },
-  { rk: "编排 · ORCHESTRATION", title: "BullMQ 串 HITL 流水线", body: "Worker + FlowProducer 串 7 阶段人机协同流水线，工具联网，全链路溯源 + 单写者锁挡并发写。" },
+  { rk: "编排 · ORCHESTRATION", title: "BullMQ 串 HITL 流水线", body: "Worker + FlowProducer 串 10 阶段人机协同流水线，工具联网，全链路溯源 + 单写者锁挡并发写。" },
 ];
 
 /* 跑马灯条目（demo strip）。 */
@@ -89,6 +89,7 @@ const MARQUEE = [
   "多角色 AI 编排",
   "真实联网检索带来源",
   "对抗验证三票裁决",
+  "方案级评审合议",
   "单写者锁",
   "全链路溯源",
 ];
@@ -261,7 +262,7 @@ export function LandingPage() {
           <div className="boule-hero-grid">
             <div>
               <p className="boule-hero-copy" style={{ fontSize: 19, maxWidth: "46ch", color: "#1c1c1a" }}>
-                9 个阶段，一支不睡觉的<b style={{ fontWeight: 600 }}>多角色创作团队</b>。Claude专用，不支持其它模型；需自带 Claude CLI 会话或 Anthropic Key。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。
+                10 个阶段，一支不睡觉的<b style={{ fontWeight: 600 }}>多角色创作团队</b>。Claude专用，不支持其它模型；需自带 Claude CLI 会话或 Anthropic Key。接案、调研、综合、评审、三筛、交付——每一步都留下可追溯的来源与裁决记录。
               </p>
               <div className="flex flex-wrap" style={{ gap: 10, marginTop: 24 }}>
                 <span
@@ -282,7 +283,7 @@ export function LandingPage() {
                 >
                   <ClaudeIcon size={15} /> Claude专用
                 </span>
-                <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>9 阶段流水线</span>
+                <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>10 阶段流水线</span>
                 <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>真联网调研</span>
                 <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>对抗验证三票</span>
                 <span className="boule-hero-badge" style={{ ...monoMeta, fontSize: 11, letterSpacing: "0.06em", border: `2px solid ${LINE}`, padding: "6px 12px" }}>确定性脚手架</span>
@@ -445,10 +446,10 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Nº 04 方法论（PHASE_LABELS 真数据，7+2 阶段） ─── */}
+      {/* ─── Nº 04 方法论（PHASE_LABELS 真数据，7+3 阶段） ─── */}
       <section ref={methodRef} id="method" style={{ borderBottom: `2px solid ${LINE}`, paddingBottom: 8 }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", padding: "0 40px" }}>
-          <SecHead k="Nº 04 — METHOD LOOP" title="从接案到交付的 7+2 阶段" />
+          <SecHead k="Nº 04 — METHOD LOOP" title="从接案到交付的 7+3 阶段" />
           <div style={{ marginTop: 20 }}>
             {PHASE_LABELS.map((p, i) => (
               <div
@@ -544,6 +545,7 @@ const METHOD_KEY: Record<string, string> = {
   phase2_research: "调研",
   phase2_5_verify: "验证",
   phase3_synthesis: "综合",
+  phase3_5_review: "评审",
   phase4_review: "审校",
   phase5_delivery: "交付",
   phase6_enrichment: "补强",
