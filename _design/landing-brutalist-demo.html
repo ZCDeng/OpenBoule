@@ -166,9 +166,9 @@
 
   <div class="hero-grid">
     <div>
-      <p class="lede">9 个阶段,一支不睡觉的<b>多角色创作团队</b>。接案、调研、综合、三筛、交付——每一步都留下可追溯的来源与裁决记录。</p>
+      <p class="lede">10 个阶段,一支不睡觉的<b>多角色创作团队</b>。接案、调研、综合、评审、三筛、交付——每一步都留下可追溯的来源与裁决记录。</p>
       <div class="tags">
-        <span class="tag fill">9 阶段流水线</span>
+        <span class="tag fill">10 阶段流水线</span>
         <span class="tag">真联网调研</span>
         <span class="tag">对抗验证三票</span>
         <span class="tag">确定性脚手架</span>
@@ -201,7 +201,7 @@
   <div class="sec-h"><span class="k">Nº 01 — CAPABILITIES</span><h2>引擎做什么</h2></div>
   <div class="caps">
     <div class="cap"><div class="no">01</div><h3>确定性脚手架</h3><p>Phase 0 秒级生成项目骨架与目录,不调模型、不耗 token。该用代码答的判断,绝不空转 agent。</p></div>
-    <div class="cap"><div class="no">02</div><h3>多角色 agent 编排</h3><p>researcher / strategy / editor / designer 按 7+2 阶段 DAG 分工 fan-out 并发、串行放行闸,合议交付。</p></div>
+    <div class="cap"><div class="no">02</div><h3>多角色 agent 编排</h3><p>researcher / strategy / review-panel / editor / designer 按 7+3 阶段 DAG 分工 fan-out 并发、串行放行闸,合议交付。</p></div>
     <div class="cap"><div class="no">03</div><h3>真实联网检索</h3><p>researcher 接 Aditly web 工具真检索,带来源 URL 落进报告,不靠模型记忆编造,可超训练截止时点。</p></div>
     <div class="cap"><div class="no">04</div><h3>对抗验证三票</h3><p>source-verifier 对每条断言独立三票裁决,refute 优先。站不住的论据当场出局,不让似是而非过关。</p></div>
   </div>
@@ -211,8 +211,8 @@
   <div class="sec-h"><span class="k">Nº 02 — CREW / SKILLS</span><h2>7 个角色,各是一份 skill</h2></div>
   <div class="crew">
     <div class="role"><div class="rid">R1</div><h3>行业研究员</h3><div class="en">industry-researcher</div><p>接 Aditly web 工具按轴真检索,带来源 URL 落进报告。Phase 2 并发 fan-out。</p></div>
-    <div class="role"><div class="rid">R2</div><h3>对抗声称验证</h3><div class="en">source-verifier · v2.4</div><p>对每条断言独立三票裁决,refute 优先。站不住的论据当场出局。</p></div>
-    <div class="role"><div class="rid">R3</div><h3>战略顾问</h3><div class="en">strategy-advisor</div><p>把验证过的发现合成报告,Phase 3 出结构化结论与建议。</p></div>
+    <div class="role"><div class="rid">R2</div><h3>对抗声称验证</h3><div class="en">source-verifier · v2.5</div><p>对每条断言独立三票裁决,refute 优先。站不住的论据当场出局;Phase 3.5 评审合议同源驱动。</p></div>
+    <div class="role"><div class="rid">R3</div><h3>战略顾问</h3><div class="en">strategy-advisor</div><p>把验证过的发现合成报告,Phase 3 出结构化结论与建议;Phase 3.5 评审判返工时据裁决重写。</p></div>
     <div class="role"><div class="rid">R4</div><h3>审稿编辑</h3><div class="en">editor</div><p>Phase 4 串行三筛 + 语言闸门,代码裁决放行,不靠模型自评。</p></div>
     <div class="role"><div class="rid">R5</div><h3>设计师</h3><div class="en">designer</div><p>Phase 5 把报告排版交付,生成可分享的文档与方法论图。</p></div>
     <div class="role"><div class="rid">R6</div><h3>市场扫描员</h3><div class="en">market-scanner</div><p>Phase 6 增益,扫描热点与新增信号,回灌可追加的调研轴。</p></div>
@@ -236,12 +236,12 @@
   <div class="rt">
     <div class="rt-c"><div class="rk">认证 · AUTH</div><h3>CLI 会话 或 API key</h3><p>没配 API key 时走 Claude CLI 订阅会话,配了就走 key。引擎读 init 的 apiKeySource 自动切换,零改码。</p></div>
     <div class="rt-c"><div class="rk">事件流 · STREAM</div><h3>SDK 流归一成 6 类</h3><p>逐条 SDK 消息归一,前端实时看到 agent 的思考、工具调用与 token 成本。</p><div class="ev"><span>status</span><span>text_delta</span><span>thinking_delta</span><span>tool_use</span><span>tool_result</span><span>usage</span></div></div>
-    <div class="rt-c"><div class="rk">编排 · ORCHESTRATION</div><h3>BullMQ 串 HITL 流水线</h3><p>Worker + FlowProducer 串 7 阶段人机协同流水线,MCP 工具联网,lineage 溯源 + 单写者锁挡并发写。</p></div>
+    <div class="rt-c"><div class="rk">编排 · ORCHESTRATION</div><h3>BullMQ 串 HITL 流水线</h3><p>Worker + FlowProducer 串 10 阶段人机协同流水线,MCP 工具联网,lineage 溯源 + 单写者锁挡并发写。</p></div>
   </div>
 </div></section>
 
 <section id="method" class="method"><div class="wrap">
-  <div class="sec-h"><span class="k">Nº 04 — METHOD LOOP</span><h2>从接案到交付的 7+2 阶段</h2></div>
+  <div class="sec-h"><span class="k">Nº 04 — METHOD LOOP</span><h2>从接案到交付的 7+3 阶段</h2></div>
   <div style="margin-top:20px">
     <div class="ph"><div class="ph-no">01</div><div class="ph-name">Phase 0 · 初始化<small>SCAFFOLD</small></div><div class="ph-note">骨架生成、目录创建</div></div>
     <div class="ph"><div class="ph-no">02</div><div class="ph-name">Phase 1 · 接案<small>INTAKE</small></div><div class="ph-note">Subject/Mode/Substance gate + brief</div></div>
@@ -249,9 +249,10 @@
     <div class="ph"><div class="ph-no">04</div><div class="ph-name">Phase 2 · 调研<small>RESEARCH</small></div><div class="ph-note">并发 researcher fan-out</div></div>
     <div class="ph"><div class="ph-no">05</div><div class="ph-name">Phase 2.5 · 对抗验证<small>VERIFY</small></div><div class="ph-note">source-verifier 三票裁决</div></div>
     <div class="ph"><div class="ph-no">06</div><div class="ph-name">Phase 3 · 综合<small>SYNTHESIS</small></div><div class="ph-note">strategy 合成报告</div></div>
-    <div class="ph"><div class="ph-no">07</div><div class="ph-name">Phase 4 · 三筛<small>REVIEW</small></div><div class="ph-note">editor 串行 + 放行闸</div></div>
-    <div class="ph"><div class="ph-no">08</div><div class="ph-name">Phase 5 · 交付<small>DELIVERY</small></div><div class="ph-note">designer 排版</div></div>
-    <div class="ph"><div class="ph-no">09</div><div class="ph-name">Phase 6 · 增益<small>ENRICHMENT</small></div><div class="ph-note">market-scanner 热点扫描</div></div>
+    <div class="ph"><div class="ph-no">07</div><div class="ph-name">Phase 3.5 · 评审合议<small>PANEL</small></div><div class="ph-note">五视角 → 三票 → ship/revise/rework</div></div>
+    <div class="ph"><div class="ph-no">08</div><div class="ph-name">Phase 4 · 三筛<small>REVIEW</small></div><div class="ph-note">editor 串行 + 放行闸</div></div>
+    <div class="ph"><div class="ph-no">09</div><div class="ph-name">Phase 5 · 交付<small>DELIVERY</small></div><div class="ph-note">designer 排版</div></div>
+    <div class="ph"><div class="ph-no">10</div><div class="ph-name">Phase 6 · 增益<small>ENRICHMENT</small></div><div class="ph-note">market-scanner 热点扫描</div></div>
   </div>
 </div></section>
 

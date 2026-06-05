@@ -1,6 +1,7 @@
 /**
- * 审批路由（U6）。checkpoint 决策（editor+）：approve / redo / augment / reject。
+ * 审批路由（U6）。checkpoint 决策（editor+）：approve / redo / augment / rework / reject。
  * 决策 CAS 在引擎层（U4），冲突 → CheckpointConflictError → 409。
+ * rework 仅 phase3_5_review 合法（引擎 resolveNextPhase 把关），非法 phase → 引擎抛错 → 500（不静默）。
  */
 
 import type { FastifyInstance } from "fastify";
@@ -23,7 +24,7 @@ export function registerApprovalRoutes(app: FastifyInstance, deps: AppDeps): voi
     return user && role ? { user_id: user.userId, role } : undefined;
   };
 
-  const decisions = ["approve", "redo", "augment", "reject"] as const;
+  const decisions = ["approve", "redo", "augment", "rework", "reject"] as const;
   for (const decision of decisions) {
     app.post(
       `/api/workflows/:id/${decision}`,

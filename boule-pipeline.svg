@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 980" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+<defs>
+<marker id="ar" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#94a3b8"/></marker>
+<filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.12"/></filter>
+</defs>
+<rect width="1480" height="980" fill="#ffffff"/>
+<text x="50" y="50" font-size="27" font-weight="700" fill="#0f172a">OpenConsult · Boule — 6 能力 x 10 阶段 咨询交付流水线</text>
+<text x="50" y="78" font-size="14" fill="#64748b">把一篇长文的等待，拆成一条可调度、可追溯、每阶段留裁决记录的多角色创作流水线。整数 7 阶段 + 3 插入闸（1.5 / 2.5 / 3.5）= 10。</text>
+<text x="50" y="112" font-size="13" font-weight="700" fill="#475569">六能力</text>
+<rect x="50" y="124" width="225" height="60" rx="9" fill="#ffffff" stroke="#64748b" stroke-width="1.4"/>
+<rect x="50" y="124" width="6" height="60" rx="3" fill="#64748b"/>
+<text x="68" y="151" font-size="17" font-weight="700" fill="#64748b">01</text>
+<text x="96" y="151" font-size="13.5" font-weight="700" fill="#0f172a">确定性脚手架</text>
+<text x="68" y="172" font-size="11.5" fill="#94a3b8">→ P0</text>
+<rect x="287" y="124" width="225" height="60" rx="9" fill="#ffffff" stroke="#2563eb" stroke-width="1.4"/>
+<rect x="287" y="124" width="6" height="60" rx="3" fill="#2563eb"/>
+<text x="305" y="151" font-size="17" font-weight="700" fill="#2563eb">02</text>
+<text x="333" y="151" font-size="13.5" font-weight="700" fill="#0f172a">多角色 agent 编排</text>
+<text x="305" y="172" font-size="11.5" fill="#94a3b8">贯穿 DAG</text>
+<rect x="524" y="124" width="225" height="60" rx="9" fill="#ffffff" stroke="#7c3aed" stroke-width="1.4"/>
+<rect x="524" y="124" width="6" height="60" rx="3" fill="#7c3aed"/>
+<text x="542" y="151" font-size="17" font-weight="700" fill="#7c3aed">03</text>
+<text x="570" y="151" font-size="13.5" font-weight="700" fill="#0f172a">真实联网检索</text>
+<text x="542" y="172" font-size="11.5" fill="#94a3b8">→ P2</text>
+<rect x="761" y="124" width="225" height="60" rx="9" fill="#ffffff" stroke="#059669" stroke-width="1.4"/>
+<rect x="761" y="124" width="6" height="60" rx="3" fill="#059669"/>
+<text x="779" y="151" font-size="17" font-weight="700" fill="#059669">04</text>
+<text x="807" y="151" font-size="13.5" font-weight="700" fill="#0f172a">对抗验证三票</text>
+<text x="779" y="172" font-size="11.5" fill="#94a3b8">→ P2.5</text>
+<rect x="998" y="124" width="225" height="60" rx="9" fill="#ffffff" stroke="#db2777" stroke-width="1.4"/>
+<rect x="998" y="124" width="6" height="60" rx="3" fill="#db2777"/>
+<text x="1016" y="151" font-size="17" font-weight="700" fill="#db2777">05</text>
+<text x="1044" y="151" font-size="13.5" font-weight="700" fill="#0f172a">AI persona 访谈</text>
+<text x="1016" y="172" font-size="11.5" fill="#94a3b8">→ P2</text>
+<rect x="1235" y="124" width="225" height="60" rx="9" fill="#ffffff" stroke="#1A18EE" stroke-width="1.4"/>
+<rect x="1235" y="124" width="6" height="60" rx="3" fill="#1A18EE"/>
+<text x="1253" y="151" font-size="17" font-weight="700" fill="#1A18EE">06</text>
+<text x="1281" y="151" font-size="13.5" font-weight="700" fill="#0f172a">Web-CLI 协同</text>
+<text x="1253" y="172" font-size="11.5" fill="#94a3b8">入口/贯穿</text>
+<rect x="52" y="210" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M52,244 L52,221 Q52,210 63,210 L279,210 Q290,210 290,221 L290,244 Z" fill="#64748b"/>
+<text x="66" y="233" font-size="14" font-weight="700" fill="#ffffff">Phase 0</text>
+<rect x="204" y="218" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="242" y="231" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">SCAFFOLD</text>
+<text x="66" y="272" font-size="16" font-weight="700" fill="#0f172a">确定性脚手架</text>
+<text x="66" y="294" font-size="12" fill="#334155" font-weight="600">角色 · 信息架构师</text>
+<text x="66" y="318" font-size="11.5" fill="#334155">纯函数 buildScaffold</text>
+<text x="66" y="336" font-size="11.5" fill="#334155">(mode, manifest) 推导</text>
+<rect x="53" y="348" width="236" height="37" rx="0" fill="#64748b" fill-opacity="0.09"/>
+<text x="66" y="365" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="66" y="379" font-size="11" fill="#334155" font-weight="600">目录骨架 TOC · 0 token · ≤2s</text>
+<rect x="333" y="210" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M333,244 L333,221 Q333,210 344,210 L560,210 Q571,210 571,221 L571,244 Z" fill="#2563eb"/>
+<text x="347" y="233" font-size="14" font-weight="700" fill="#ffffff">Phase 1</text>
+<rect x="485" y="218" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="523" y="231" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">SINGLE</text>
+<text x="347" y="272" font-size="16" font-weight="700" fill="#0f172a">接案</text>
+<text x="347" y="294" font-size="12" fill="#1d4ed8" font-weight="600">角色 · — 摄入</text>
+<text x="347" y="318" font-size="11.5" fill="#334155">客户种子摄入</text>
+<text x="347" y="336" font-size="11.5" fill="#334155">→ 划定任务边界</text>
+<rect x="334" y="348" width="236" height="37" rx="0" fill="#2563eb" fill-opacity="0.09"/>
+<text x="347" y="365" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="347" y="379" font-size="11" fill="#1d4ed8" font-weight="600">接案简报 intake-brief</text>
+<rect x="609" y="205" width="248" height="186" rx="14" fill="none" stroke="#2563eb" stroke-width="1.4" stroke-dasharray="5,4"/>
+<rect x="614" y="210" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M614,244 L614,221 Q614,210 625,210 L841,210 Q852,210 852,221 L852,244 Z" fill="#2563eb"/>
+<text x="628" y="233" font-size="14" font-weight="700" fill="#ffffff">Phase 1.5</text>
+<rect x="766" y="218" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="804" y="231" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">SINGLE</text>
+<text x="628" y="272" font-size="16" font-weight="700" fill="#0f172a">调研轴</text>
+<text x="628" y="294" font-size="12" fill="#1d4ed8" font-weight="600">角色 · — 轴拆解</text>
+<text x="628" y="318" font-size="11.5" fill="#334155">拆解调研维度</text>
+<text x="628" y="336" font-size="11.5" fill="#334155">定 fan-out 轴向</text>
+<rect x="615" y="348" width="236" height="37" rx="0" fill="#2563eb" fill-opacity="0.09"/>
+<text x="628" y="365" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="628" y="379" font-size="11" fill="#1d4ed8" font-weight="600">research axis（插入闸）</text>
+<rect x="895" y="210" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M895,244 L895,221 Q895,210 906,210 L1122,210 Q1133,210 1133,221 L1133,244 Z" fill="#7c3aed"/>
+<text x="909" y="233" font-size="14" font-weight="700" fill="#ffffff">Phase 2</text>
+<rect x="1047" y="218" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="1085" y="231" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">FANOUT</text>
+<text x="909" y="272" font-size="16" font-weight="700" fill="#0f172a">行业调研</text>
+<text x="909" y="294" font-size="12" fill="#6d28d9" font-weight="600">角色 · 行业研究员 xN</text>
+<text x="909" y="318" font-size="11.5" fill="#334155">接 Aditly MCP 真检索</text>
+<text x="909" y="336" font-size="11.5" fill="#334155">partial-fail 容错不阻塞</text>
+<rect x="896" y="348" width="236" height="37" rx="0" fill="#7c3aed" fill-opacity="0.09"/>
+<text x="909" y="365" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="909" y="379" font-size="11" fill="#6d28d9" font-weight="600">带来源 URL 报告</text>
+<rect x="1171" y="205" width="248" height="186" rx="14" fill="none" stroke="#059669" stroke-width="1.4" stroke-dasharray="5,4"/>
+<rect x="1176" y="210" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M1176,244 L1176,221 Q1176,210 1187,210 L1403,210 Q1414,210 1414,221 L1414,244 Z" fill="#059669"/>
+<text x="1190" y="233" font-size="14" font-weight="700" fill="#ffffff">Phase 2.5</text>
+<rect x="1328" y="218" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="1366" y="231" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">VERIFY</text>
+<text x="1190" y="272" font-size="16" font-weight="700" fill="#0f172a">对抗验证</text>
+<text x="1190" y="294" font-size="12" fill="#047857" font-weight="600">角色 · 对抗声称验证</text>
+<text x="1190" y="318" font-size="11.5" fill="#334155">每条断言独立三票</text>
+<text x="1190" y="336" font-size="11.5" fill="#334155">refute 优先</text>
+<rect x="1177" y="348" width="236" height="37" rx="0" fill="#059669" fill-opacity="0.09"/>
+<text x="1190" y="365" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="1190" y="379" font-size="11" fill="#047857" font-weight="600">四态裁决 · 站不住即出局</text>
+<rect x="1176" y="560" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M1176,594 L1176,571 Q1176,560 1187,560 L1403,560 Q1414,560 1414,571 L1414,594 Z" fill="#2563eb"/>
+<text x="1190" y="583" font-size="14" font-weight="700" fill="#ffffff">Phase 3</text>
+<rect x="1328" y="568" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="1366" y="581" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">SINGLE</text>
+<text x="1190" y="622" font-size="16" font-weight="700" fill="#0f172a">战略综合</text>
+<text x="1190" y="644" font-size="12" fill="#1d4ed8" font-weight="600">角色 · 战略顾问</text>
+<text x="1190" y="668" font-size="11.5" fill="#334155">剥文件系统工具</text>
+<text x="1190" y="686" font-size="11.5" fill="#334155">纯推理合成</text>
+<rect x="1177" y="698" width="236" height="37" rx="0" fill="#2563eb" fill-opacity="0.09"/>
+<text x="1190" y="715" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="1190" y="729" font-size="11" fill="#1d4ed8" font-weight="600">结构化战略报告</text>
+<rect x="890" y="555" width="248" height="186" rx="14" fill="none" stroke="#0d9488" stroke-width="1.4" stroke-dasharray="5,4"/>
+<rect x="895" y="560" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M895,594 L895,571 Q895,560 906,560 L1122,560 Q1133,560 1133,571 L1133,594 Z" fill="#0d9488"/>
+<text x="909" y="583" font-size="14" font-weight="700" fill="#ffffff">Phase 3.5</text>
+<rect x="1047" y="568" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="1085" y="581" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">PANEL</text>
+<text x="909" y="622" font-size="16" font-weight="700" fill="#0f172a">评审合议</text>
+<text x="909" y="644" font-size="12" fill="#0f766e" font-weight="600">角色 · 评审合议</text>
+<text x="909" y="668" font-size="11.5" fill="#334155">五视角实质评审</text>
+<text x="909" y="686" font-size="11.5" fill="#334155">三票合议 → readiness</text>
+<rect x="896" y="698" width="236" height="37" rx="0" fill="#0d9488" fill-opacity="0.09"/>
+<text x="909" y="715" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="909" y="729" font-size="11" fill="#0f766e" font-weight="600">ship / revise / rework 裁决</text>
+<rect x="614" y="560" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M614,594 L614,571 Q614,560 625,560 L841,560 Q852,560 852,571 L852,594 Z" fill="#ea580c"/>
+<text x="628" y="583" font-size="14" font-weight="700" fill="#ffffff">Phase 4</text>
+<rect x="766" y="568" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="804" y="581" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">SERIAL</text>
+<text x="628" y="622" font-size="16" font-weight="700" fill="#0f172a">三筛放行</text>
+<text x="628" y="644" font-size="12" fill="#c2410c" font-weight="600">角色 · 审稿编辑 x3</text>
+<text x="628" y="668" font-size="11.5" fill="#334155">editor 1→2→3 串行</text>
+<text x="628" y="686" font-size="11.5" fill="#334155">硬闸门+软评分+语言闸</text>
+<rect x="615" y="698" width="236" height="37" rx="0" fill="#ea580c" fill-opacity="0.09"/>
+<text x="628" y="715" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="628" y="729" font-size="11" fill="#c2410c" font-weight="600">放行稿 / below_threshold 黄牌</text>
+<rect x="333" y="560" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M333,594 L333,571 Q333,560 344,560 L560,560 Q571,560 571,571 L571,594 Z" fill="#2563eb"/>
+<text x="347" y="583" font-size="14" font-weight="700" fill="#ffffff">Phase 5</text>
+<rect x="485" y="568" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="523" y="581" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">SINGLE</text>
+<text x="347" y="622" font-size="16" font-weight="700" fill="#0f172a">交付</text>
+<text x="347" y="644" font-size="12" fill="#1d4ed8" font-weight="600">角色 · 设计师</text>
+<text x="347" y="668" font-size="11.5" fill="#334155">排版渲染</text>
+<text x="347" y="686" font-size="11.5" fill="#334155">+ 签名 token 分享</text>
+<rect x="334" y="698" width="236" height="37" rx="0" fill="#2563eb" fill-opacity="0.09"/>
+<text x="347" y="715" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="347" y="729" font-size="11" fill="#1d4ed8" font-weight="600">客户交付物（可追溯）</text>
+<rect x="52" y="560" width="238" height="176" rx="11" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#sh)"/>
+<path d="M52,594 L52,571 Q52,560 63,560 L279,560 Q290,560 290,571 L290,594 Z" fill="#2563eb"/>
+<text x="66" y="583" font-size="14" font-weight="700" fill="#ffffff">Phase 6</text>
+<rect x="204" y="568" width="76" height="18" rx="9" fill="#ffffff" fill-opacity="0.22"/>
+<text x="242" y="581" font-size="10.5" font-weight="700" fill="#ffffff" text-anchor="middle">SINGLE</text>
+<text x="66" y="622" font-size="16" font-weight="700" fill="#0f172a">热点回灌</text>
+<text x="66" y="644" font-size="12" fill="#1d4ed8" font-weight="600">角色 · 市场扫描员</text>
+<text x="66" y="668" font-size="11.5" fill="#334155">热点扫描</text>
+<text x="66" y="686" font-size="11.5" fill="#334155">回灌调研轴 → 闭环</text>
+<rect x="53" y="698" width="236" height="37" rx="0" fill="#2563eb" fill-opacity="0.09"/>
+<text x="66" y="715" font-size="9.5" fill="#94a3b8" font-weight="700">产物</text>
+<text x="66" y="729" font-size="11" fill="#1d4ed8" font-weight="600">增补信号（可 skip）</text>
+<line x1="292" y1="298.0" x2="302.5" y2="298.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="320.5" y1="298.0" x2="330" y2="298.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="304.5" y="291.0" width="14" height="14" rx="2" transform="rotate(45 311.5 298.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="573" y1="298.0" x2="583.5" y2="298.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="601.5" y1="298.0" x2="611" y2="298.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="585.5" y="291.0" width="14" height="14" rx="2" transform="rotate(45 592.5 298.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="854" y1="298.0" x2="864.5" y2="298.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="882.5" y1="298.0" x2="892" y2="298.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="866.5" y="291.0" width="14" height="14" rx="2" transform="rotate(45 873.5 298.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="1135" y1="298.0" x2="1145.5" y2="298.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="1163.5" y1="298.0" x2="1173" y2="298.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="1147.5" y="291.0" width="14" height="14" rx="2" transform="rotate(45 1154.5 298.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="1295.0" y1="388" x2="1295.0" y2="464.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="1295.0" y1="482.0" x2="1295.0" y2="557" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="1288.0" y="466.0" width="14" height="14" rx="2" transform="rotate(45 1295.0 473.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="1174" y1="648.0" x2="1163.5" y2="648.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="1145.5" y1="648.0" x2="1136" y2="648.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="1147.5" y="641.0" width="14" height="14" rx="2" transform="rotate(45 1154.5 648.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="893" y1="648.0" x2="882.5" y2="648.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="864.5" y1="648.0" x2="855" y2="648.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="866.5" y="641.0" width="14" height="14" rx="2" transform="rotate(45 873.5 648.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="612" y1="648.0" x2="601.5" y2="648.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="583.5" y1="648.0" x2="574" y2="648.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="585.5" y="641.0" width="14" height="14" rx="2" transform="rotate(45 592.5 648.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<line x1="331" y1="648.0" x2="320.5" y2="648.0" stroke="#cbd5e1" stroke-width="2"/>
+<line x1="302.5" y1="648.0" x2="293" y2="648.0" stroke="#cbd5e1" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="304.5" y="641.0" width="14" height="14" rx="2" transform="rotate(45 311.5 648.0)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="50" y="786" font-size="13" font-weight="700" fill="#475569">PhaseKind 图例</text>
+<rect x="50" y="802" width="16" height="16" rx="4" fill="#64748b"/>
+<text x="72" y="811" font-size="11.5" font-weight="700" fill="#0f172a">SCAFFOLD</text>
+<text x="72" y="826" font-size="10.5" fill="#94a3b8">确定性·无 agent</text>
+<rect x="210" y="802" width="16" height="16" rx="4" fill="#2563eb"/>
+<text x="232" y="811" font-size="11.5" font-weight="700" fill="#0f172a">SINGLE</text>
+<text x="232" y="826" font-size="10.5" fill="#94a3b8">单 agent</text>
+<rect x="370" y="802" width="16" height="16" rx="4" fill="#7c3aed"/>
+<text x="392" y="811" font-size="11.5" font-weight="700" fill="#0f172a">FAN-OUT</text>
+<text x="392" y="826" font-size="10.5" fill="#94a3b8">4–8 并发</text>
+<rect x="530" y="802" width="16" height="16" rx="4" fill="#059669"/>
+<text x="552" y="811" font-size="11.5" font-weight="700" fill="#0f172a">VERIFY</text>
+<text x="552" y="826" font-size="10.5" fill="#94a3b8">三票裁决</text>
+<rect x="690" y="802" width="16" height="16" rx="4" fill="#ea580c"/>
+<text x="712" y="811" font-size="11.5" font-weight="700" fill="#0f172a">SERIAL</text>
+<text x="712" y="826" font-size="10.5" fill="#94a3b8">串行放行闸</text>
+<rect x="853" y="803" width="14" height="14" rx="2" transform="rotate(45 860 810)" fill="#ffffff" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="878" y="809" font-size="11.5" font-weight="700" fill="#0f172a">checkpoint</text>
+<text x="878" y="824" font-size="10.5" fill="#94a3b8">每阶段间人工放行</text>
+<rect x="1060" y="802" width="16" height="16" rx="4" fill="none" stroke="#059669" stroke-width="1.4" stroke-dasharray="4,3"/>
+<text x="1082" y="811" font-size="11.5" font-weight="700" fill="#0f172a">+3 插入闸</text>
+<text x="1082" y="826" font-size="10.5" fill="#94a3b8">1.5 调研轴 / 2.5 验证 / 3.5 评审</text>
+<rect x="50" y="858" width="1380" height="86" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+<text x="68" y="884" font-size="12.5" font-weight="700" fill="#334155">设计取舍：模型只做判断类任务</text>
+<text x="68" y="906" font-size="11.5" fill="#475569">P0 脚手架是「目录/骨架生成」——确定性的，去 agent 化由纯函数产出（0 token）；只有 P1–P6 真需判断处才派 agent。</text>
+<text x="68" y="926" font-size="11.5" fill="#475569">放行闸双层：硬闸门（必修项/语言黑话清零）+ 软评分（composite ≥ 阈值）；三筛仍未清则取最高一稿标 below_threshold 兜底，上报 checkpoint 由人决断。</text>
+</svg>

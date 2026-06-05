@@ -15,7 +15,7 @@ after(async () => {
 });
 
 test("downstreamPhases：编辑 phase 的严格下游（保序），末 phase 无下游", () => {
-  assert.deepEqual(downstreamPhases("phase3_synthesis"), ["phase4_review", "phase5_delivery", "phase6_enrichment"]);
+  assert.deepEqual(downstreamPhases("phase3_synthesis"), ["phase3_5_review", "phase4_review", "phase5_delivery", "phase6_enrichment"]);
   assert.deepEqual(downstreamPhases("phase6_enrichment"), []);
   assert.deepEqual(downstreamPhases("unknown"), []);
 });

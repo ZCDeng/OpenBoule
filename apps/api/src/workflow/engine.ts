@@ -54,6 +54,7 @@ import {
   runResearchChild,
   aggregateResearch,
   runSerialReview,
+  runReviewPanel,
   type AgentRunner,
 } from "./phases/index.ts";
 import { buildScaffoldArtifact, manifestPaths } from "./scaffold.ts";
@@ -71,6 +72,7 @@ import {
 const JOB_SCAFFOLD = "phase-scaffold";
 const JOB_SINGLE = "phase-single";
 const JOB_SERIAL = "phase-serial";
+const JOB_PANEL = "phase-panel";
 const JOB_AGGREGATE = "phase-aggregate";
 const JOB_RESEARCH_CHILD = "phase-research-child";
 
@@ -210,6 +212,22 @@ export class WorkflowEngine {
     await this.enqueuePhase(workflowId, target, attempt);
   }
 
+  /**
+   * 评审返工：Phase 3.5 判 rework → 退回 Phase 3 strategy 重写（新 attempt）。CAS 输 → 409。
+   * 仅 phase3_5_review 合法（resolveNextPhase rework 分支把关，非法即抛）；人确认才走，不自动循环。
+   */
+  async rework(workflowId: string, respondedBy?: { user_id: string; role: Role }): Promise<void> {
+    const wf = await this.getWorkflow(workflowId);
+    const target = resolveNextPhase(wf.currentPhase, "rework"); // 非 phase3_5_review → 抛错
+    const won = await claimCheckpointToRunning(this.db, workflowId);
+    if (!won) throw new CheckpointConflictError(`rework 失败：workflow ${workflowId} 非 paused_for_approval`);
+    await this.resolveSurface(workflowId, wf.currentPhase, respondedBy);
+    const attempt = await nextAttemptNumber(this.db, workflowId, target!);
+    await resumeRunning(this.db, workflowId, target!);
+    await this.enqueuePhase(workflowId, target!, attempt);
+    await this.emit(workflowId, "workflow-status-changed", { phase: target, status: "running" });
+  }
+
   /** 拒绝。CAS 输 → 409。 */
   async reject(workflowId: string, respondedBy?: { user_id: string; role: Role }): Promise<void> {
     const wf = await this.getWorkflow(workflowId);
@@ -286,7 +304,13 @@ export class WorkflowEngine {
       });
     } else {
       const jobName =
-        kind === "scaffold" ? JOB_SCAFFOLD : kind === "serial" ? JOB_SERIAL : JOB_SINGLE;
+        kind === "scaffold"
+          ? JOB_SCAFFOLD
+          : kind === "serial"
+            ? JOB_SERIAL
+            : kind === "panel"
+              ? JOB_PANEL
+              : JOB_SINGLE;
       await this.queue!.add(jobName, { workflowId, phase, attemptNumber });
     }
   }
@@ -318,6 +342,8 @@ export class WorkflowEngine {
         return this.processAggregate(job);
       case JOB_SERIAL:
         return this.processSerial(job);
+      case JOB_PANEL:
+        return this.processPanel(job);
       case JOB_SINGLE:
       default:
         return this.processSingle(job);
@@ -447,6 +473,38 @@ export class WorkflowEngine {
       if (verdict.belowThreshold) {
         await this.emit(workflowId, "artifact-below-threshold", { phase, reason: verdict.reason });
       }
+    });
+  }
+
+  /**
+   * panel phase（phase3.5）：N 视角实质评审 + 合议裁决。产出 readiness（ship/revise/rework）。
+   * readiness 落进 review-panel-verdict 事件，前端 checkpoint 据此 offer 默认下一步（rework→退回 Phase 3）。
+   * 引擎本身不自动 rework——退回是 checkpoint 上的人决策（engine.rework），不自动循环。
+   */
+  private async processPanel(job: Job): Promise<unknown> {
+    const { workflowId, phase, attemptNumber } = job.data as {
+      workflowId: string;
+      phase: PhaseId;
+      attemptNumber: number;
+    };
+    return this.withAttempt(job, workflowId, phase, attemptNumber, async () => {
+      const { artifact, verdict } = await runReviewPanel(this.agentRunner, { workflowId, phase });
+      await writeArtifactIdempotent(this.db, {
+        workflowId,
+        phase,
+        type: artifact.type,
+        version: attemptNumber,
+        body: artifact.body,
+        status: artifact.status,
+        idempotencyKey: idempotencyKey(workflowId, phase, attemptNumber),
+      });
+      await this.emit(workflowId, "review-panel-verdict", {
+        phase,
+        readiness: verdict.readiness,
+        mustFix: verdict.totalMustFix,
+        debates: verdict.totalDebates,
+        reason: verdict.reason,
+      });
     });
   }
 
