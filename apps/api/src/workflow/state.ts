@@ -234,3 +234,63 @@ export function evaluateReviewPanel(lenses: ReviewLens[]): PanelVerdict {
   }
   return { readiness, totalMustFix, totalDebates, meanComposite, reason };
 }
+
+// ── Phase 5 第 5 交互交付轨（Step 4.5，对齐 consulting-team effective-html）──
+
+/** 交互件引擎类型（effective-html 三件）。 */
+export type InteractiveKind = "html" | "html-diagram" | "html-plan";
+
+/**
+ * mode → 默认交互件类型（确定性路由，KTD-5：让代码答，不交模型自评）。人可在 checkpoint 覆盖。
+ * - 诊断 / 落地 → html-diagram（clickable 节点 + animated flow 架构走查）
+ * - 决策 / 调研 / 培训 → html（切选项 / 单概念 explainer）
+ * - 其余 / 缺失 → html-plan（可展开路线图，兜底）
+ */
+export function defaultInteractiveKind(mode: string | null): InteractiveKind {
+  if (mode === "诊断" || mode === "落地") return "html-diagram";
+  if (mode === "决策" || mode === "调研" || mode === "培训") return "html";
+  return "html-plan";
+}
+
+/** 自包含 lint 放行的外链域（svg 命名空间 + Google Fonts，非网络请求 / deck 原有字体）。 */
+const SELF_CONTAINED_URL_ALLOW = [
+  "http://www.w3.org/2000/svg",
+  "http://www.w3.org/1999/xhtml",
+  "https://fonts.googleapis.com",
+  "https://fonts.gstatic.com",
+];
+
+export interface SelfContainedLint {
+  ok: boolean;
+  issues: string[];
+}
+
+/**
+ * 交互件自包含 lint（纯函数，KTD-5：代码裁决，不靠模型自评）。
+ * 校验：ⓐ 有 `<html` ⓑ 无白名单外的 `http(s)://` 外链 ⓒ 暗色三件套（早执行脚本 + localStorage + dark class）。
+ * 收集所有问题，不抛错。ok = 零问题。engine 据此标 below_threshold（软门，不阻断标准交付）。
+ */
+export function lintSelfContained(html: string): SelfContainedLint {
+  const issues: string[] = [];
+
+  if (!/<html[\s>]/i.test(html)) issues.push("缺 <html> 根（非完整单文件）");
+
+  // 外链：剔除白名单后仍有 http(s):// 即不自包含
+  const urls = html.match(/https?:\/\/[^\s"'<>)]+/gi) ?? [];
+  const external = urls.filter((u) => !SELF_CONTAINED_URL_ALLOW.some((ok) => u.startsWith(ok)));
+  if (external.length > 0) {
+    issues.push(`外链未内联（${external.length} 处，如 ${external[0]}）`);
+  }
+
+  // 暗色三件套：apply-before-paint（<body> 前出现 <script>）+ localStorage + dark class 切换
+  const bodyIdx = html.search(/<body[\s>]/i);
+  const firstScriptIdx = html.search(/<script[\s>]/i);
+  const hasEarlyScript = firstScriptIdx >= 0 && (bodyIdx < 0 || firstScriptIdx < bodyIdx);
+  if (!hasEarlyScript) issues.push("缺 apply-before-paint（<body> 前无早执行脚本）");
+  if (!/localStorage/.test(html)) issues.push("缺 localStorage 主题持久化");
+  if (!/classList[\s\S]{0,60}['"`]dark|documentElement\.classList/.test(html)) {
+    issues.push("缺 dark class 切换");
+  }
+
+  return { ok: issues.length === 0, issues };
+}

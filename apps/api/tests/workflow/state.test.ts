@@ -10,6 +10,8 @@ import {
   resolveNextPhase,
   evaluateReviewGate,
   evaluateReviewPanel,
+  defaultInteractiveKind,
+  lintSelfContained,
   SHIP_THRESHOLD,
   PANEL_SHIP_THRESHOLD,
   type EditorRound,
@@ -138,4 +140,40 @@ test("评审 rework：均分过低也直接返工", () => {
 
 test("评审空视角抛错（phase3.5 无产出不该走到这）", () => {
   assert.throws(() => evaluateReviewPanel([]), /无评审视角/);
+});
+
+// ── Phase 5 第 5 交互交付轨 ──
+
+test("交互件 mode→kind 确定性路由", () => {
+  assert.equal(defaultInteractiveKind("诊断"), "html-diagram");
+  assert.equal(defaultInteractiveKind("落地"), "html-diagram");
+  assert.equal(defaultInteractiveKind("决策"), "html");
+  assert.equal(defaultInteractiveKind("调研"), "html");
+  assert.equal(defaultInteractiveKind("培训"), "html");
+  assert.equal(defaultInteractiveKind("路线图"), "html-plan"); // 未列 mode 兜底
+  assert.equal(defaultInteractiveKind(null), "html-plan"); // mode 缺失兜底
+});
+
+const GOOD_HTML = `<!doctype html><html><head>
+<script>const t=localStorage.getItem('theme');if(t==='dark')document.documentElement.classList.add('dark')</script>
+</head><body><svg xmlns="http://www.w3.org/2000/svg"></svg></body></html>`;
+
+test("自包含 lint：合规单文件零问题", () => {
+  const r = lintSelfContained(GOOD_HTML);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.issues, []);
+});
+
+test("自包含 lint：外链 CDN 命中（svg/字体白名单不算）", () => {
+  const r = lintSelfContained(GOOD_HTML.replace("</body>", '<script src="https://cdn.example.com/x.js"></script></body>'));
+  assert.equal(r.ok, false);
+  assert.ok(r.issues.some((i) => i.includes("外链未内联")));
+});
+
+test("自包含 lint：缺暗色三件套 + 缺 <html> 各记一条", () => {
+  const r = lintSelfContained("<div>纯片段，无主题脚本</div>");
+  assert.equal(r.ok, false);
+  assert.ok(r.issues.some((i) => i.includes("<html>")));
+  assert.ok(r.issues.some((i) => i.includes("apply-before-paint")));
+  assert.ok(r.issues.some((i) => i.includes("localStorage")));
 });

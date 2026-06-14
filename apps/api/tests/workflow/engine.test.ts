@@ -46,6 +46,13 @@ const runner: AgentRunner = async (spec) => {
   if (spec.role.startsWith("editor-")) {
     return { ok: true, text: `edited-by-${spec.role}`, score: { composite: 0.9, mustFix: 0, languageGateFailed: false } };
   }
+  // 第 5 交互轨：返自包含 HTML（暗色三件套齐）→ lint 过 → draft。
+  if (spec.role.startsWith("interactive-")) {
+    return {
+      ok: true,
+      text: `<!doctype html><html><head><script>if(localStorage.getItem('t')==='dark')document.documentElement.classList.add('dark')</script></head><body>交互件 ${spec.role}</body></html>`,
+    };
+  }
   return { ok: true, text: `${spec.role}-output` };
 };
 
@@ -113,6 +120,35 @@ test("happy path：10 phase 顺序跑通，每 phase checkpoint 暂停，审批�
 
   assert.equal(done, true);
   assert.deepEqual(visited, [...PHASE_IDS]); // 10 phase 全部按序经过且各自暂停
+});
+
+test("phase5 第 5 交互轨 opt-in：标准交付 + interactive 双 artifact（同 phase 不同 type 零冲突）", { timeout: 40000 }, async () => {
+  const wf = await seed();
+  // opt-in：显式 kind（不走 mode 路由）。checkpoint_data 跨各 phase 暂停被 pauseForApproval 保留。
+  await db.execute(
+    sql`UPDATE workflows SET mode = '诊断', checkpoint_data = '{"interactiveTrack":"html-diagram"}'::jsonb WHERE id = ${wf}`,
+  );
+  await engine.startWorkflow(wf);
+  let done = false;
+  for (let i = 0; i < PHASE_IDS.length + 2 && !done; i++) {
+    await waitForStatus(wf, "paused_for_approval");
+    ({ done } = await engine.approve(wf));
+  }
+  assert.equal(done, true);
+
+  const arts = await db.execute(
+    sql`SELECT type AS "t", status AS "s" FROM artifacts WHERE workflow_id = ${wf} AND phase = 'phase5_delivery' ORDER BY type`,
+  );
+  const rows = (arts as unknown as { rows: { t: string; s: string }[] }).rows;
+  const types = rows.map((r) => r.t);
+  assert.ok(types.includes("phase5_delivery"), "标准交付 artifact 在");
+  assert.ok(types.includes("interactive"), "交互件 artifact 在（增量，不挤掉标准交付）");
+  assert.equal(rows.find((r) => r.t === "interactive")!.s, "draft", "mock 自包含 HTML → lint 过 → draft");
+
+  const ev = await db.execute(
+    sql`SELECT count(*)::int AS "n" FROM workflow_events WHERE run_id = ${wf} AND event = 'interactive-delivered'`,
+  );
+  assert.equal((ev as unknown as { rows: { n: number }[] }).rows[0]!.n, 1);
 });
 
 test("U2 scaffold：phase0 走确定性路径（type=scaffold），不调 agent", async () => {

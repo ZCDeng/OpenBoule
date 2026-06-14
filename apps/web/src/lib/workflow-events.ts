@@ -99,6 +99,12 @@ export function normalizeWorkflowEvent(ev: SseEvent): WorkflowEventItem | null {
       return { ...base, title: "确认已处理", summary: "确认节点已关闭", tone: "green" };
     case "artifact-below-threshold":
       return { ...base, title: "成果未达标", summary: "系统已标记需要关注的交付物", tone: "amber" };
+    case "interactive-delivered":
+      return { ...base, title: "交互件已生成", summary: data.selfContained === false ? "交互件已出，但自包含检查未通过（已标记）" : "可在文档区屏幕打开（不进 PDF）", tone: data.selfContained === false ? "amber" : "green" };
+    case "interactive-not-self-contained":
+      return { ...base, title: "交互件需关注", summary: "交互件自包含检查未通过，建议复核后再分发", tone: "amber" };
+    case "interactive-failed":
+      return { ...base, title: "交互件未生成", summary: "可选交互件本次未产出，标准交付不受影响", tone: "amber" };
     case "workflow-completed":
       return { ...base, title: "任务完成", summary: "全部步骤已完成", tone: "green" };
     case "sse-warning":

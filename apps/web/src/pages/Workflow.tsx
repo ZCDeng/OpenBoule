@@ -11,6 +11,7 @@ import { Workspace } from "../views/DocumentWorkspace/Workspace.tsx";
 import { FrozenReferences } from "../views/ProjectInputs/FrozenReferences.tsx";
 import { SharePanel } from "../views/ReportShare/SharePanel.tsx";
 import type { Decision } from "../components/CheckpointCard.tsx";
+import { InteractiveTrackPicker } from "../components/InteractiveTrackPicker.tsx";
 import { ErrorBanner } from "../components/States.tsx";
 import { ApiError } from "../lib/api.ts";
 import { Badge, PageHeader, PageShell, Panel } from "../components/Brutalist.tsx";
@@ -83,7 +84,10 @@ export function WorkflowPage() {
 
       <Panel className="mt-8">
         <div className="boule-panel-body">
-          {tab === "timeline" ? <Timeline currentPhase={wf?.currentPhase} workflowStatus={wf?.status} loading={status.isLoading} error={status.isError ? "加载工作流失败（引擎可能不可用）" : null} offline={offline} canDecide={canDecide} busy={busy} events={recentEvents} onDecide={decide} onRetry={() => void status.refetch()} />
+          {tab === "timeline" ? <div className="space-y-5">
+              {canDecide && wf?.status === "paused_for_approval" && wf?.currentPhase === "phase4_review" && id && <InteractiveTrackPicker workflowId={id} />}
+              <Timeline currentPhase={wf?.currentPhase} workflowStatus={wf?.status} loading={status.isLoading} error={status.isError ? "加载工作流失败（引擎可能不可用）" : null} offline={offline} canDecide={canDecide} busy={busy} events={recentEvents} onDecide={decide} onRetry={() => void status.refetch()} />
+            </div>
             : tab === "monitor" ? id && <Dashboard workflowId={id} currentPhase={wf?.currentPhase} events={recentEvents} />
             : tab === "docs" ? id && <div className="space-y-4"><FrozenReferences workflowId={id} /><Workspace workflowId={id} /></div>
             : id && <SharePanel workflowId={id} />}

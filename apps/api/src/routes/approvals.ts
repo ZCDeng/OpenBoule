@@ -4,12 +4,18 @@
  * rework 仅 phase3_5_review 合法（引擎 resolveNextPhase 把关），非法 phase → 引擎抛错 → 500（不静默）。
  */
 
+import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.ts";
 import { makeAuthenticate, requireProjectRole, getUser, getProjectRoleFromReq } from "../middleware/auth.ts";
 import { getWorkflowProjectId } from "../services/rbac.ts";
 import { CheckpointConflictError } from "../workflow/engine.ts";
 import { isPhaseId } from "../workflow/state.ts";
+
+/** drizzle node-postgres：db.execute 返回 pg QueryResult，含 rowCount（UPDATE 行数）。 */
+function rowCount(res: unknown): number {
+  return (res as { rowCount?: number | null })?.rowCount ?? 0;
+}
 
 export function registerApprovalRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
@@ -48,6 +54,30 @@ export function registerApprovalRoutes(app: FastifyInstance, deps: AppDeps): voi
       },
     );
   }
+
+  // 第 5 交互轨 opt-in（Step 4.5）：在 phase5 前设要不要出交互件 + 哪种。editor+。
+  // 写 checkpoint_data.interactiveTrack（jsonb_set 合并，不动其它键）。track=null/none 清除。
+  // engine.maybeRunInteractive 在 phase5 读它（具体 kind 用之，"auto" 按 mode 路由，缺省不出）。
+  const INTERACTIVE_TRACKS = ["html", "html-diagram", "html-plan", "auto"] as const;
+  app.post(
+    "/api/workflows/:id/interactive-track",
+    { preHandler: [authenticate, requireProjectRole(db, "editor", wfProject)] },
+    async (req, reply) => {
+      const id = (req.params as { id: string }).id;
+      const { track } = (req.body ?? {}) as { track?: string | null };
+      const clearing = track == null || track === "none";
+      if (!clearing && !(INTERACTIVE_TRACKS as readonly string[]).includes(track)) {
+        return reply.code(400).send({ error: "BAD_REQUEST", message: `track 非法（${INTERACTIVE_TRACKS.join(" / ")} / none）` });
+      }
+      const res = await db.execute(
+        clearing
+          ? sql`UPDATE workflows SET checkpoint_data = coalesce(checkpoint_data, '{}'::jsonb) - 'interactiveTrack' WHERE id = ${id}`
+          : sql`UPDATE workflows SET checkpoint_data = jsonb_set(coalesce(checkpoint_data, '{}'::jsonb), '{interactiveTrack}', ${JSON.stringify(track)}::jsonb) WHERE id = ${id}`,
+      );
+      if (rowCount(res) !== 1) return reply.code(404).send({ error: "NOT_FOUND" });
+      return reply.send({ ok: true, track: clearing ? null : track });
+    },
+  );
 
   // lineage 重跑：从某 phase 重新执行下游（文档工作台「保存并重跑」）。editor+。
   app.post(

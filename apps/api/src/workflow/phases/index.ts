@@ -15,6 +15,7 @@ import {
   type GateVerdict,
   type ReviewLens,
   type PanelVerdict,
+  type InteractiveKind,
 } from "../state.ts";
 
 export interface AgentRunSpec {
@@ -172,5 +173,49 @@ export async function runReviewPanel(
       status: verdict.readiness === "ship" ? "draft" : "below_threshold",
     },
     verdict,
+  };
+}
+
+// ── interactive：Phase 5 第 5 交互交付轨（Step 4.5，可选增量，不动 4 份标准交付底座）──
+
+/** 各 kind 的一句话简报，拼进 task 让 agent 知道这件交互件要让客户「click 哪一件事」。 */
+const INTERACTIVE_KIND_BRIEF: Record<InteractiveKind, string> = {
+  "html-diagram": "交互架构走查：clickable 节点 + animated flow，让客户点着看系统怎么跑",
+  html: "交互工具 / explainer：客户自己切选项、勾维度，实时看不同方案的后果与对比",
+  "html-plan": "可展开路线图：里程碑 / 阶段做成可点开的结构页",
+};
+
+/**
+ * 第 5 交互轨：把定稿内容做成单文件自包含交互件（type:"interactive"）。
+ *
+ * 关键：Boule 的 designer 是 sandbox reasoning role（无 fs / 技能访问），**不能**真调 effective-html 写文件。
+ * 故 role 用 `interactive-<kind>` 前缀——agent-runner 据此在运行时注入「直接吐单文件 HTML，别调技能」覆盖
+ * （KTD-5：确定性运行时层裁决，不靠模型忽略 designer.md 的调技能假设）。内容只能来自定稿（reportBody）。
+ * 产出 status=draft；自包含 lint 由 engine 跑（lint 失败 → below_threshold，软门不阻断标准交付）。
+ */
+export async function runInteractiveTrack(
+  agentRunner: AgentRunner,
+  args: { workflowId: string; phase: string; kind: InteractiveKind; reportBody: string },
+): Promise<{ artifact: PhaseArtifact; ok: boolean; errorCode?: string }> {
+  const task = [
+    `把下面这份定稿内容做成第 5 交付轨「交互件」——一个${INTERACTIVE_KIND_BRIEF[args.kind]}。`,
+    `形态：单文件自包含 HTML（CSS / JS 全内联，零外部依赖，发出去能直接双击打开）。`,
+    `暗色三件套必备：<head> 里早执行脚本读 localStorage 主题、在 paint 前给 documentElement 切 dark class。`,
+    `内容只能来自定稿——不新增方案 / 不改数字 / 删冗余文字（让一件事快速 click，正文留给报告），零流程黑话。`,
+    ``,
+    `=== 定稿内容 ===`,
+    args.reportBody,
+  ].join("\n");
+
+  const r = await agentRunner({
+    workflowId: args.workflowId,
+    phase: args.phase,
+    role: `interactive-${args.kind}`,
+    task,
+  });
+  return {
+    ok: r.ok,
+    errorCode: r.errorCode,
+    artifact: { type: "interactive", body: r.text, status: "draft" },
   };
 }

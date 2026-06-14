@@ -208,3 +208,43 @@ test("SSE 鉴权：无凭证 401；ticket 签发；非成员带 ticket → 403",
   const denied = await app.inject({ method: "GET", url: `/api/sse/workflows/${wf}?ticket=${ticket}` });
   assert.equal(denied.statusCode, 403);
 });
+
+test("第 5 交互轨 opt-in：viewer 拒、editor 设/清、非法 400", async () => {
+  const owner = await newUser();
+  const pid = await seedProject(owner.userId); projects.push(pid);
+  const wf = await seedWorkflow(pid);
+  const viewer = await newUser();
+  await addMember(pid, viewer.userId, "viewer");
+
+  // viewer（只读）→ 403
+  const denied = await app.inject({
+    method: "POST", url: `/api/workflows/${wf}/interactive-track`,
+    headers: auth(viewer.token), payload: { track: "html-diagram" },
+  });
+  assert.equal(denied.statusCode, 403);
+
+  // owner（editor+）设 html-diagram → 200 + 落库
+  const set = await app.inject({
+    method: "POST", url: `/api/workflows/${wf}/interactive-track`,
+    headers: auth(owner.token), payload: { track: "html-diagram" },
+  });
+  assert.equal(set.statusCode, 200);
+  const after1 = await db.execute(sql`SELECT checkpoint_data->>'interactiveTrack' AS "t" FROM workflows WHERE id = ${wf}`);
+  assert.equal((after1 as unknown as { rows: { t: string | null }[] }).rows[0]!.t, "html-diagram");
+
+  // 非法 track → 400
+  const bad = await app.inject({
+    method: "POST", url: `/api/workflows/${wf}/interactive-track`,
+    headers: auth(owner.token), payload: { track: "pdf" },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  // 清除（none）→ 200 + 键移除
+  const clear = await app.inject({
+    method: "POST", url: `/api/workflows/${wf}/interactive-track`,
+    headers: auth(owner.token), payload: { track: "none" },
+  });
+  assert.equal(clear.statusCode, 200);
+  const after2 = await db.execute(sql`SELECT checkpoint_data->>'interactiveTrack' AS "t" FROM workflows WHERE id = ${wf}`);
+  assert.equal((after2 as unknown as { rows: { t: string | null }[] }).rows[0]!.t, null);
+});

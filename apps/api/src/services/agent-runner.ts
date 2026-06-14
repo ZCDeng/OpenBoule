@@ -90,6 +90,8 @@ export function mapRoleToFile(role: string, phase: string): string {
   if (role.startsWith("editor-")) return "editor";
   // phase3.5 评审合议：N 视角 reviewer 复用对抗验证 role（source-verifier），视角经 task 透传。
   if (role.startsWith("reviewer-")) return "source-verifier";
+  // phase5 第 5 交互轨：交互件复用 designer role（kind 经 role 后缀 + task 透传）。
+  if (role.startsWith("interactive-")) return "designer";
   switch (phase) {
     case "phase0_init":
     case "phase1_intake":
@@ -217,6 +219,14 @@ export function makeProductionAgentRunner(db: DB): AgentRunner {
     let systemPrompt = loadRolePrompt(snapshot, roleFile);
     if (policy.webEnabled === false) {
       systemPrompt += "\n\n[运行时] 无可用 web 检索工具：基于已有知识作答，并在产出中显式标注「未联网检索」。";
+    }
+    // phase5 第 5 交互轨：designer 在 Boule 是 sandbox reasoning role，无 fs / 技能访问。
+    // 覆盖 designer.md「调 ~/.agents/skills/html 写文件」的假设：直接在最终产出里输出完整单文件 HTML，
+    // 不调任何 skill、不假装写文件（KTD-5 fail-loud：确定性运行时层裁决，不靠模型自觉）。
+    if (spec.role.startsWith("interactive-")) {
+      systemPrompt +=
+        "\n\n[运行时] 你在 Boule 无文件系统 / 技能访问：不要调用任何 skill 或声称已写文件。" +
+        "直接把完整的单文件自包含 HTML 作为最终产出全文输出（CSS/JS 内联，零外部依赖）。";
     }
     // phase1.5 轴分解：约定末尾输出结构化 axes 块，供系统解析持久化并透传给 phase2 researcher（task-threading）。
     if (spec.phase === "phase1_5_axis") {

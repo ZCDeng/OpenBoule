@@ -26,7 +26,10 @@ import {
   PHASES,
   isPhaseId,
   resolveNextPhase,
+  defaultInteractiveKind,
+  lintSelfContained,
   type PhaseId,
+  type InteractiveKind,
 } from "./state.ts";
 import {
   idempotencyKey,
@@ -55,6 +58,7 @@ import {
   aggregateResearch,
   runSerialReview,
   runReviewPanel,
+  runInteractiveTrack,
   type AgentRunner,
 } from "./phases/index.ts";
 import { buildScaffoldArtifact, manifestPaths } from "./scaffold.ts";
@@ -446,7 +450,65 @@ export class WorkflowEngine {
           await this.emit(workflowId, "axes-resolved", { phase, count: axes.length });
         }
       }
+      // phase5 第 5 交互轨（Step 4.5，可选 opt-in）：标准交付写完后，按需多产一个交互件。
+      // 内容来自刚产出的定稿（artifact.body）。失败 / lint 不过都不阻断标准交付（软门）。
+      if (phase === "phase5_delivery") {
+        await this.maybeRunInteractive(workflowId, phase, attemptNumber, artifact.body);
+      }
     });
+  }
+
+  /**
+   * 第 5 交互轨执行（opt-in）。读 `workflows.checkpoint_data->>'interactiveTrack'`：
+   * - 缺省 / null → 不出（4 份标准交付仍是必出底座）
+   * - 具体 kind（html / html-diagram / html-plan）→ 用之
+   * - "auto" → 按 mode 确定性映射 defaultInteractiveKind
+   * 产 type:"interactive" artifact（与 phase5_delivery 同 phase 不同 type，唯一索引含 type 零冲突）。
+   * lintSelfContained 失败 → 标 below_threshold + emit 事件（软门，不抛错、不阻断标准交付）。
+   */
+  private async maybeRunInteractive(
+    workflowId: string,
+    phase: PhaseId,
+    attemptNumber: number,
+    reportBody: string,
+  ): Promise<void> {
+    const res = await this.db.execute(
+      sql`SELECT mode, checkpoint_data->>'interactiveTrack' AS "track" FROM workflows WHERE id = ${workflowId}`,
+    );
+    const row = (res as unknown as { rows?: { mode?: string | null; track?: string | null }[] }).rows?.[0];
+    const track = row?.track ?? null;
+    if (!track) return; // 未 opt-in
+
+    const kinds: InteractiveKind[] = ["html", "html-diagram", "html-plan"];
+    const kind: InteractiveKind = kinds.includes(track as InteractiveKind)
+      ? (track as InteractiveKind)
+      : defaultInteractiveKind(row?.mode ?? null);
+
+    const { artifact, ok, errorCode } = await runInteractiveTrack(this.agentRunner, {
+      workflowId,
+      phase,
+      kind,
+      reportBody,
+    });
+    if (!ok) {
+      // 交互件是增量，失败不抛（标准交付已落库）。仅留痕，由人决定是否补出（fail-loud：不静默假装成功）。
+      await this.emit(workflowId, "interactive-failed", { phase, kind, errorCode: errorCode ?? "UNKNOWN" });
+      return;
+    }
+    const lint = lintSelfContained(artifact.body);
+    await writeArtifactIdempotent(this.db, {
+      workflowId,
+      phase,
+      type: artifact.type, // "interactive"
+      version: attemptNumber,
+      body: artifact.body,
+      status: lint.ok ? "draft" : "below_threshold",
+      idempotencyKey: `${idempotencyKey(workflowId, phase, attemptNumber)}:interactive`,
+    });
+    await this.emit(workflowId, "interactive-delivered", { phase, kind, selfContained: lint.ok });
+    if (!lint.ok) {
+      await this.emit(workflowId, "interactive-not-self-contained", { phase, kind, issues: lint.issues });
+    }
   }
 
   private async processSerial(job: Job): Promise<unknown> {

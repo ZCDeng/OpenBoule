@@ -1,6 +1,6 @@
 # Boule 跟随 consulting-team：落地 Phase 5 第 5 交互交付轨（Step 4.5）
 
-> 状态：待执行 · 2026-06-14
+> 状态：已落地 · 2026-06-14（后端+前端+缓存+测试全绿，见文末「落地记录」）
 > 触发：consulting-team `b82fa55 feat: 集成 effective-html 第 5 交互交付轨 + filter-3b`
 > 范围：仅 Step 4.5（出交互件）。Step 4.6（QR 回贴 deck）与核心纪律 19（机密不上公网）**不在本计划**。
 > 前置：展示层文案已同步（commit `e06f67b`，phases.ts / Methodology / Landing / README）。
@@ -108,3 +108,28 @@ Boule 是该方法论的 Web 化产品，role 真值源 = `ZCDeng/consulting-tea
 1. **designer 复用 vs 专用 role**：本计划用 designer + task 覆盖。若交互件质量不稳，可后续拆
    Boule 专用 `interactive-designer.md`（不回灌上游，属 Boule 本地角色）。
 2. **lint 严格度**：暗色三件套是否设为硬门（缺则不出）还是软门（标记仍出）。本计划取软门。
+
+## 落地记录（2026-06-14）
+
+按计划全量落地，两个开放决策都按推荐选：① designer 复用 + task 覆盖（未拆专用 role）；② lint 软门。
+
+**后端**
+- `state.ts`：`InteractiveKind` / `defaultInteractiveKind(mode)` / `lintSelfContained(html)` 三纯函数（确定性路由 + 自包含校验）。
+- `phases/index.ts`：`runInteractiveTrack`——第二次 designer 调用，role 用 `interactive-<kind>` 前缀，task 透传定稿 + kind 简报。
+- `agent-runner.ts`：`mapRoleToFile` 加 `interactive-*`→designer；运行时注入「无 fs/技能，直接吐单文件 HTML」覆盖（KTD-5）。
+- `engine.ts`：`processSingle` phase5 分支后挂 `maybeRunInteractive`——读 `checkpoint_data.interactiveTrack`，opt-in 才出；
+  写 `type:"interactive"` artifact（唯一索引含 type，与 phase5_delivery 零冲突）；lint 失败标 below_threshold + emit 事件；失败不阻断标准交付。
+- `routes/approvals.ts`：`POST /api/workflows/:id/interactive-track`（editor+）写 checkpoint_data，jsonb_set 合并 / none 清除。
+
+**前端**
+- `InteractiveTrackPicker.tsx`：phase4 审校暂停且可决策时显示，5 选项（不出/自动/三 kind）写 opt-in。
+- `Workspace.tsx`：`InteractivePreview`——interactive 件用 iframe `sandbox=allow-scripts` 屏幕预览 + 新窗口打开（Blob URL），不走文本 Editor。
+- `DocumentList.tsx`：interactive 友好名「交互件」+「不进 PDF」橙标。
+- `workflow-events.ts`：`interactive-delivered`/`-not-self-contained`/`-failed` 三事件友好文案（不外泄事件码）。
+
+**真值源**：`skills-cache/` 从上游 main（e4df3d3）刷新 9 文件 + 重算 digest 写一致 meta（消除 stale）。
+
+**验证**：API 226 pass / 0 fail / 2 skip（live-SDK 无凭证）+ tsc 干净；web 54 pass + build 绿 + tsc 干净。
+新增测试：state 纯函数 4 例、phases runInteractiveTrack 3 例、engine opt-in 双 artifact 端到端 1 例、route 鉴权/设/清/非法 1 例。
+
+**未做（按计划范围外）**：Step 4.6 QR 回贴 deck、核心纪律 19 公网托管红线（运营纪律，留引擎将来托管客户交付物时做）。
