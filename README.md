@@ -24,6 +24,14 @@
 
 OpenConsult 把咨询交付变成一条**流水线**。你不是在等一个模型写出一篇长文，而是在调度一支多角色创作团队——每个角色有明确的阶段、工具集和交付标准。
 
+## 架构一图看懂
+
+[![Boule 架构交互图](docs/architecture-preview.png)](https://zcdeng.github.io/OpenBoule/architecture.html)
+
+> **▶ [点图打开可交互版本](https://zcdeng.github.io/OpenBoule/architecture.html)** — 节点可点看详情、顶部胶囊点亮 6 条请求路径（建项目 / 调研 fan-out / 评审合议 / 交付+交互件 / 人审放行 / CLI 桥）、明暗主题可切。橙色是 10 阶段里 3 个插入的质量闸。
+
+入口（Web 控制台 + 本地 CLI）→ 编排引擎（Fastify + BullMQ 10 阶段状态机 + 人审放行闸）→ 多角色编队（7 主阶段 + 3 质量闸）→ 数据与外部（Postgres 单一真值源 · Redis 队列 · Claude API）。
+
 ## 能力矩阵
 
 | # | 能力 | 说明 |
