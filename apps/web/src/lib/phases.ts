@@ -9,7 +9,7 @@ export const PHASE_LABELS: { id: string; num: string; label: string; note: strin
   { id: "phase2_5_verify", num: "2.5", label: "阶段 2.5 · 交叉验证", note: "多方核证形成结论" },
   { id: "phase3_synthesis", num: "3", label: "阶段 3 · 综合", note: "形成报告初稿" },
   { id: "phase3_5_review", num: "3.5", label: "阶段 3.5 · 评审合议", note: "五视角实质评审，方案级把关" },
-  { id: "phase4_review", num: "4", label: "阶段 4 · 三道审校", note: "逐道质量校验" },
-  { id: "phase5_delivery", num: "5", label: "阶段 5 · 交付", note: "成稿排版" },
+  { id: "phase4_review", num: "4", label: "阶段 4 · 三道审校", note: "逐道质量校验，含信息有效性审查" },
+  { id: "phase5_delivery", num: "5", label: "阶段 5 · 交付", note: "成稿排版，可选交互件" },
   { id: "phase6_enrichment", num: "6", label: "阶段 6 · 补强", note: "行业热点扫描" },
 ];

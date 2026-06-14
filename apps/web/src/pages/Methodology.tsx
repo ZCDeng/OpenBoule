@@ -51,8 +51,8 @@ const PHASE_META: Record<string, { key: string; mode: string; in?: string; outpu
   phase2_5_verify: { key: "验证 · 三票", mode: "+3 校验", in: "1项输入", output: "断言裁决矩阵", gate: true },
   phase3_synthesis: { key: "单角色 · 纯推理", mode: "综合", in: "1项输入", output: "战略报告草案" },
   phase3_5_review: { key: "合议 · 五视角评审", mode: "+3 校验", in: "1项输入", output: "ship / revise / rework 裁决", gate: true },
-  phase4_review: { key: "串行 · 审校 1-2-3", mode: "串行", in: "1项输入", output: "三筛后可发布稿" },
-  phase5_delivery: { key: "单角色 · 签名分享", mode: "交付", in: "1项输入", output: "文档 / 分享链接 / 方法图" },
+  phase4_review: { key: "串行 · 审校 1-2-3", mode: "串行", in: "1项输入", output: "三筛 + 信息有效性后可发布稿" },
+  phase5_delivery: { key: "单角色 · 签名分享", mode: "交付", in: "1项输入", output: "文档 / 分享链接 / 方法图 / 可选交互件" },
   phase6_enrichment: { key: "单角色 · 可跳过", mode: "回灌", output: "热点扫描与追加输入" },
 };
 
