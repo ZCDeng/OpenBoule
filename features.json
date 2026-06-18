@@ -13,8 +13,9 @@
         "spike": "PGlite 兼容性实测全过（make_interval/advisory lock/jsonb_set/xmax/bigserial/ENUM/CTE/FOR UPDATE/ON CONFLICT RETURNING）；见 spikes/pglite-compat/RESULTS.md。结论：SQL 层几乎零改动。",
         "P1.1": "done — db/client.ts 双驱动（pg|pglite），统一 closeDb()；config 加 DB_DRIVER/PGLITE_DATA_DIR，DATABASE_URL 仅 pg 必需",
         "P1.2": "done — db/migrate.ts pglite 分支；8 个迁移在 pglite 全跑通（含历史出问题的 0008 ALTER TYPE ADD VALUE），15 表 9 枚举落地、幂等、持久化验证",
-        "P1.3": "todo — 进程内队列复刻 BullMQ parent-child fan-out（engine.ts/queues.ts）",
-        "P1.4": "todo — Redis 小工具内存化（ticket/doc-lock/撤销集/限流/active-context）"
+        "P1.3": "done — workflow/inproc-queue.ts 复刻 BullMQ 子集（单队列/并发/FlowProducer parent-child fan-out/fixed-backoff 重试/ignoreDependencyOnFailure）；queues.ts 按 QUEUE_DRIVER 分支，engine.ts 零改动。真引擎在 pglite+inproc 下跑通 phase0→phase2 fan-out（强制1子失败→total3/missing1）。附带修跨驱动 rowCount vs affectedRows（影响整个 CAS 层，4 处）",
+        "P1.4": "todo — Redis 小工具内存化（ticket/doc-lock/撤销集/限流/active-context）+ document-parsing.worker 队列",
+        "P1.5": "todo — local-app 运行模式（免 JWT/单用户/不连 Redis 安全集）"
       },
       "decisions": "Electron 外壳 + PGlite/进程内队列 + 全站 Material3 重皮（本会话与用户确认）"
     },

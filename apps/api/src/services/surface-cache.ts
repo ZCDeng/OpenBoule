@@ -106,6 +106,8 @@ export async function respondSurface(
     UPDATE checkpoint_surfaces
        SET status = 'resolved', responded_by = ${respondedBy}::jsonb
      WHERE id = ${args.surfaceId} AND status = 'pending'`);
-  const affected = (res as { rowCount?: number | null }).rowCount ?? 0;
+  // 驱动差异：node-postgres=rowCount / pglite=affectedRows。
+  const r = res as { rowCount?: number | null; affectedRows?: number | null };
+  const affected = r.rowCount ?? r.affectedRows ?? 0;
   return affected === 1 ? { ok: true, surfaceId: args.surfaceId } : { ok: false, code: "CONFLICT", status: 409 };
 }

@@ -189,7 +189,9 @@ export async function createProjectReference(
 
 export async function deleteProjectReference(db: DB, projectId: string, referenceId: string): Promise<boolean> {
   const res = await db.execute(sql`DELETE FROM project_references WHERE project_id = ${projectId} AND id = ${referenceId}`);
-  return ((res as unknown as { rowCount?: number }).rowCount ?? 0) > 0;
+  // 驱动差异：node-postgres=rowCount / pglite=affectedRows。
+  const r = res as unknown as { rowCount?: number | null; affectedRows?: number | null };
+  return (r.rowCount ?? r.affectedRows ?? 0) > 0;
 }
 
 export async function loadProjectReferences(db: DB, projectId: string, ids: string[]): Promise<ProjectReferenceRow[]> {

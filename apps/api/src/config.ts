@@ -105,6 +105,14 @@ export const config = {
   dbDriver,
   pgliteDataDir: optional("PGLITE_DATA_DIR", ""),
 
+  // 工作流队列驱动：bullmq = Redis 队列（团队）；inproc = 进程内队列（本地 app，无 Redis）。
+  // 默认跟随 dbDriver——pglite ⇒ inproc，便于本地 app 一处切换；可单独 QUEUE_DRIVER 覆盖。
+  // inproc 复刻 engine 用到的 BullMQ 子集（单队列多 job 名 + 并发 + FlowProducer parent-child fan-out
+  // + fixed-backoff 重试 + ignoreDependencyOnFailure），单进程免分布式恢复。
+  queueDriver: (optional("QUEUE_DRIVER", dbDriver === "pglite" ? "inproc" : "bullmq") === "inproc"
+    ? "inproc"
+    : "bullmq") as "inproc" | "bullmq",
+
   // pg 驱动下 DATABASE_URL 必需 fail-loud；pglite 驱动用 dataDir，不需要连接串。
   databaseUrl: dbDriver === "pg" ? required("DATABASE_URL") : optional("DATABASE_URL", ""),
 

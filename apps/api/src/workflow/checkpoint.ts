@@ -17,8 +17,9 @@ export function idempotencyKey(workflowId: string, phase: string, attemptNumber:
 }
 
 function rowCount(res: unknown): number {
-  // drizzle node-postgres：db.execute 返回 pg QueryResult，含 rowCount
-  return (res as { rowCount?: number | null })?.rowCount ?? 0;
+  // 驱动差异：node-postgres 返回 rowCount；pglite 返回 affectedRows。两者择一（CAS 全经此处）。
+  const r = res as { rowCount?: number | null; affectedRows?: number | null };
+  return r?.rowCount ?? r?.affectedRows ?? 0;
 }
 
 // ── workflows 状态 CAS ──

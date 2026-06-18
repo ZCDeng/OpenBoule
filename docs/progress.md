@@ -289,3 +289,23 @@ CTE+window / FOR UPDATE / ON CONFLICT RETURNING）。结论：**SQL 层几乎零
 - P1.4 Redis 小工具内存化：ticket / doc-lock / 撤销集 / 限流 / active-context。
 - P1.5 config 加 `RUNTIME=local-app`（免 JWT、单用户、不连 Redis）。
 - 然后 P2 Electron、P3 Material3、P4 五类交互。
+
+### 2026-06-18（续）— P1.3 进程内队列（done + 端到端验证）
+
+**思路**：engine 只通过 `queues.ts` 的 4 个工厂触达 BullMQ，且只用到 Job 的 name/id/data/getChildrenValues
++ 各对象 add/close/quit。故把 inproc 队列完全收口在 `queues.ts` 边界——**engine.ts 零改动**（外科手术）。
+
+- 新增 `workflow/inproc-queue.ts`：单队列 broker（注册表按 queueName 汇合 Queue/Flow/Worker）、并发上限、
+  FlowProducer parent-child（children 全结算才入队 parent，成功子值进 parent.childrenValues）、fixed-backoff 重试、
+  ignoreDependencyOnFailure（子失败仅缺值不阻塞）。单进程，无 lease/recovery。
+- `queues.ts`：按 `config.queueDriver`（QUEUE_DRIVER，pglite 默认 inproc）分支，inproc 实例强转回 BullMQ 类型。
+- `config.ts`：加 `queueDriver`。
+- **跨驱动兼容修复**：pglite 的 `db.execute()` 返回 `affectedRows`，node-postgres 返回 `rowCount`。
+  原 CAS/删除判定只读 rowCount → pglite 下**全部 CAS 失败（每步 409）**。修 4 处读法（checkpoint.ts 助手 +
+  surface-cache + approvals route + references），叠加读 `rowCount ?? affectedRows`，团队模式不变。
+- **验证**（`scripts/inproc-queue-e2e.mjs`）：真 WorkflowEngine 在 pglite+inproc 下 phase0→phase1→phase1.5→
+  phase2 fan-out 全跑通且每步 checkpoint；axes=3、强制 researcher-2 失败 → aggregate 得 total=3/missing=1
+  （证 parent-child + 重试 + ignoreDependencyOnFailure），research-synthesis artifact 落库 draft。
+
+**剩余 P1**：P1.4 Redis 小工具内存化（ticket/doc-lock/撤销集/限流/active-context + document-parsing.worker）、
+P1.5 local-app 模式（免 JWT/单用户/安全集不连 Redis）。之后 P2 Electron。
