@@ -1,0 +1,26 @@
+{
+  "name": "@boule/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Boule 本地 macOS app 外壳（Electron）。主进程启动零基础设施后端（pglite + 进程内队列）并同源加载 web。",
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build:web": "pnpm --filter @boule/web build",
+    "dist": "echo 'TODO: electron-builder 出 .dmg（需先 build:web + 编译 api 到 JS，见 main.js 顶部说明）' && exit 1"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "build": {
+    "appId": "ai.openconsult.boule",
+    "productName": "Boule",
+    "directories": { "output": "release" },
+    "files": ["main.js", "preload.js", "lib/**"],
+    "extraResources": [
+      { "from": "../web/dist", "to": "web" },
+      { "from": "../api/dist", "to": "api" }
+    ],
+    "mac": { "category": "public.app-category.productivity", "target": ["dmg"] }
+  }
+}

@@ -327,3 +327,20 @@ loopback-only）+ DB_DRIVER=pglite（自动 QUEUE_DRIVER=inproc + 内存安全�
 
 **P1 数据层全部完成**：后端已是零基础设施单进程。下一步 **P2 Electron 外壳**（新建 apps/desktop：主进程
 spawn 后端 + 注入三 env + 用户数据目录落 PGlite + 加载 web build + 原生通知/菜单 + electron-builder 出 .dmg）。
+
+### 2026-06-18（续3）— P2 Electron 外壳脚手架（后端编排已验证 / GUI 待桌面环境）
+
+新增 `apps/desktop`（pnpm workspace 已 glob apps/*）：
+- `main.js`：主进程编排——取空闲端口 → PGlite 落 userData → 跑迁移（幂等）→ 起后端（注入
+  MODE=local/DB_DRIVER=pglite/QUEUE_DRIVER=inproc/PGLITE_DATA_DIR/WEB_DIST_PATH/API_PORT）→ 轮询 /health
+  → 开 BrowserWindow loadURL(127.0.0.1:port)。单实例锁；外链走系统浏览器；before-quit 给后端 SIGTERM 优雅关停。
+  dev 用系统 node 跑 .ts；packaged 用 process.execPath+ELECTRON_RUN_AS_NODE 跑编译 JS（顶部注释说明）。
+- `preload.js`：contextIsolation 下暴露 `window.boule.notify(title, body)`（系统通知）+ isDesktop/platform。
+- `package.json`：electron devDep + electron-builder build 段（appId/extraResources 放 web+api/dist）。
+- `README.md`：dev/打包/验证状态。
+
+验证：main.js/preload.js `node --check` 通过；后端编排各环节（migrate+启动+/health+同源 SPA+优雅关停）P1/P2前置已实测。
+**未验证**：GUI 启动 + .dmg 打包（需安装 Electron + 桌面环境 + 签名证书，无头环境做不了）。
+
+**P2 剩余**：apps/api 编译成 JS（esbuild bundle server.ts+migrate.ts，external 原生模块）+ electron-builder 出 .dmg + 签名公证。
+**之后**：P3 Material3 全站重皮、P4 五类交互。
