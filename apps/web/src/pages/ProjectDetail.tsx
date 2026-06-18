@@ -73,7 +73,7 @@ export function ProjectDetailPage() {
   return (
     <div ref={pageRef}>
     <PageShell wide>
-      <PageHeader eyebrow="Nº 02 — PROJECT BRIEF" title="项目任务">
+      <PageHeader eyebrow="项目任务" title="项目任务" action={<Link to={`/projects/${id}/documents`} className="boule-btn boule-btn--secondary">📄 项目文档</Link>}>
         先强化输入：材料、仓库、模式；再追踪输出：任务状态、阶段事件、文档与分享。已勾选 <b>{selectedReferenceIds.length}</b> 份材料。
       </PageHeader>
 

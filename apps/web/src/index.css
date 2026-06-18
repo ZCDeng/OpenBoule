@@ -547,3 +547,17 @@ button, input, select, textarea { font: inherit; }
 }
 @keyframes boule-drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .boule-msg-drawer { animation: none; } }
+
+/* ── 文档预览排版（项目文档页 markdown 渲染）── */
+.boule-prose { color: var(--md-on-surface); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.boule-prose h1, .boule-prose h2, .boule-prose h3, .boule-prose h4 { font-family: var(--boule-disp); font-weight: 600; line-height: 1.25; margin: 1.4em 0 .5em; }
+.boule-prose h1 { font-size: 1.7em; } .boule-prose h2 { font-size: 1.4em; } .boule-prose h3 { font-size: 1.18em; }
+.boule-prose p { margin: .7em 0; }
+.boule-prose ul, .boule-prose ol { margin: .7em 0; padding-left: 1.5em; }
+.boule-prose li { margin: .25em 0; }
+.boule-prose code { font-family: var(--boule-mono); font-size: .9em; background: var(--md-surface-container-high); padding: .1em .35em; border-radius: var(--md-shape-xs); }
+.boule-prose pre { background: var(--md-surface-container-high); padding: 14px 16px; border-radius: var(--md-shape-sm); overflow: auto; }
+.boule-prose pre code { background: none; padding: 0; }
+.boule-prose blockquote { border-left: 3px solid var(--md-primary); margin: 1em 0; padding: .2em 1em; color: var(--md-on-surface-variant); }
+.boule-prose a { color: var(--md-primary); text-decoration: underline; }
+.boule-prose hr { border: none; border-top: 1px solid var(--md-outline-variant); margin: 1.6em 0; }
