@@ -14,6 +14,7 @@ import type { Decision } from "../components/CheckpointCard.tsx";
 import { InteractiveTrackPicker } from "../components/InteractiveTrackPicker.tsx";
 import { ErrorBanner } from "../components/States.tsx";
 import { SegmentedTabs } from "../components/M3.tsx";
+import { logMessage } from "../stores/notification.ts";
 import { ApiError } from "../lib/api.ts";
 import { Badge, PageHeader, PageShell, Panel } from "../components/Brutalist.tsx";
 import { phaseLabel, statusLabel } from "../lib/labels.ts";
@@ -46,7 +47,20 @@ export function WorkflowPage() {
       baseUrl: `/api/sse/workflows/${id}`,
       ticketProvider: async () => (await api.json<{ ticket: string }>("/api/sse/ticket", { method: "POST" })).ticket,
       eventSourceFactory: (url) => new EventSource(url) as unknown as EventSourceLike,
-      onEvent: (e) => { pushEvent(e); const surface = surfaceEventFromSse(e); if (surface) applySurface(surface); if (STATUS_REFETCH_EVENTS.has(e.event)) void status.refetch(); },
+      onEvent: (e) => {
+        pushEvent(e);
+        const surface = surfaceEventFromSse(e);
+        if (surface) applySurface(surface);
+        if (STATUS_REFETCH_EVENTS.has(e.event)) void status.refetch();
+        // 工作流日志打印为可保存的消息（消息中心）。
+        const phase = (e.data as { phase?: string } | undefined)?.phase;
+        const kind = /fail|error|reject|below_threshold|not-self-contained/.test(e.event)
+          ? "error"
+          : /complete|approv|delivered|aggregated|scaffolded|recovered/.test(e.event)
+            ? "success"
+            : "info";
+        logMessage(phase ? `${phaseLabel(phase)} · ${e.event}` : e.event, { source: id, kind });
+      },
       onStateChange: setConnection,
     });
     void client.connect();

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
 import { useTheme, type ThemePref } from "../stores/theme.ts";
 import { Badge } from "./Brutalist.tsx";
+import { MessageCenterButton } from "./MessageCenter.tsx";
 
 const NAV = [
   { to: "/projects", label: "项目" },
@@ -56,6 +57,7 @@ export function Navigation() {
           })}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <MessageCenterButton />
           <ThemeToggle />
           <span className="hidden sm:block"><Badge tone="orange">Claude 专用</Badge></span>
           <button onClick={logout} className="hidden rounded-full px-4 py-2 text-[14px] font-medium text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)] md:block">

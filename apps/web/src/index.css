@@ -533,3 +533,17 @@ button, input, select, textarea { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .boule-scrim, .boule-dialog { animation: none; }
 }
+
+/* ── 消息中心抽屉（M3 right sheet）── */
+.boule-msg-drawer {
+  width: min(92vw, 420px);
+  height: 100vh;
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  box-shadow: var(--md-elevation-3);
+  display: flex;
+  flex-direction: column;
+  animation: boule-drawer-in var(--md-dur-medium) var(--md-ease-emphasized);
+}
+@keyframes boule-drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .boule-msg-drawer { animation: none; } }
