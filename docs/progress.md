@@ -479,3 +479,17 @@ build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、
 
 实拍 `docs/screenshots/macos-app-window.png`：暗色 M3 工作台——药丸导航/按钮、tonal 圆角卡片 + elevation、干净无衬线层级、FAB。
 剩余页面级精修（Methodology hero / ProjectDetail mode-cards 仍部分 brutalist 结构，但配色/圆角已随 token M3 化）。
+
+### 2026-06-18（续14）— 子视图 M3 扫尾 + 项目文档页 + 消息通知 + 配置易用性（新 /goal 四项）
+
+1. **子视图 M3 清扫**（子代理）：Editor/VersionHistory/Timeline/PhaseCard/AgentJobList/Dashboard/SharePanel/
+   ReportViewer/FrozenReferences/MethodologyPublic 的内联 brutalist(border-2/shadow-[5px]/font-black/mono大写)
+   → M3(boule-panel/boule-list/药丸/outline-variant/elevation/secondary-container 选中/sans)。build 绿。
+2. **新增项目文档页** `/projects/:id/documents`：跨项目所有工作流 useQueries 聚合 artifacts，左列按任务分组、
+   右侧预览(markdownToHtml / 交互件 iframe) + ExportBar(md/html/pdf 下载)。ProjectDetail 加「📄 项目文档」入口。
+3. **消息通知持久化 + 消息中心**：notification store 加 messages 层(localStorage 封顶 300)；notify 弹+落，
+   log/logMessage 只落(3s 同源去重)；MessageCenter M3 抽屉 + 顶栏铃铛(未读角标)；Workflow SSE 事件→落消息。
+4. **配置页易用**：CopyField 一键复制 CLI/MCP 命令；模式/检索状态 chip；密钥揭示块 M3 化；文案去终端化。
+
+实拍 `docs/screenshots/macos-app-window.png`：M3 工作台 + 顶栏铃铛，无加载失败。打包 .dmg 重出验证通过。
+唯一剩余：Apple 证书签名/公证（需证书）。
