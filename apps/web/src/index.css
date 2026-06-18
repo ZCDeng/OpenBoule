@@ -406,3 +406,66 @@ button, input, select, textarea { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .boule-cmdk-overlay, .boule-cmdk-palette { animation: none; }
 }
+
+/* ── Material3 Snackbar（全局通知浮层；前后台状态与消息通知交互）──
+   inverse-surface 底 + on-inverse-surface 字 + elevation-3 + 小圆角；左 4px 状态条标 kind。 */
+.boule-snackbar-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(92vw, 460px);
+  pointer-events: none;
+}
+.boule-snackbar {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--md-inverse-surface);
+  color: var(--md-on-inverse-surface);
+  border-radius: var(--md-shape-sm);
+  border-inline-start: 4px solid var(--status-running);
+  box-shadow: var(--md-elevation-3);
+  font-size: 14px;
+  line-height: 1.4;
+  animation: boule-snackbar-in var(--md-dur-medium) var(--md-ease-emphasized);
+}
+@keyframes boule-snackbar-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.boule-snackbar__body { flex: 1; min-width: 0; }
+.boule-snackbar__title { font-weight: 600; margin-bottom: 2px; }
+.boule-snackbar__msg { color: var(--md-inverse-on-surface-dim); }
+.boule-snackbar__action {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--md-primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--md-shape-xs);
+}
+.boule-snackbar__action:hover { background: color-mix(in srgb, var(--md-primary) 14%, transparent); }
+.boule-snackbar__close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--md-inverse-on-surface-dim);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: var(--md-shape-xs);
+}
+.boule-snackbar__close:hover { color: var(--md-on-inverse-surface); }
+@media (prefers-reduced-motion: reduce) {
+  .boule-snackbar { animation: none; }
+}

@@ -360,3 +360,15 @@ elevation（替原零阴影，elevation-1）、motion（standard easing + durati
 
 **P3 剩余 + P4 五类交互（新建项目向导 / 输入输出物管理 / 格式转换导出 / 配置预设 / 前后台状态+通知 store+Snackbar+
 原生通知）+ P2 打包（api 编 JS + electron-builder + 签名）= 后续会话工作。**
+
+### 2026-06-18（续5）— P4.5 通知系统（五类交互之「前后台状态和消息通知」，done + build 绿）
+
+- `stores/notification.ts`：zustand Snackbar 队列 + 命令式 `toast.{info,success,warning,error}`；按 kind 默认时长
+  自动消失；**前台弹 M3 Snackbar，窗口失焦（document.hidden）且运行在 Electron 外壳里则额外经
+  `window.boule.notify` 弹 macOS 原生通知**（前后台分流）。
+- `components/Snackbar.tsx`：M3 Snackbar 容器（inverse-surface 底 + on-inverse-surface 字 + elevation-3 +
+  小圆角 + 左 4px kind 状态条 + action/close + 入场动画 + prefers-reduced-motion 降级），挂进 `Layout`。
+- M3 样式入 `index.css`（走 --md-* token）。`pnpm --filter @boule/web build` 绿。
+
+**剩余**：P4 其余 4 类交互（新建项目向导 / 输入输出物管理 / 格式转换导出 / 配置预设）+ 把散落 ErrorBanner 收敛到 toast；
+P3 M3 组件变体；P2 打包（api 编 JS + electron-builder + 签名）。GUI 实跑 + .dmg 签名需桌面环境/Apple 证书，无头环境无法验证。

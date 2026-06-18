@@ -4,6 +4,7 @@ import { Navigation } from "./Navigation.tsx";
 import { OfflineBanner } from "./States.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
+import { SnackbarContainer } from "./Snackbar.tsx";
 import { useWorkflow } from "../stores/workflow.ts";
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -17,6 +18,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <main>
         <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
       </main>
+      <SnackbarContainer />
     </div>
   );
 }
