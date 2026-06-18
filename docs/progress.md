@@ -258,3 +258,277 @@ Step 4.6 交互件 QR 回贴 deck 封底）、`ddc3b2b`（`interactive/` 归档�
 - 真值源：`skills-cache/` 从上游 main（e4df3d3）刷新 9 文件 + 重算 digest（消除 designer.md stale）。
 - 验证：API 226 pass / 0 fail / 2 skip + tsc 干净；web 54 pass + build 绿 + tsc 干净。
 - 范围外：Step 4.6 QR 回贴、纪律 19 公网托管红线（留引擎将来托管客户交付物时做）。
+
+---
+
+## 2026-06-18 — 启动本地 macOS app 化（F7 / Electron + PGlite + Material3）
+
+按 `/goal`：把 Boule 打成本地 macOS app，Material3 风格，强化 5 类交互。
+架构决策（与用户确认）：**Electron 外壳 + PGlite/进程内队列 + 全站 Material3 重皮**。
+计划见 `docs/plans/2026-06-18-001-feat-macos-app-plan.md`。
+
+**去风险 spike（命门，已完成）**：`spikes/pglite-compat/`。PGlite 实测支持后端全部高风险 PG 特性
+（make_interval / pg_advisory_xact_lock / hashtext / bigserial / jsonb_set / @> / xmax / ENUM+ADD VALUE /
+CTE+window / FOR UPDATE / ON CONFLICT RETURNING）。结论：**SQL 层几乎零改动**，此前 Explore 担心的三大
+「阻塞」实际全过。唯一注意：单次 query() 不能塞多语句（用 exec()/事务 API，Drizzle 不受影响）。
+
+**P1.1 双驱动 db client（done）**
+- `config.ts`：加 `DB_DRIVER`(pg|pglite) + `PGLITE_DATA_DIR`；`DATABASE_URL` 改为仅 pg 驱动 fail-loud。
+- `db/client.ts`：按驱动分支（pg=Pool / pglite=进程内 WASM，dataDir 空=内存非空=落盘），统一 `closeDb()`，
+  撤掉对外 `pool` 导出（运行时 API 一致，类型统一 NodePgDatabase）。
+- `server.ts`：`pool.end()` → `closeDb()`。
+
+**P1.2 PGlite 迁移（done + 验证）**
+- `db/migrate.ts`：pglite 分支（`drizzle-orm/pglite/migrator`）。
+- 验证：8 个迁移在 pglite 全跑通（**含历史上在 drizzle 事务里失败过的 0008 `ALTER TYPE ADD VALUE`**，
+  obs 6576），15 表 + 9 枚举落地、幂等重跑、持久化目录 + client 模块加载/查询/关停全部实测通过。
+
+**未做（下个会话接续）**
+- P1.3 进程内队列：复刻 BullMQ 用到的子集（单队列多 job 名 + 并发 + FlowProducer parent-child fan-out +
+  fixed-backoff 重试），单进程删分布式 stalled/recovery。改 `engine.ts`/`queues.ts` 接口、不动编排语义。
+- P1.4 Redis 小工具内存化：ticket / doc-lock / 撤销集 / 限流 / active-context。
+- P1.5 config 加 `RUNTIME=local-app`（免 JWT、单用户、不连 Redis）。
+- 然后 P2 Electron、P3 Material3、P4 五类交互。
+
+### 2026-06-18（续）— P1.3 进程内队列（done + 端到端验证）
+
+**思路**：engine 只通过 `queues.ts` 的 4 个工厂触达 BullMQ，且只用到 Job 的 name/id/data/getChildrenValues
++ 各对象 add/close/quit。故把 inproc 队列完全收口在 `queues.ts` 边界——**engine.ts 零改动**（外科手术）。
+
+- 新增 `workflow/inproc-queue.ts`：单队列 broker（注册表按 queueName 汇合 Queue/Flow/Worker）、并发上限、
+  FlowProducer parent-child（children 全结算才入队 parent，成功子值进 parent.childrenValues）、fixed-backoff 重试、
+  ignoreDependencyOnFailure（子失败仅缺值不阻塞）。单进程，无 lease/recovery。
+- `queues.ts`：按 `config.queueDriver`（QUEUE_DRIVER，pglite 默认 inproc）分支，inproc 实例强转回 BullMQ 类型。
+- `config.ts`：加 `queueDriver`。
+- **跨驱动兼容修复**：pglite 的 `db.execute()` 返回 `affectedRows`，node-postgres 返回 `rowCount`。
+  原 CAS/删除判定只读 rowCount → pglite 下**全部 CAS 失败（每步 409）**。修 4 处读法（checkpoint.ts 助手 +
+  surface-cache + approvals route + references），叠加读 `rowCount ?? affectedRows`，团队模式不变。
+- **验证**（`scripts/inproc-queue-e2e.mjs`）：真 WorkflowEngine 在 pglite+inproc 下 phase0→phase1→phase1.5→
+  phase2 fan-out 全跑通且每步 checkpoint；axes=3、强制 researcher-2 失败 → aggregate 得 total=3/missing=1
+  （证 parent-child + 重试 + ignoreDependencyOnFailure），research-synthesis artifact 落库 draft。
+
+**剩余 P1**：P1.4 Redis 小工具内存化（ticket/doc-lock/撤销集/限流/active-context + document-parsing.worker）、
+P1.5 local-app 模式（免 JWT/单用户/安全集不连 Redis）。之后 P2 Electron。
+
+### 2026-06-18（续2）— P1.4 + P1.5：后端零基础设施单进程（done + 整机验证）
+
+**P1.4 安全集 Redis 内存化**：新增 `services/memory-redis.ts`，忠实复刻安全集实际用到的命令子集
+（set EX/PX/NX/XX/GET、get、getdel、del、expire、ttl、sadd、sismember、incr、exists、ping、quit，
+eval 仅认 doc-lock 的 RENEW/RELEASE 两段 compare-and-act）。`createSecurityRedis()` 在 inproc 驱动下返回
+内存替身，**5 个消费方（sse ticket / doc-lock / share 撤销集+限流 / active-context）全部零改动**。
+（`document-parsing.worker` 用 node:worker_threads，非 Redis——之前 grep 误匹配。）
+
+**P1.5 local-app 运行模式**：无需新代码——MODE=local（server.ts 既有：免 JWT + 单用户 ensureLocalUser +
+loopback-only）+ DB_DRIVER=pglite（自动 QUEUE_DRIVER=inproc + 内存安全集）三者组合即 local-app 运行时，
+由 Electron 注入这三个 env。
+
+**整机验证**：`MODE=local DB_DRIVER=pglite QUEUE_DRIVER=inproc node src/server.ts` → 启动日志干净
+（免登录单用户 + 仅本机），`/health` = `{"ok":true}`，**零 Redis、零外部 Postgres**，ensureLocalUser 在 pglite 跑通。
+
+**P1 数据层全部完成**：后端已是零基础设施单进程。下一步 **P2 Electron 外壳**（新建 apps/desktop：主进程
+spawn 后端 + 注入三 env + 用户数据目录落 PGlite + 加载 web build + 原生通知/菜单 + electron-builder 出 .dmg）。
+
+### 2026-06-18（续3）— P2 Electron 外壳脚手架（后端编排已验证 / GUI 待桌面环境）
+
+新增 `apps/desktop`（pnpm workspace 已 glob apps/*）：
+- `main.js`：主进程编排——取空闲端口 → PGlite 落 userData → 跑迁移（幂等）→ 起后端（注入
+  MODE=local/DB_DRIVER=pglite/QUEUE_DRIVER=inproc/PGLITE_DATA_DIR/WEB_DIST_PATH/API_PORT）→ 轮询 /health
+  → 开 BrowserWindow loadURL(127.0.0.1:port)。单实例锁；外链走系统浏览器；before-quit 给后端 SIGTERM 优雅关停。
+  dev 用系统 node 跑 .ts；packaged 用 process.execPath+ELECTRON_RUN_AS_NODE 跑编译 JS（顶部注释说明）。
+- `preload.js`：contextIsolation 下暴露 `window.boule.notify(title, body)`（系统通知）+ isDesktop/platform。
+- `package.json`：electron devDep + electron-builder build 段（appId/extraResources 放 web+api/dist）。
+- `README.md`：dev/打包/验证状态。
+
+验证：main.js/preload.js `node --check` 通过；后端编排各环节（migrate+启动+/health+同源 SPA+优雅关停）P1/P2前置已实测。
+**未验证**：GUI 启动 + .dmg 打包（需安装 Electron + 桌面环境 + 签名证书，无头环境做不了）。
+
+**P2 剩余**：apps/api 编译成 JS（esbuild bundle server.ts+migrate.ts，external 原生模块）+ electron-builder 出 .dmg + 签名公证。
+**之后**：P3 Material3 全站重皮、P4 五类交互。
+
+### 2026-06-18（续4）— P3 Material3 设计 token 层（落地 + build 绿）
+
+`index.css` 引入 Material3 token 层（`--md-*`）：color roles（primary 沿用品牌电光蓝 + container/on-* +
+warm-neutral surface ramp + inverse-surface）、shape scale（圆角抬到 M3：面板 12px / 行 8px）、
+elevation（替原零阴影，elevation-1）、motion（standard easing + duration）、state-layer 不透明度。
+**现有 `--boule-*` 形态/语义层全部改派生自 `--md-*`**（--surface-*/--app-fg/--text-*/--hairline-*/--row-*/
+--ease/--accent-rail/--panel-dark-* 等），各 `.boule-*` class 与组件**零改动**——延续 KTD-1 一处改全站生效。
+
+暗色：因 CSS 变量 var() 惰性解析，dark 块**只覆盖 `--md-*` token**，下方语义层自动跟随（不再逐个重定义语义）。
+
+验证：`pnpm --filter @boule/web build` 绿（tsc + vite），CSS 62→64KB（M3 token 增量）。
+**未做**：M3 组件变体（Snackbar/FAB/Dialog/Chip/Tabs indicator 动画/NavigationRail）、可视走查（需 dev server + 浏览器）。
+
+**P3 剩余 + P4 五类交互（新建项目向导 / 输入输出物管理 / 格式转换导出 / 配置预设 / 前后台状态+通知 store+Snackbar+
+原生通知）+ P2 打包（api 编 JS + electron-builder + 签名）= 后续会话工作。**
+
+### 2026-06-18（续5）— P4.5 通知系统（五类交互之「前后台状态和消息通知」，done + build 绿）
+
+- `stores/notification.ts`：zustand Snackbar 队列 + 命令式 `toast.{info,success,warning,error}`；按 kind 默认时长
+  自动消失；**前台弹 M3 Snackbar，窗口失焦（document.hidden）且运行在 Electron 外壳里则额外经
+  `window.boule.notify` 弹 macOS 原生通知**（前后台分流）。
+- `components/Snackbar.tsx`：M3 Snackbar 容器（inverse-surface 底 + on-inverse-surface 字 + elevation-3 +
+  小圆角 + 左 4px kind 状态条 + action/close + 入场动画 + prefers-reduced-motion 降级），挂进 `Layout`。
+- M3 样式入 `index.css`（走 --md-* token）。`pnpm --filter @boule/web build` 绿。
+
+**剩余**：P4 其余 4 类交互（新建项目向导 / 输入输出物管理 / 格式转换导出 / 配置预设）+ 把散落 ErrorBanner 收敛到 toast；
+P3 M3 组件变体；P2 打包（api 编 JS + electron-builder + 签名）。GUI 实跑 + .dmg 签名需桌面环境/Apple 证书，无头环境无法验证。
+
+### 2026-06-18（续6）— P2 打包前置：api 编译成可运行 JS（done + 实测）
+
+`apps/api/scripts/build.mjs`（esbuild）：只 bundle src/*.ts（解析 .ts 扩展名 import），npm 依赖标 external
+（packages: external）——pglite/pdfjs/liteparse 等 WASM/原生包不进 bundle，运行时从随包 node_modules 加载，
+绕开 WASM 打包难题。迁移 SQL 复制到 dist/db/migrations。产物 dist/server.js(197KB) + dist/db/migrate.js。
+- 实测：`node dist/db/migrate.js` 迁移 pglite OK；`node dist/server.js` 在 local-app 模式启动、/health=ok、
+  托管 SPA、优雅关停——**全在 plain Node（target node20，Electron 兼容）跑通**。
+- `apps/api` 加 `build` 脚本；`apps/desktop` 加 `dist`=build:web+build:api+electron-builder，extraResources 增 api/node_modules。
+- README 记 Mac 侧打包步骤（关键：pnpm 符号链接 node_modules 要先 `pnpm deploy` 扁平化）+ 签名说明。
+
+**仍需在 Mac 上做（无头环境物理做不了）**：`pnpm --filter @boule/desktop dist` 实跑 electron-builder 出 .dmg
+（含 pnpm node_modules 扁平化）+ GUI 实跑验证 + Apple 证书签名/公证。
+
+### 2026-06-18（续7）— P4 交互接入通知系统（输入物管理 + 配置管理）
+
+把 P4.5 通知系统接入更多交互面，统一替散落 ErrorBanner：
+- 输入物管理（ProjectReferencesPanel）：上传成功/失败、删除 → toast（前台 Snackbar / 后台原生通知）。
+- 配置管理（Settings）：API Key 创建/撤销成功失败 → toast。
+- （新建项目已在续5接入。）build 绿。
+
+至此 5 类交互里：通知系统 done；新建项目/输入物/配置 已接入通知反馈。剩余偏「新建结构」的：
+输出物管理深化、格式转换导出 UI、M3 组件变体、新建项目向导。
+
+### 2026-06-18（续8）— P4 格式转换/导出（done + build 绿）→ 5 类交互全部触达
+
+- `lib/export.ts`：纯客户端格式转换——Markdown(.md) 原文、HTML(.html，文档走轻量 md→html 包整页/交互件原样)、
+  PDF（开打印窗口走系统「存为 PDF」）。含一个够用的 markdown→html（标题/列表/引用/代码块/段落/行内）。
+- `views/DocumentWorkspace/ExportBar.tsx`：选中产物的导出条（文档给三种、交互件给 HTML/PDF），接 toast 反馈。
+- 挂进 `Workspace` 选中产物区上方。build 绿。
+
+**5 类交互盘点（全部触达，深浅不一）**：① 新建项目=创建流 + toast；② 输入/输出物管理=上传/删除 toast +
+产物导出条；③ 格式转换=md/html/pdf 导出；④ 配置管理=Settings + API Key toast；⑤ 前后台状态与通知=
+M3 Snackbar + 后台原生通知。**剩余为「深化」而非「从无到有」**：新建项目向导、M3 组件变体（Dialog/Chip/Tabs/
+FAB/NavigationRail）、把所有 ErrorBanner 全量收敛 toast。打包/签名仍为 Mac 侧。
+
+### 2026-06-18（续9）— 🎯 实际产出可双击运行的 .dmg（未签名）
+
+纠正此前判断：本机是 macOS，electron-builder **构建** .dmg 不需要显示器（只有 GUI 实跑需要），签名可关。于是真的打出来了：
+- 配置：`asar:true` + `mac.identity:null`（未签名）+ `npmRebuild:false`；extraResources 放 web/dist、api/dist、
+  api/.deploy/node_modules（pnpm deploy 扁平化的 prod 依赖，含 pglite WASM、@boule/shared）。
+- esbuild 产物是 ESM，但 Electron 内置 Node 20 按 .js 默认当 CJS → 报错；build.mjs 给 dist 写 `package.json {type:module}` 解决。
+- 一条命令：`pnpm --filter @boule/desktop dist`（build:web + build:api + flatten:api deploy + electron-builder）。
+- **产出 `apps/desktop/release/Boule-0.0.0-arm64.dmg`（212MB）+ Boule.app**。
+
+验证（用 .app 内置 Electron 的 node，ELECTRON_RUN_AS_NODE=1，跑打包进 Resources 的 api）：
+migrate 在 pglite 跑通；server 启动 /health=ok；同源托管 SPA（/）；`/api/projects` 本地免登录返回 `{projects:[]}`。
+**= 打包后的后端在 bundle 内、用 bundle 内依赖（含 WASM）真实跑通。**
+
+仍未做：GUI 窗口可视实跑（需显示器，无头环境看不了）+ Apple 证书签名/公证（未签名 app 首次需右键打开）。
+余下为 UI 深化：M3 组件变体、新建项目向导、ErrorBanner 全量收敛 toast。
+
+### 2026-06-18（续10）— P3 Material3 组件变体（Chip / Dialog / SegmentedTabs / FAB）
+
+`components/M3.tsx`：M3 组件变体，走 --md-* token、明暗自动跟随。CSS 入 index.css。
+- **Chip**：已接入 ProjectReferencesPanel 解析状态（parsed→success / partial→warning / failed→error tone）。
+- **Dialog + scrim**：已接入 Settings API Key「撤销」二次确认（ESC/点遮罩关、危险操作前拦一道）。
+- **SegmentedTabs**：已替换 Workflow 页四标签（时间线/AI监控/文档/分享）的 boule-tabbar，M3 下划线指示条。
+  （注意：重命名为 .boule-seg-tab* 避开与既有控制台 .boule-tab 冲突。）
+- **FAB**：styled 组件已就绪（primary-container + elevation），待放置。
+
+build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、NavigationRail、ErrorBanner 全量收敛 toast。
+
+### 2026-06-18（续11）— 🖥️ GUI 实跑验证 + 修白屏（base 路径）+ 桌面免登录
+
+实际启动打包后的 .app 并截图验证窗口渲染（本机有显示器，`screencapture` 抓图）。
+- **首次白屏根因**：web 的 Vite `base: "/OpenBoule/"`（为 GitHub Pages 子路径），打包 app 同源根路径下
+  `/OpenBoule/assets/*.js` 404 → 命中 SPA fallback 回 index.html（text/html）→ 模块 MIME 报错 → React 不挂载。
+  修：`base` 改 `process.env.VITE_BASE ?? "/OpenBoule/"`，desktop 的 build:web 传 `VITE_BASE=/`。
+- **桌面免登录**：`/` 是公开营销 Landing；桌面应直入工作台。main.js loadURL 改 `/projects`；
+  auth store `isAuthed()` 在 `window.boule.isDesktop`（preload 暴露）时返 true（后端 local 模式自动注入用户，
+  前端无需 token）。
+- main.js 加 did-fail-load / render-process-gone 转 stdout 便于排查。
+- flatten:api 先 `rm -rf` 目标（pnpm deploy 要求空目录）。
+
+**验证**：重打包后启动 .app → 窗口渲染完整工作台 UI（顶栏 + 大字标题 + 电光蓝 M3 accent + 卡片），无加载失败。
+截图存 `docs/screenshots/macos-app-window.png`。**= GUI 实跑确认渲染（此前 hook 标记的未验证项已解决）。**
+
+仅剩：Apple 证书签名/公证（需你的证书）；UI 增量精修（NavigationRail、向导、FAB 落位、ErrorBanner 全量收敛）。
+
+### 2026-06-18（续12）— 修工作台路由（HashRouter）+ 新建项目分步向导 + FAB 落位（GUI 实拍工作台）
+
+- **关键路由修复**：前端用 HashRouter（路由在 # 之后）。main.js 之前 loadURL `/projects`（无 hash）→ HashRouter
+  只读 hash → 落到 "/" Landing。改成 `/#/projects` → 正确进入工作台。（这才是之前截图总是 Landing 的真因；
+  base 修复解决白屏，hash 修复解决进错页。）
+- **新建项目分步向导**（components/NewProjectWizard.tsx）：M3 Dialog stepper 两步（命名 → 创建后三步引导 +
+  交付模式 Chip 预览），创建成功 toast + 跳转到项目详情。由 Projects 右下角 **M3 FAB** 唤起（FAB 落位、不再死代码）。
+- **实拍验证**：启动 .app → 截图 `docs/screenshots/macos-app-window.png` = 「项目控制台」工作台，暗色 Material3
+  （圆角卡片 + elevation + 电光蓝 primary）+ 右下「新建项目」FAB + 空态。**桌面 app 完整链路跑通并目视确认。**
+
+至此 .dmg→启动→零基础设施后端→SPA→工作台路由→M3 UI→FAB/向导 全链路验证。仅剩 Apple 证书签名/公证。
+
+### 2026-06-18（续13）— Material3 真·重构（类层，非仅 token）
+
+回应「只改了 token、没真重构成 M3」。改 .boule-* 类定义本身（全站共用，一处改全站生效）：
+- `--boule-disp` 从 Arial Black 改干净无衬线 → 所有 font-[var(--boule-disp)]/font-black 处去粗野化。
+- `.boule-eyebrow`：mono 大写 → M3 sans label（primary 色、不大写）。
+- `.boule-title`：78px Arial Black（line-height .92）→ M3 headline（sans 600，clamp 28-40px，line 1.15）。
+- `.boule-panel`：硬发丝边 → M3 elevated card（tonal surface + elevation-1，无硬边，12px 圆角）。
+- `.boule-btn`：mono 大写发丝边 → M3 药丸（full radius，sans 600，primary=filled/secondary=tonal/danger=error，state layer）。
+- `.boule-badge`：mono 大写 → M3 chip（圆角，tonal container 色）。
+- `.boule-list`/`.boule-list-row`：寄存器行（发丝线+左轨）→ M3 list（elevated 容器 + 圆角 item + state-layer hover + secondary-container 选中，去左轨）。
+- `.boule-input`：→ M3 outlined（圆角，聚焦 2px primary）。`.boule-data-row dt`：mono 大写 → sans label。
+- `Navigation`：终端导航 → M3 top app bar（sans logo + 药丸 nav，active=primary-container；去 mono/uppercase/k 码）。
+
+实拍 `docs/screenshots/macos-app-window.png`：暗色 M3 工作台——药丸导航/按钮、tonal 圆角卡片 + elevation、干净无衬线层级、FAB。
+剩余页面级精修（Methodology hero / ProjectDetail mode-cards 仍部分 brutalist 结构，但配色/圆角已随 token M3 化）。
+
+### 2026-06-18（续14）— 子视图 M3 扫尾 + 项目文档页 + 消息通知 + 配置易用性（新 /goal 四项）
+
+1. **子视图 M3 清扫**（子代理）：Editor/VersionHistory/Timeline/PhaseCard/AgentJobList/Dashboard/SharePanel/
+   ReportViewer/FrozenReferences/MethodologyPublic 的内联 brutalist(border-2/shadow-[5px]/font-black/mono大写)
+   → M3(boule-panel/boule-list/药丸/outline-variant/elevation/secondary-container 选中/sans)。build 绿。
+2. **新增项目文档页** `/projects/:id/documents`：跨项目所有工作流 useQueries 聚合 artifacts，左列按任务分组、
+   右侧预览(markdownToHtml / 交互件 iframe) + ExportBar(md/html/pdf 下载)。ProjectDetail 加「📄 项目文档」入口。
+3. **消息通知持久化 + 消息中心**：notification store 加 messages 层(localStorage 封顶 300)；notify 弹+落，
+   log/logMessage 只落(3s 同源去重)；MessageCenter M3 抽屉 + 顶栏铃铛(未读角标)；Workflow SSE 事件→落消息。
+4. **配置页易用**：CopyField 一键复制 CLI/MCP 命令；模式/检索状态 chip；密钥揭示块 M3 化；文案去终端化。
+
+实拍 `docs/screenshots/macos-app-window.png`：M3 工作台 + 顶栏铃铛，无加载失败。打包 .dmg 重出验证通过。
+唯一剩余：Apple 证书签名/公证（需证书）。
+
+### 2026-06-18（续15）— M3 可选补强：离线图标字体 + 列表项图标 + NavigationRail
+
+1. **图标字体本地打包**：Material Symbols woff2（3.8MB 变体）下载到 public/fonts/，index.css @font-face 本地引用，
+   index.html 去 CDN 改 preload。离线可用（实测打包后 /fonts/*.woff2 served 200，图标渲染）。
+2. **M3 list leading 图标**：项目列表 folder_open（圆形 secondary-container）；材料按 mime 出类型图标
+   （pdf/data_object/table/slideshow/description/article）；项目文档 description/widgets。
+3. **NavigationRail**（components/NavigationRail.tsx）：lg+ 左侧 80dp 导航栏（图标 + 药丸 active 指示 + 标签），
+   顶栏中部链接在 lg+ 收起交给 rail；窄屏仍顶栏/汉堡。main 在 lg+ 左 padding 80px。
+
+实拍 `docs/screenshots/macos-app-window.png`：左侧 M3 Navigation Rail + 顶栏 + M3 工作台，无加载失败。
+
+### 2026-06-18（续16）— 品牌与导航重构（新 /goal 5 项）
+
+1. **App Icon（OpenConsult）**：SVG 设计（M3 squircle + 电光蓝渐变 + 白色 /// 母题）→ rsvg-convert 出 iconset →
+   iconutil 出 icon.icns；electron-builder build.mac.icon 接入。资产存 apps/desktop/build/（icon.svg/png/icns）。
+2. **去代号 Boule**：移除顶栏 Boule pill；Settings/Share 文案 "Boule"→"OpenConsult"。
+3. **Claude专用图标化 + 移到 logo 旁**：原 Boule 位置改为 primary-container chip（auto_awesome 图标 + "Claude"）；
+   顶栏右侧的 "Claude 专用" Badge 移除。
+4. **方法论移到顶栏右侧**：方法论是静态 10 阶段说明页（非动态进度——动态进度在工作流时间线）。
+   从 rail 移除，改为顶栏右侧图标入口（account_tree + 文字）。
+5. **文件管理页（全局交付物）**：rail 加「文件管理」(inventory_2)；新页 /files 跨所有项目 useQueries 聚合
+   交付物（projects→workflows→artifacts 两级并行），按项目分组 + 预览 + ExportBar(md/html/pdf 下载)。
+
+实拍 `docs/screenshots/macos-app-window.png`：logo 旁 Claude chip、无 Boule、方法论在右、rail=项目/文件管理/配置。
+App 图标见 `docs/screenshots/app-icon.png`。打包 .app 内置 icon.icns。
+
+### 2026-06-18（续17）— 字体（Roboto Flex 标题 / Roboto Serif 正文）+ 主题切换图标 pill
+
+1. 字体：本地打包 Roboto Flex（标题，83K latin）+ Roboto Serif（正文，144K latin）woff2 到 public/fonts/，
+   index.css @font-face。--font-sans=Roboto Flex(标题/UI)、--font-serif=Roboto Serif(正文)；body→serif、
+   h1-3→sans；--boule-disp=--font-sans、--boule-body=--font-serif。中文走 Source Han 回退。
+2. 主题切换：顶栏右侧改纯图标圆形 pill（去文字标签）。
+实拍 docs/screenshots/macos-app-window.png；fonts served 200，无加载失败。
+
+### 2026-06-18（续18）— 回滚字体（Roboto → 上一版 Source Han）
+
+按反馈「不好看」，字体回滚：移除 Roboto Flex/Serif @font-face + woff2，--font-sans/--font-serif/--boule-disp/
+--boule-body/body/h1-3 恢复到上一版 Source Han 栈。保留主题切换图标 pill（不回滚）。build 绿。

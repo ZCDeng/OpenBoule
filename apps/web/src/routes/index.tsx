@@ -7,6 +7,8 @@ import { LoginPage } from "../pages/Login.tsx";
 import { LandingPage } from "../pages/Landing.tsx";
 import { ProjectsPage } from "../pages/Projects.tsx";
 import { ProjectDetailPage } from "../pages/ProjectDetail.tsx";
+import { ProjectDocumentsPage } from "../pages/ProjectDocuments.tsx";
+import { FileManagerPage } from "../pages/FileManager.tsx";
 import { WorkflowPage } from "../pages/Workflow.tsx";
 import { MethodologyPage } from "../pages/Methodology.tsx";
 import { SettingsPage } from "../pages/Settings.tsx";
@@ -26,6 +28,8 @@ export function AppRoutes({ location }: { location?: Location } = {}) {
       <Route path="/s/:token" element={<SharePage />} />
       <Route path="/projects" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
       <Route path="/projects/:id" element={<RequireAuth><ProjectDetailPage /></RequireAuth>} />
+      <Route path="/projects/:id/documents" element={<RequireAuth><ProjectDocumentsPage /></RequireAuth>} />
+      <Route path="/files" element={<RequireAuth><FileManagerPage /></RequireAuth>} />
       <Route path="/workflows/:id" element={<RequireAuth><WorkflowPage /></RequireAuth>} />
       <Route path="/methodology" element={<RequireAuth><MethodologyPage /></RequireAuth>} />
       <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />

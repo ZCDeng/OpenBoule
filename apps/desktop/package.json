@@ -1,0 +1,54 @@
+{
+  "name": "@boule/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Boule 本地 macOS app 外壳（Electron）。主进程启动零基础设施后端（pglite + 进程内队列）并同源加载 web。",
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build:web": "VITE_BASE=/ pnpm --filter @boule/web build",
+    "build:api": "pnpm --filter @boule/api build",
+    "flatten:api": "rm -rf ../api/.deploy && pnpm --filter @boule/api --prod deploy ../api/.deploy --legacy",
+    "prebundle": "pnpm run build:web && pnpm run build:api && pnpm run flatten:api",
+    "dist": "pnpm run prebundle && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ai.openconsult.boule",
+    "productName": "Boule",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web"
+      },
+      {
+        "from": "../api/dist",
+        "to": "api"
+      },
+      {
+        "from": "../api/.deploy/node_modules",
+        "to": "api/node_modules"
+      }
+    ],
+    "asar": true,
+    "npmRebuild": false,
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "identity": null,
+      "icon": "build/icon.icns"
+    }
+  }
+}

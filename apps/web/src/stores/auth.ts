@@ -8,6 +8,11 @@ import { ApiClient, type Tokens } from "../lib/api.ts";
 
 const STORAGE_KEY = "boule.tokens";
 
+/** 桌面外壳（Electron）= 本地免登录模式：后端自动注入本地用户，前端无需 token 即视为已认证。 */
+function isDesktopShell(): boolean {
+  return Boolean((globalThis as unknown as { boule?: { isDesktop?: boolean } }).boule?.isDesktop);
+}
+
 function loadTokens(): Tokens | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -48,7 +53,7 @@ export const useAuth = create<AuthState>((set, get) => {
     tokens: loadTokens(),
     userId: null,
     api,
-    isAuthed: () => get().tokens !== null,
+    isAuthed: () => get().tokens !== null || isDesktopShell(),
     setSession: (userId, tokens) => {
       persist(tokens);
       set({ userId, tokens });

@@ -16,6 +16,23 @@ const here = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = join(here, "migrations");
 
 async function main() {
+  if (config.dbDriver === "pglite") {
+    // 本地 app：进程内 WASM Postgres 上跑同一套迁移。
+    const { PGlite } = await import("@electric-sql/pglite");
+    const { drizzle: drizzlePglite } = await import("drizzle-orm/pglite");
+    const { migrate: migratePglite } = await import("drizzle-orm/pglite/migrator");
+    const client = new PGlite(config.pgliteDataDir || undefined);
+    await client.waitReady;
+    try {
+      const db = drizzlePglite(client);
+      await migratePglite(db, { migrationsFolder });
+      console.log(`✅ 迁移完成（pglite${config.pgliteDataDir ? " @ " + config.pgliteDataDir : " 内存"}）`);
+    } finally {
+      await client.close();
+    }
+    return;
+  }
+
   const pool = new pg.Pool({
     connectionString: config.databaseUrl,
     connectionTimeoutMillis: 5_000,

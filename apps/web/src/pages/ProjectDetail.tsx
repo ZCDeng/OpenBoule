@@ -7,6 +7,7 @@ import { ApiError } from "../lib/api.ts";
 import { ProjectReferencesPanel } from "../views/ProjectInputs/ProjectReferencesPanel.tsx";
 import { PHASE_LABELS } from "../lib/phases.ts";
 import { Badge, Button, PageHeader, PageShell, Panel, PanelHeader, SelectInput, TextInput } from "../components/Brutalist.tsx";
+import { Icon } from "../components/Icon.tsx";
 import { statusLabel } from "../lib/labels.ts";
 import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
@@ -73,7 +74,7 @@ export function ProjectDetailPage() {
   return (
     <div ref={pageRef}>
     <PageShell wide>
-      <PageHeader eyebrow="Nº 02 — PROJECT BRIEF" title="项目任务">
+      <PageHeader eyebrow="项目任务" title="项目任务" action={<Link to={`/projects/${id}/documents`} className="boule-btn boule-btn--secondary"><Icon name="description" size={18} />项目文档</Link>}>
         先强化输入：材料、仓库、模式；再追踪输出：任务状态、阶段事件、文档与分享。已勾选 <b>{selectedReferenceIds.length}</b> 份材料。
       </PageHeader>
 

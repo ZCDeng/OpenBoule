@@ -29,8 +29,8 @@ export function SharePage() {
   return (
     <div ref={pageRef}>
     <PageShell wide={wide}>
-      <PageHeader eyebrow="公开分享" title="Boule · 分享" action={data && <Badge tone="blue">{scopeLabel(data.scope)}</Badge>}>
-        这是一个只读分享链接，无需登录即可查看。内容由 Boule 顾问工作台生成。
+      <PageHeader eyebrow="公开分享" title="OpenConsult · 分享" action={data && <Badge tone="blue">{scopeLabel(data.scope)}</Badge>}>
+        这是一个只读分享链接，无需登录即可查看。内容由 OpenConsult 顾问工作台生成。
       </PageHeader>
       <div className="mt-8">
         {isLoading && <Skeleton rows={3} />}

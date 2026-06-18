@@ -12,8 +12,8 @@ export function VersionHistory({ artifactId, selectedId, onOpen }: { artifactId:
   if (isLoading) return <Skeleton rows={3} />;
   if (isError) return <ErrorBanner severity="P1" message="版本历史加载失败" onRetry={() => void refetch()} />;
   return (
-    <ul className="border-2 border-[var(--app-fg)] text-sm shadow-[4px_4px_0_var(--app-fg)]">
-      {data!.versions.map((v) => <li key={v.id} className="border-t-2 border-[var(--app-fg)] first:border-t-0"><button onClick={() => onOpen?.(v.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-[var(--panel-dark-bg)] hover:text-white"><span className="font-[var(--boule-mono)] text-xs">v{v.version}</span><span className="text-xs opacity-70">{statusLabel(v.status)}</span>{v.id === selectedId && <Badge tone="blue">当前</Badge>}<span className="ml-auto font-[var(--boule-mono)] text-[10px] opacity-60">{new Date(v.createdAt).toLocaleString("zh-CN")}</span></button></li>)}
+    <ul className="boule-list text-sm">
+      {data!.versions.map((v) => <li key={v.id}><button onClick={() => onOpen?.(v.id)} className={`boule-list-row w-full justify-start gap-2 text-left ${v.id === selectedId ? "boule-list-row--selected" : ""}`}><span className="text-xs font-medium">v{v.version}</span><span className="text-xs text-[var(--md-on-surface-variant)]">{statusLabel(v.status)}</span>{v.id === selectedId && <Badge tone="blue">当前</Badge>}<span className="ml-auto text-[11px] text-[var(--md-on-surface-variant)]">{new Date(v.createdAt).toLocaleString("zh-CN")}</span></button></li>)}
     </ul>
   );
 }

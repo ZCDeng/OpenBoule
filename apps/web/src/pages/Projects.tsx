@@ -1,14 +1,18 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
 import { Skeleton, EmptyState, ErrorBanner } from "../components/States.tsx";
+import { toast } from "../stores/notification.ts";
 import { Badge, Button, PageHeader, PageShell, Panel, TextInput } from "../components/Brutalist.tsx";
 import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
 import { projectStatusTone } from "../lib/derive.ts";
 import { relativeTime } from "../lib/time.ts";
 import { phaseLabel, statusLabel } from "../lib/labels.ts";
+import { Fab } from "../components/M3.tsx";
+import { NewProjectWizard } from "../components/NewProjectWizard.tsx";
+import { Icon } from "../components/Icon.tsx";
 
 interface Project {
   id: string;
@@ -22,14 +26,23 @@ interface Project {
 export function ProjectsPage() {
   const api = useAuth((s) => s.api);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
+  const [wizardOpen, setWizardOpen] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["projects"], queryFn: () => api.json<{ projects: Project[] }>("/api/projects") });
   const create = useMutation({
     mutationFn: (n: string) => api.json<{ projectId: string }>("/api/projects", { method: "POST", body: JSON.stringify({ name: n }) }),
-    onSuccess: () => { setName(""); void qc.invalidateQueries({ queryKey: ["projects"] }); },
+    onSuccess: (res, n) => {
+      setName("");
+      setWizardOpen(false);
+      void qc.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`项目「${n}」已创建，进入详情页上传材料、选择模式后启动。`, "新建项目");
+      if (res?.projectId) navigate(`/projects/${res.projectId}`);
+    },
+    onError: () => toast.error("创建项目失败，请重试。", "新建项目"),
   });
   const projects = data?.projects ?? [];
   useFadeIn(pageRef);
@@ -71,9 +84,9 @@ export function ProjectsPage() {
         {data && projects.length > 0 && filtered.length === 0 && <EmptyState title="没有匹配项目" hint="换个关键词，或创建一条新的咨询生产线。" />}
         {filtered.length > 0 && (
           <div ref={listRef} className="boule-list project-list">
-            {filtered.map((p, i) => (
+            {filtered.map((p) => (
               <Link key={p.id} to={`/projects/${p.id}`} className="boule-list-row" aria-label={`打开项目 ${p.name}`}>
-                <span className="w-8 shrink-0 font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">N{String(i + 1).padStart(2, "0")}</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--md-secondary-container)", color: "var(--md-on-secondary-container)" }}><Icon name="folder_open" size={20} /></span>
                 <span className={`boule-dot boule-dot--${projectStatusTone(p.status)}`} aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-semibold">{p.name}</div>
@@ -88,7 +101,6 @@ export function ProjectsPage() {
           </div>
         )}
       </div>
-      {create.isError && <div className="mt-5"><ErrorBanner severity="P1" message="创建项目失败" /></div>}
       <Panel className="mt-10">
         <div className="boule-panel-body project-entry-help">
           <Badge tone="dark">任务入口</Badge>
@@ -96,6 +108,11 @@ export function ProjectsPage() {
         </div>
       </Panel>
     </PageShell>
+
+      <div style={{ position: "fixed", right: 28, bottom: 28, zIndex: 50 }}>
+        <Fab label="新建项目" onClick={() => setWizardOpen(true)} />
+      </div>
+      <NewProjectWizard open={wizardOpen} onClose={() => setWizardOpen(false)} onCreate={(n) => create.mutate(n)} pending={create.isPending} />
     </div>
   );
 }

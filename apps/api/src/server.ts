@@ -10,7 +10,7 @@
 
 import { buildApp } from "./app.ts";
 import { config } from "./config.ts";
-import { db, pool } from "./db/client.ts";
+import { db, closeDb } from "./db/client.ts";
 import { createSecurityRedis } from "./services/redis.ts";
 import { WorkflowEngine } from "./workflow/engine.ts";
 import { makeProductionAgentRunner } from "./services/agent-runner.ts";
@@ -47,6 +47,8 @@ async function main() {
     engine,
     snapshotProvider: () => createFrozenSnapshot(), // 创建 workflow 时固化当前 HEAD 快照
     localMode,
+    // 本地 app：Electron 注入 WEB_DIST_PATH → 同源托管前端；team 模式不设、走独立 Vite。
+    webDistPath: process.env.WEB_DIST_PATH?.trim() || undefined,
   });
 
   // 本地模式仅监听回环（双保险：listen host + onRequest loopback 守卫）。
@@ -63,7 +65,7 @@ async function main() {
       await app.close();
       await engine.close();
       await securityRedis.quit();
-      await pool.end();
+      await closeDb();
       console.log("[boule] 已关闭");
       process.exit(0);
     } catch (err) {

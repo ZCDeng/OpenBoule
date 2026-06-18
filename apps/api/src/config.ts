@@ -87,14 +87,34 @@ function publicHttpsUrl(name: string, fallback: string): string {
   return value;
 }
 
+// 数据库驱动（macOS app 化引入）：
+//   pg     = 团队模式，外部 Postgres（DATABASE_URL 必需）。
+//   pglite = 本地 app 模式，进程内 Postgres（WASM），数据落 PGLITE_DATA_DIR；不需要 DATABASE_URL。
+// PGlite 实测支持后端全部 PG 特性（make_interval / advisory lock / jsonb_set / xmax / bigserial / ENUM…），
+// 见 spikes/pglite-compat/RESULTS.md。
+const dbDriver: "pg" | "pglite" = optional("DB_DRIVER", "pg") === "pglite" ? "pglite" : "pg";
+
 export const config = {
   nodeEnv: optional("NODE_ENV", "development"),
   apiPort: Number(optional("API_PORT", "3000")),
 
-  // 运行模式（U1 引入，U2 本地模式消费）：team = Postgres + JWT；local = SQLite + 免登录 + loopback-only。
+  // 运行模式：team = Postgres + JWT；local = 免登录 + loopback-only（本地 app 走 local + pglite）。
   mode: optional("MODE", "team") === "local" ? "local" : "team",
 
-  databaseUrl: required("DATABASE_URL"),
+  // 数据层选型 + PGlite 落盘目录（空串=内存实例；本地 app 由 Electron 注入 userData 子目录）。
+  dbDriver,
+  pgliteDataDir: optional("PGLITE_DATA_DIR", ""),
+
+  // 工作流队列驱动：bullmq = Redis 队列（团队）；inproc = 进程内队列（本地 app，无 Redis）。
+  // 默认跟随 dbDriver——pglite ⇒ inproc，便于本地 app 一处切换；可单独 QUEUE_DRIVER 覆盖。
+  // inproc 复刻 engine 用到的 BullMQ 子集（单队列多 job 名 + 并发 + FlowProducer parent-child fan-out
+  // + fixed-backoff 重试 + ignoreDependencyOnFailure），单进程免分布式恢复。
+  queueDriver: (optional("QUEUE_DRIVER", dbDriver === "pglite" ? "inproc" : "bullmq") === "inproc"
+    ? "inproc"
+    : "bullmq") as "inproc" | "bullmq",
+
+  // pg 驱动下 DATABASE_URL 必需 fail-loud；pglite 驱动用 dataDir，不需要连接串。
+  databaseUrl: dbDriver === "pg" ? required("DATABASE_URL") : optional("DATABASE_URL", ""),
 
   // 自建 JWT（KTD-10）。secret 缺失即 fail loud——绝不用默认值签发可伪造的 token。
   jwt: {

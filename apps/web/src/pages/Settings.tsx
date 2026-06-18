@@ -5,8 +5,31 @@ import { ErrorBanner, Skeleton } from "../components/States.tsx";
 import { Badge, Button, DataRow, PageHeader, PageShell, Panel, PanelHeader, SelectInput, TextInput } from "../components/Brutalist.tsx";
 import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
+import { toast } from "../stores/notification.ts";
+import { Dialog } from "../components/M3.tsx";
+import { Icon } from "../components/Icon.tsx";
 
 const MODE_LABELS: Record<string, string> = { local: "本地", team: "团队" };
+
+/** 可复制命令字段：代码块 + 一键复制（配置页可用性）。 */
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <div>
+      <div className="mb-1.5 text-[12px] font-medium text-[var(--md-on-surface-variant)]">{label}</div>
+      <div className="flex items-stretch gap-2">
+        <code className="boule-code flex-1">{value}</code>
+        <button
+          type="button"
+          className="boule-btn boule-btn--secondary shrink-0"
+          onClick={() => { void navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1600); }}
+        >
+          {done ? "已复制" : "复制"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface RuntimeSettings {
   mode: "local" | "team";
@@ -25,6 +48,7 @@ export function SettingsPage() {
   const [scope, setScope] = useState<"read" | "write">("read");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<ApiKeyRow | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const panelGroupRef = useRef<HTMLDivElement>(null);
 
@@ -32,9 +56,10 @@ export function SettingsPage() {
   const keys = useQuery({ queryKey: ["api-keys"], queryFn: () => api.json<{ keys: ApiKeyRow[] }>("/api/api-keys") });
   const createKey = useMutation({
     mutationFn: () => api.json<{ id: string; prefix: string; apiKey: string }>("/api/api-keys", { method: "POST", body: JSON.stringify({ name, scope, projectIds: null }) }),
-    onSuccess: (res) => { setCreatedKey(res.apiKey); setName(""); void qc.invalidateQueries({ queryKey: ["api-keys"] }); },
+    onSuccess: (res) => { setCreatedKey(res.apiKey); setName(""); void qc.invalidateQueries({ queryKey: ["api-keys"] }); toast.success("API Key 已创建，明文仅显示一次，请立即复制保存。", "配置"); },
+    onError: () => toast.error("创建 API Key 失败。", "配置"),
   });
-  const revoke = useMutation({ mutationFn: (id: string) => api.json(`/api/api-keys/${id}`, { method: "DELETE" }), onSuccess: () => void qc.invalidateQueries({ queryKey: ["api-keys"] }) });
+  const revoke = useMutation({ mutationFn: (id: string) => api.json(`/api/api-keys/${id}`, { method: "DELETE" }), onSuccess: () => { void qc.invalidateQueries({ queryKey: ["api-keys"] }); toast.info("API Key 已撤销，不可恢复。", "配置"); }, onError: () => toast.error("撤销 API Key 失败。", "配置") });
   const data = runtime.data;
   useFadeIn(pageRef);
   useStaggerIn(panelGroupRef, ".boule-panel", { dependencies: [runtime.isLoading, keys.data?.keys.length ?? 0] });
@@ -42,8 +67,8 @@ export function SettingsPage() {
   return (
     <div ref={pageRef}>
     <PageShell wide>
-      <PageHeader eyebrow="Nº 05 — CONTROL PLANE" title="配置与密钥">
-        当前登录用户即配置管理员。这里展示运行环境、Claude 调用路径、检索服务商与个人 API Key。
+      <PageHeader eyebrow="配置" title="配置与密钥">
+        当前登录用户即配置管理员。这里查看运行环境、Claude 调用路径、检索服务商，并管理个人 API Key。
       </PageHeader>
 
       <div ref={panelGroupRef} className="mt-8 space-y-8">
@@ -53,12 +78,12 @@ export function SettingsPage() {
               <PanelHeader k="RUNTIME" title="运行环境状态" />
               <div className="boule-panel-body">
                 <dl>
-                  <DataRow label="模式" value={MODE_LABELS[data.mode] ?? data.mode} />
+                  <DataRow label="模式" value={<Badge tone={data.mode === "local" ? "blue" : "dark"}>{MODE_LABELS[data.mode] ?? data.mode}</Badge>} />
                   <DataRow label="模型" value={data.agent.model} />
                   <DataRow label="运行环境" value={data.agent.runtime} />
                   <DataRow label="调用方式" value={data.agent.invocationMode} />
                 </dl>
-                <p className="mt-4 text-sm text-[var(--text-2)]">OpenConsult/Boule 是 Claude-only 工作台：不支持其它模型；模型调用由服务端环境和 Agent SDK 认证状态决定。</p>
+                <p className="mt-4 text-sm text-[var(--text-2)]">OpenConsult 是 Claude-only 工作台：不支持其它模型；模型调用由服务端环境和 Agent SDK 认证状态决定。</p>
               </div>
             </Panel>
             <Panel>
@@ -74,11 +99,11 @@ export function SettingsPage() {
               </div>
             </Panel>
             <Panel className="md:col-span-2">
-              <PanelHeader k="CLI / MCP" title="命令入口" />
-              <div className="boule-panel-body grid gap-3 md:grid-cols-2">
-                <code className="boule-code">{data.cli.mcpCommand}</code>
-                <code className="boule-code">{data.cli.submitExample}</code>
-                <p className="text-sm text-[var(--text-2)] md:col-span-2">API Key 走 <code>{data.apiKeys.auth}</code>；{data.apiKeys.management}。</p>
+              <PanelHeader k="CLI / MCP" title="命令入口">复制以下命令把本地 Claude Code / Cursor 接入工作流。</PanelHeader>
+              <div className="boule-panel-body grid gap-4 md:grid-cols-2">
+                <CopyField label="启动 MCP 桥" value={data.cli.mcpCommand} />
+                <CopyField label="提交产物示例" value={data.cli.submitExample} />
+                <p className="text-sm text-[var(--md-on-surface-variant)] md:col-span-2">API Key 走 <code>{data.apiKeys.auth}</code>；{data.apiKeys.management}。</p>
               </div>
             </Panel>
           </div>
@@ -95,9 +120,7 @@ export function SettingsPage() {
               </SelectInput>
               <Button disabled={createKey.isPending || name.trim() === ""} onClick={() => createKey.mutate()}>创建 Key</Button>
             </div>
-            {createKey.isError && <ErrorBanner severity="P1" message="创建 API Key 失败" />}
-            {revoke.isError && <ErrorBanner severity="P1" message="撤销 API Key 失败" />}
-            {createdKey && <div className="border-2 border-[var(--app-fg)] bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
+            {createdKey && <div className="rounded-[var(--md-shape-md)] p-4" style={{ background: "var(--md-primary-container)", color: "var(--md-on-primary-container)" }}><div className="flex items-center gap-1.5 text-[13px] font-semibold"><Icon name="vpn_key" size={16} />明文仅显示一次，请立即复制保存</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="primary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
             {keys.isLoading ? <Skeleton rows={3} /> : keys.isError ? <ErrorBanner severity="P1" message="加载 API Keys 失败" onRetry={() => void keys.refetch()} /> : (
               <div className="boule-list shadow-none">
                 {(keys.data?.keys ?? []).map((key) => (
@@ -106,7 +129,7 @@ export function SettingsPage() {
                       <div className="font-[var(--boule-disp)] text-xl font-black tracking-[-0.02em]">{key.name}</div>
                       <div className="mt-1 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.1em] text-[var(--boule-muted)]">{key.prefix} · {key.scope === "write" ? "读写" : "只读"} · {key.lastUsedAt ? `最近使用 ${new Date(key.lastUsedAt).toLocaleString()}` : "未使用"}</div>
                     </div>
-                    <Button variant="secondary" disabled={revoke.isPending} onClick={() => revoke.mutate(key.id)}>撤销</Button>
+                    <Button variant="secondary" disabled={revoke.isPending} onClick={() => setRevokeTarget(key)}>撤销</Button>
                   </div>
                 ))}
                 {keys.data?.keys.length === 0 && <div className="p-6 text-sm text-[var(--boule-muted)]">暂无 API Key。</div>}
@@ -115,6 +138,18 @@ export function SettingsPage() {
           </div>
         </Panel>
       </div>
+
+      <Dialog
+        open={!!revokeTarget}
+        title="撤销 API Key？"
+        onClose={() => setRevokeTarget(null)}
+        actions={<>
+          <Button variant="secondary" onClick={() => setRevokeTarget(null)}>取消</Button>
+          <Button variant="danger" disabled={revoke.isPending} onClick={() => { if (revokeTarget) revoke.mutate(revokeTarget.id); setRevokeTarget(null); }}>确认撤销</Button>
+        </>}
+      >
+        撤销「{revokeTarget?.name}」（{revokeTarget?.prefix}）后，使用该 Key 的 CLI / MCP / 脚本将立即失效，且不可恢复。
+      </Dialog>
     </PageShell>
     </div>
   );

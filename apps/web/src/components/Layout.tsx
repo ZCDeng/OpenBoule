@@ -4,6 +4,8 @@ import { Navigation } from "./Navigation.tsx";
 import { OfflineBanner } from "./States.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { CommandPalette } from "./CommandPalette.tsx";
+import { SnackbarContainer } from "./Snackbar.tsx";
+import { NavigationRail } from "./NavigationRail.tsx";
 import { useWorkflow } from "../stores/workflow.ts";
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -12,11 +14,13 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[var(--boule-paper)] text-[var(--app-fg)]">
       <Navigation />
+      <NavigationRail />
       <CommandPalette />
       <OfflineBanner reconnecting={connection === "reconnecting"} />
-      <main>
+      <main className="lg:pl-20">
         <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
       </main>
+      <SnackbarContainer />
     </div>
   );
 }
