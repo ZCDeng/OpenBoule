@@ -7,7 +7,7 @@ import { Icon } from "./Icon.tsx";
 
 const RAIL = [
   { to: "/projects", label: "项目", icon: "folder" },
-  { to: "/methodology", label: "方法论", icon: "account_tree" },
+  { to: "/files", label: "文件管理", icon: "inventory_2" },
   { to: "/settings", label: "配置", icon: "settings" },
 ];
 

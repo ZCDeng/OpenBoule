@@ -35,3 +35,5 @@ apps/api/.tessdata/
 # macOS app 打包产物
 apps/desktop/release/
 apps/api/.deploy/
+
+apps/desktop/icon.iconset/

@@ -47,7 +47,8 @@
       "target": [
         "dmg"
       ],
-      "identity": null
+      "identity": null,
+      "icon": "build/icon.icns"
     }
   }
 }

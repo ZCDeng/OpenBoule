@@ -504,3 +504,18 @@ build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、
    顶栏中部链接在 lg+ 收起交给 rail；窄屏仍顶栏/汉堡。main 在 lg+ 左 padding 80px。
 
 实拍 `docs/screenshots/macos-app-window.png`：左侧 M3 Navigation Rail + 顶栏 + M3 工作台，无加载失败。
+
+### 2026-06-18（续16）— 品牌与导航重构（新 /goal 5 项）
+
+1. **App Icon（OpenConsult）**：SVG 设计（M3 squircle + 电光蓝渐变 + 白色 /// 母题）→ rsvg-convert 出 iconset →
+   iconutil 出 icon.icns；electron-builder build.mac.icon 接入。资产存 apps/desktop/build/（icon.svg/png/icns）。
+2. **去代号 Boule**：移除顶栏 Boule pill；Settings/Share 文案 "Boule"→"OpenConsult"。
+3. **Claude专用图标化 + 移到 logo 旁**：原 Boule 位置改为 primary-container chip（auto_awesome 图标 + "Claude"）；
+   顶栏右侧的 "Claude 专用" Badge 移除。
+4. **方法论移到顶栏右侧**：方法论是静态 10 阶段说明页（非动态进度——动态进度在工作流时间线）。
+   从 rail 移除，改为顶栏右侧图标入口（account_tree + 文字）。
+5. **文件管理页（全局交付物）**：rail 加「文件管理」(inventory_2)；新页 /files 跨所有项目 useQueries 聚合
+   交付物（projects→workflows→artifacts 两级并行），按项目分组 + 预览 + ExportBar(md/html/pdf 下载)。
+
+实拍 `docs/screenshots/macos-app-window.png`：logo 旁 Claude chip、无 Boule、方法论在右、rail=项目/文件管理/配置。
+App 图标见 `docs/screenshots/app-icon.png`。打包 .app 内置 icon.icns。

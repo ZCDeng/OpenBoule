@@ -2,13 +2,12 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../stores/auth.ts";
 import { useTheme, type ThemePref } from "../stores/theme.ts";
-import { Badge } from "./Brutalist.tsx";
 import { MessageCenterButton } from "./MessageCenter.tsx";
 import { Icon } from "./Icon.tsx";
 
 const NAV = [
   { to: "/projects", label: "项目" },
-  { to: "/methodology", label: "方法论" },
+  { to: "/files", label: "文件管理" },
   { to: "/settings", label: "配置" },
 ];
 
@@ -43,9 +42,12 @@ export function Navigation() {
   return (
     <nav className="sticky top-0 z-50 bg-[var(--md-surface)]" style={{ boxShadow: "var(--md-elevation-1)" }}>
       <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-6 px-6 md:px-10">
-        <Link to="/projects" onClick={() => setOpen(false)} className="flex items-baseline gap-2.5">
+        <Link to="/projects" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
           <span className="font-[var(--boule-disp)] text-[20px] font-semibold tracking-[-0.01em] text-[var(--md-on-surface)]">OpenConsult<span className="text-[var(--md-primary)]">///</span></span>
-          <span className="rounded-full bg-[var(--md-secondary-container)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--md-on-secondary-container)]">Boule</span>
+          {/* Claude 专用标识（图标 chip，置于原代号位置） */}
+          <span title="Claude 专用工作台" className="flex items-center gap-1 rounded-full bg-[var(--md-primary-container)] px-2.5 py-1 text-[11px] font-medium text-[var(--md-on-primary-container)]">
+            <Icon name="auto_awesome" size={13} />Claude
+          </span>
         </Link>
         <div className="hidden items-center gap-1 md:flex lg:hidden">
           {NAV.map((n) => {
@@ -58,9 +60,16 @@ export function Navigation() {
           })}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <Link
+            to="/methodology"
+            title="方法论 · 10 阶段流程说明"
+            aria-current={loc.pathname.startsWith("/methodology") ? "page" : undefined}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-medium transition-colors ${loc.pathname.startsWith("/methodology") ? "bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]" : "text-[var(--md-on-surface-variant)] hover:bg-[var(--row-hover-bg)]"}`}
+          >
+            <Icon name="account_tree" size={18} /><span className="hidden md:inline">方法论</span>
+          </Link>
           <MessageCenterButton />
           <ThemeToggle />
-          <span className="hidden sm:block"><Badge tone="orange">Claude 专用</Badge></span>
           <button onClick={logout} className="hidden rounded-full px-4 py-2 text-[14px] font-medium text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)] md:block">
             登出
           </button>

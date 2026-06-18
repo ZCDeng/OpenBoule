@@ -83,7 +83,7 @@ export function SettingsPage() {
                   <DataRow label="运行环境" value={data.agent.runtime} />
                   <DataRow label="调用方式" value={data.agent.invocationMode} />
                 </dl>
-                <p className="mt-4 text-sm text-[var(--text-2)]">OpenConsult/Boule 是 Claude-only 工作台：不支持其它模型；模型调用由服务端环境和 Agent SDK 认证状态决定。</p>
+                <p className="mt-4 text-sm text-[var(--text-2)]">OpenConsult 是 Claude-only 工作台：不支持其它模型；模型调用由服务端环境和 Agent SDK 认证状态决定。</p>
               </div>
             </Panel>
             <Panel>
