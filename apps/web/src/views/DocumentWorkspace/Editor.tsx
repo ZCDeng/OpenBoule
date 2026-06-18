@@ -147,22 +147,22 @@ export function Editor({
       )}
       {save === "local-fallback" && <ErrorBanner severity="P1" message="保存失败，将保存在本地，恢复后同步" />}
 
-      <div className="border-2 border-[var(--app-fg)] px-3 py-2 shadow-[3px_3px_0_var(--app-fg)]">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-[var(--boule-disp)] font-black tracking-[-0.02em]">{meta.phaseLabel}</span>
-          <span>{meta.type}</span>
+      <div className="rounded-[var(--md-shape-md)] border border-[var(--md-outline-variant)] bg-[var(--md-surface-container-low)] px-3 py-2 shadow-[var(--md-elevation-1)]">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--md-on-surface)]">
+          <span className="font-semibold tracking-[-0.01em]">{meta.phaseLabel}</span>
+          <span className="text-[var(--md-on-surface-variant)]">{meta.type}</span>
           <Badge>v{meta.version}</Badge>
           <Badge>{statusLabel(meta.status)}</Badge>
           {meta.stale && <Badge tone="orange">{statusLabel("stale")}</Badge>}
         </div>
       </div>
 
-      <div className="flex items-center justify-between font-[var(--boule-mono)] text-xs uppercase tracking-[0.08em] text-[var(--boule-muted)]">
+      <div className="flex items-center justify-between text-[12px] text-[var(--md-on-surface-variant)]">
         <span>{readOnly ? "只读历史版本" : lock.kind === "held" ? "● 你正在编辑" : lock.kind === "acquiring" ? "获取锁中…" : "只读"}</span>
         <span>{save === "saving" ? "保存中…" : save === "saved" ? "已保存" : ""}</span>
       </div>
 
-      <div className="prose max-w-none border-2 border-[var(--app-fg)] bg-[var(--boule-paper)] p-4 shadow-[5px_5px_0_var(--app-fg)]">
+      <div className="prose max-w-none rounded-[var(--md-shape-md)] border border-[var(--md-outline-variant)] bg-[var(--md-surface)] p-4 shadow-[var(--md-elevation-1)]">
         <EditorContent editor={editor} />
       </div>
     </div>
