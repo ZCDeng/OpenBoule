@@ -1,8 +1,23 @@
 {
   "project": "Boule / OpenConsult",
-  "updated": "2026-06-14",
+  "updated": "2026-06-18",
   "note": "特性线追踪（long-term）。状态以 git + PR 为准，progress.md 为详情。",
   "features": [
+    {
+      "id": "F7",
+      "title": "本地 macOS app（Electron + PGlite + Material3）",
+      "status": "in_progress",
+      "plan": "docs/plans/2026-06-18-001-feat-macos-app-plan.md",
+      "units": "P1 数据层(PGlite+进程内队列) → P2 Electron 外壳+打包 → P3 Material3 设计系统 → P4 5类交互(新建项目/输入输出物/格式转换/配置/前后台通知) → P5 收尾",
+      "progress": {
+        "spike": "PGlite 兼容性实测全过（make_interval/advisory lock/jsonb_set/xmax/bigserial/ENUM/CTE/FOR UPDATE/ON CONFLICT RETURNING）；见 spikes/pglite-compat/RESULTS.md。结论：SQL 层几乎零改动。",
+        "P1.1": "done — db/client.ts 双驱动（pg|pglite），统一 closeDb()；config 加 DB_DRIVER/PGLITE_DATA_DIR，DATABASE_URL 仅 pg 必需",
+        "P1.2": "done — db/migrate.ts pglite 分支；8 个迁移在 pglite 全跑通（含历史出问题的 0008 ALTER TYPE ADD VALUE），15 表 9 枚举落地、幂等、持久化验证",
+        "P1.3": "todo — 进程内队列复刻 BullMQ parent-child fan-out（engine.ts/queues.ts）",
+        "P1.4": "todo — Redis 小工具内存化（ticket/doc-lock/撤销集/限流/active-context）"
+      },
+      "decisions": "Electron 外壳 + PGlite/进程内队列 + 全站 Material3 重皮（本会话与用户确认）"
+    },
     {
       "id": "F1",
       "title": "核心架构主干（U0–U10）",

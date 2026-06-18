@@ -20,6 +20,9 @@ importers:
       '@boule/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@electric-sql/pglite':
+        specifier: ^0.5.3
+        version: 0.5.3
       '@fastify/cookie':
         specifier: ^11.0.2
         version: 11.0.2
@@ -37,7 +40,7 @@ importers:
         version: 5.77.6
       drizzle-orm:
         specifier: ^0.38.0
-        version: 0.38.4(@types/pg@8.20.0)(@types/react@19.2.15)(pg@8.21.0)(react@19.2.6)
+        version: 0.38.4(@electric-sql/pglite@0.5.3)(@types/pg@8.20.0)(@types/react@19.2.15)(pg@8.21.0)(react@19.2.6)
       fastify:
         specifier: ^5.8.5
         version: 5.8.5
@@ -295,6 +298,9 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@electric-sql/pglite@0.5.3':
+    resolution: {integrity: sha512-iTTYbA5Uesrl+N7zss0J5LopT7KE4j9aymYo+EZZh+rZbARQCUQOs+n2pay64JRUpc3fCkpfrniTNJnvYzOE+g==}
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
@@ -3053,6 +3059,8 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
+  '@electric-sql/pglite@0.5.3': {}
+
   '@esbuild-kit/core-utils@3.3.2':
     dependencies:
       esbuild: 0.18.20
@@ -4253,8 +4261,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.38.4(@types/pg@8.20.0)(@types/react@19.2.15)(pg@8.21.0)(react@19.2.6):
+  drizzle-orm@0.38.4(@electric-sql/pglite@0.5.3)(@types/pg@8.20.0)(@types/react@19.2.15)(pg@8.21.0)(react@19.2.6):
     optionalDependencies:
+      '@electric-sql/pglite': 0.5.3
       '@types/pg': 8.20.0
       '@types/react': 19.2.15
       pg: 8.21.0

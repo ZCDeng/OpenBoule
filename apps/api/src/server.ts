@@ -10,7 +10,7 @@
 
 import { buildApp } from "./app.ts";
 import { config } from "./config.ts";
-import { db, pool } from "./db/client.ts";
+import { db, closeDb } from "./db/client.ts";
 import { createSecurityRedis } from "./services/redis.ts";
 import { WorkflowEngine } from "./workflow/engine.ts";
 import { makeProductionAgentRunner } from "./services/agent-runner.ts";
@@ -63,7 +63,7 @@ async function main() {
       await app.close();
       await engine.close();
       await securityRedis.quit();
-      await pool.end();
+      await closeDb();
       console.log("[boule] 已关闭");
       process.exit(0);
     } catch (err) {

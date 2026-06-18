@@ -258,3 +258,34 @@ Step 4.6 交互件 QR 回贴 deck 封底）、`ddc3b2b`（`interactive/` 归档�
 - 真值源：`skills-cache/` 从上游 main（e4df3d3）刷新 9 文件 + 重算 digest（消除 designer.md stale）。
 - 验证：API 226 pass / 0 fail / 2 skip + tsc 干净；web 54 pass + build 绿 + tsc 干净。
 - 范围外：Step 4.6 QR 回贴、纪律 19 公网托管红线（留引擎将来托管客户交付物时做）。
+
+---
+
+## 2026-06-18 — 启动本地 macOS app 化（F7 / Electron + PGlite + Material3）
+
+按 `/goal`：把 Boule 打成本地 macOS app，Material3 风格，强化 5 类交互。
+架构决策（与用户确认）：**Electron 外壳 + PGlite/进程内队列 + 全站 Material3 重皮**。
+计划见 `docs/plans/2026-06-18-001-feat-macos-app-plan.md`。
+
+**去风险 spike（命门，已完成）**：`spikes/pglite-compat/`。PGlite 实测支持后端全部高风险 PG 特性
+（make_interval / pg_advisory_xact_lock / hashtext / bigserial / jsonb_set / @> / xmax / ENUM+ADD VALUE /
+CTE+window / FOR UPDATE / ON CONFLICT RETURNING）。结论：**SQL 层几乎零改动**，此前 Explore 担心的三大
+「阻塞」实际全过。唯一注意：单次 query() 不能塞多语句（用 exec()/事务 API，Drizzle 不受影响）。
+
+**P1.1 双驱动 db client（done）**
+- `config.ts`：加 `DB_DRIVER`(pg|pglite) + `PGLITE_DATA_DIR`；`DATABASE_URL` 改为仅 pg 驱动 fail-loud。
+- `db/client.ts`：按驱动分支（pg=Pool / pglite=进程内 WASM，dataDir 空=内存非空=落盘），统一 `closeDb()`，
+  撤掉对外 `pool` 导出（运行时 API 一致，类型统一 NodePgDatabase）。
+- `server.ts`：`pool.end()` → `closeDb()`。
+
+**P1.2 PGlite 迁移（done + 验证）**
+- `db/migrate.ts`：pglite 分支（`drizzle-orm/pglite/migrator`）。
+- 验证：8 个迁移在 pglite 全跑通（**含历史上在 drizzle 事务里失败过的 0008 `ALTER TYPE ADD VALUE`**，
+  obs 6576），15 表 + 9 枚举落地、幂等重跑、持久化目录 + client 模块加载/查询/关停全部实测通过。
+
+**未做（下个会话接续）**
+- P1.3 进程内队列：复刻 BullMQ 用到的子集（单队列多 job 名 + 并发 + FlowProducer parent-child fan-out +
+  fixed-backoff 重试），单进程删分布式 stalled/recovery。改 `engine.ts`/`queues.ts` 接口、不动编排语义。
+- P1.4 Redis 小工具内存化：ticket / doc-lock / 撤销集 / 限流 / active-context。
+- P1.5 config 加 `RUNTIME=local-app`（免 JWT、单用户、不连 Redis）。
+- 然后 P2 Electron、P3 Material3、P4 五类交互。
