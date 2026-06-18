@@ -8,23 +8,46 @@
     "dev": "electron .",
     "build:web": "pnpm --filter @boule/web build",
     "build:api": "pnpm --filter @boule/api build",
-    "prebundle": "pnpm run build:web && pnpm run build:api",
+    "flatten:api": "pnpm --filter @boule/api --prod deploy ../api/.deploy --legacy",
+    "prebundle": "pnpm run build:web && pnpm run build:api && pnpm run flatten:api",
     "dist": "pnpm run prebundle && electron-builder"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
+    "electron": "^33.4.11",
     "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "ai.openconsult.boule",
     "productName": "Boule",
-    "directories": { "output": "release" },
-    "files": ["main.js", "preload.js"],
-    "extraResources": [
-      { "from": "../web/dist", "to": "web" },
-      { "from": "../api/dist", "to": "api" },
-      { "from": "../api/node_modules", "to": "api/node_modules" }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
     ],
-    "mac": { "category": "public.app-category.productivity", "target": ["dmg"] }
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web"
+      },
+      {
+        "from": "../api/dist",
+        "to": "api"
+      },
+      {
+        "from": "../api/.deploy/node_modules",
+        "to": "api/node_modules"
+      }
+    ],
+    "asar": true,
+    "npmRebuild": false,
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "identity": null
+    }
   }
 }

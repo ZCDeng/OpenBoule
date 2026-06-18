@@ -17,7 +17,7 @@
         "P1.4": "done — services/memory-redis.ts 忠实复刻安全集命令子集（set EX/NX/GET、getdel、expire、ttl、sadd、sismember、incr、doc-lock 两段 eval Lua）；createSecurityRedis 按 inproc 返回内存替身，消费方零改动。document-parsing.worker 用 node:worker_threads 非 Redis（误报）",
         "P1.5": "done — local-app 运行 = MODE=local（server.ts 已免 JWT/单用户/loopback）+ DB_DRIVER=pglite（自动 inproc + 内存安全集）。整机验证：完整 server 在零 Redis/零外部 PG 下启动，/health=ok，ensureLocalUser 在 pglite 跑通",
         "P1-DONE": "数据层全绿——后端已是零基础设施单进程。",
-        "P2": "进行中 — 后端同源托管 web 构建 + SPA fallback（已验证：/、深链、assets、API 404 隔离）。apps/desktop Electron 外壳已搭（main.js 编排：空闲端口→迁移→起后端→等 health→开窗口 loadURL；preload 暴露系统通知；单实例锁；before-quit 优雅关停）。剩余：api 编译成 JS + electron-builder 出 .dmg + GUI 实跑（需桌面环境/证书）",
+        "P2": "done(打包出 .dmg) — 后端同源托管 web + SPA fallback；apps/desktop Electron 外壳；api esbuild 编 JS（dist 加 type:module 让 Electron Node 按 ESM 载）；pnpm deploy 扁平化 api 依赖。**electron-builder 产出 release/Boule-0.0.0-arm64.dmg（212MB，未签名）**。一条命令 `pnpm --filter @boule/desktop dist`。验证：用 .app 内置 Electron node 跑打包后的 migrate+server → /health=ok、托管 SPA、/api/projects 本地免登录返回 {projects:[]}。剩 GUI 窗口实跑（需显示器）+ Apple 证书签名公证",
         "P3": "进行中 — Material3 设计 token 层落地 index.css（color roles/shape/elevation/motion/state-layer，light+dark），现有 --boule-* 语义层全部改派生自 --md-* token（一处改全站生效，类与组件零改动），dark 经 var() 惰性解析仅覆盖 --md-* 即自动跟随。build 绿。剩余 M3 组件变体（FAB/Dialog/Chip/Tabs indicator/NavigationRail）+ 可视走查",
         "P4.5": "done(交互之一) — 通知系统：stores/notification.ts（Snackbar 队列 + 命令式 toast.*，前台 Snackbar / 窗口失焦+桌面则经 window.boule.notify 弹 macOS 原生通知）+ components/Snackbar.tsx（M3：inverse-surface+elevation-3+kind 状态条）挂进 Layout，M3 样式入 index.css。build 绿",
         "P4-rest": "todo(交互其余4类) — 新建项目向导 / 输入输出物管理 UX / 格式转换导出 UI / 配置预设编辑；并把散落 ErrorBanner 收敛到 toast"

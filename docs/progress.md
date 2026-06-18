@@ -407,3 +407,19 @@ P3 M3 组件变体；P2 打包（api 编 JS + electron-builder + 签名）。GUI
 产物导出条；③ 格式转换=md/html/pdf 导出；④ 配置管理=Settings + API Key toast；⑤ 前后台状态与通知=
 M3 Snackbar + 后台原生通知。**剩余为「深化」而非「从无到有」**：新建项目向导、M3 组件变体（Dialog/Chip/Tabs/
 FAB/NavigationRail）、把所有 ErrorBanner 全量收敛 toast。打包/签名仍为 Mac 侧。
+
+### 2026-06-18（续9）— 🎯 实际产出可双击运行的 .dmg（未签名）
+
+纠正此前判断：本机是 macOS，electron-builder **构建** .dmg 不需要显示器（只有 GUI 实跑需要），签名可关。于是真的打出来了：
+- 配置：`asar:true` + `mac.identity:null`（未签名）+ `npmRebuild:false`；extraResources 放 web/dist、api/dist、
+  api/.deploy/node_modules（pnpm deploy 扁平化的 prod 依赖，含 pglite WASM、@boule/shared）。
+- esbuild 产物是 ESM，但 Electron 内置 Node 20 按 .js 默认当 CJS → 报错；build.mjs 给 dist 写 `package.json {type:module}` 解决。
+- 一条命令：`pnpm --filter @boule/desktop dist`（build:web + build:api + flatten:api deploy + electron-builder）。
+- **产出 `apps/desktop/release/Boule-0.0.0-arm64.dmg`（212MB）+ Boule.app**。
+
+验证（用 .app 内置 Electron 的 node，ELECTRON_RUN_AS_NODE=1，跑打包进 Resources 的 api）：
+migrate 在 pglite 跑通；server 启动 /health=ok；同源托管 SPA（/）；`/api/projects` 本地免登录返回 `{projects:[]}`。
+**= 打包后的后端在 bundle 内、用 bundle 内依赖（含 WASM）真实跑通。**
+
+仍未做：GUI 窗口可视实跑（需显示器，无头环境看不了）+ Apple 证书签名/公证（未签名 app 首次需右键打开）。
+余下为 UI 深化：M3 组件变体、新建项目向导、ErrorBanner 全量收敛 toast。

@@ -11,7 +11,7 @@
 import * as esbuild from "esbuild";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { cp, rm, mkdir } from "node:fs/promises";
+import { cp, rm, mkdir, writeFile } from "node:fs/promises";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const apiRoot = join(here, "..");
@@ -32,6 +32,11 @@ await esbuild.build({
   outbase: undefined,
   logLevel: "info",
 });
+
+// 标记 dist 为 ESM：esbuild 产物是 ESM，但 Electron 内置 Node 按 .js 默认当 CJS 加载会报
+// "Cannot use import statement outside a module"。写一个 type:module 的 package.json 让其按 ESM 解析。
+// 随 extraResources 落到 resources/api/package.json，只影响 api 自身文件（node_modules 各自有 package.json）。
+await writeFile(join(dist, "package.json"), JSON.stringify({ type: "module" }) + "\n");
 
 // drizzle 迁移 SQL 随包。esbuild 保留入口结构 → migrate.js 落 dist/db/migrate.js，
 // 其 import.meta.url→dist/db/，故 migrationsFolder=dist/db/migrations，复制到此。
