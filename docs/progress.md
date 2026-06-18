@@ -527,3 +527,8 @@ App 图标见 `docs/screenshots/app-icon.png`。打包 .app 内置 icon.icns。
    h1-3→sans；--boule-disp=--font-sans、--boule-body=--font-serif。中文走 Source Han 回退。
 2. 主题切换：顶栏右侧改纯图标圆形 pill（去文字标签）。
 实拍 docs/screenshots/macos-app-window.png；fonts served 200，无加载失败。
+
+### 2026-06-18（续18）— 回滚字体（Roboto → 上一版 Source Han）
+
+按反馈「不好看」，字体回滚：移除 Roboto Flex/Serif @font-face + woff2，--font-sans/--font-serif/--boule-disp/
+--boule-body/body/h1-3 恢复到上一版 Source Han 栈。保留主题切换图标 pill（不回滚）。build 绿。

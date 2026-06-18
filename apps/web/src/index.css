@@ -9,38 +9,21 @@
   src: url("/fonts/material-symbols-outlined.woff2") format("woff2");
 }
 
-/* 标题字体 Roboto Flex / 正文字体 Roboto Serif（本地打包 latin 子集，中文走 Source Han 回退）。 */
-@font-face {
-  font-family: "Roboto Flex";
-  font-style: normal;
-  font-weight: 100 1000;
-  font-display: swap;
-  src: url("/fonts/roboto-flex-latin.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Roboto Serif";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/fonts/roboto-serif-latin.woff2") format("woff2");
-}
-
 /* 暗色 variant：手动切换走 [data-theme="dark"]（不直接用 prefers，跟随系统由 JS 写入 attribute）。
    tsx 里少数无法变量化的硬色可用 dark: 前缀，但主力策略是引用下方语义变量（KTD-1：一处改全站生效）。 */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* 字体（用户指定）：标题 = Roboto Flex（sans），正文 = Roboto Serif（serif）。中文走 Source Han 回退。
-   --font-sans 承载标题/UI（Roboto Flex）；--font-serif 承载正文（Roboto Serif）。 */
+/* 中文优先：思源宋体标题 + 无衬线正文（KTD-9）。无字体资源时回退系统字体。 */
 :root {
-  --font-sans: "Roboto Flex", "Source Han Sans SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
-  --font-serif: "Roboto Serif", "Source Han Serif SC", "Noto Serif SC", Georgia, serif;
+  --font-serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
+  --font-sans: "Source Han Sans SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
 }
 body {
   margin: 0;
-  font-family: var(--font-serif); /* 正文 = Roboto Serif */
+  font-family: var(--font-sans);
 }
 h1, h2, h3 {
-  font-family: var(--font-sans); /* 标题 = Roboto Flex */
+  font-family: var(--font-serif);
 }
 
 /* Boule brutalist app shell — matches Landing visual standard. */
@@ -52,9 +35,9 @@ h1, h2, h3 {
   --boule-muted: #6a6a63;
   --boule-line: #0b0b0b;
   --boule-red: #dc2626;
-  /* 标题用 Roboto Flex（= --font-sans）；正文用 Roboto Serif（= --font-serif）。 */
-  --boule-disp: var(--font-sans);
-  --boule-body: var(--font-serif);
+  /* M3 重皮：display 用干净无衬线（替原 Arial Black 粗野体）。 */
+  --boule-disp: "Source Han Sans SC", "Noto Sans SC", system-ui, -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+  --boule-body: -apple-system, "PingFang SC", "Source Han Sans SC", "Segoe UI", sans-serif;
   --boule-mono: "SF Mono", "JetBrains Mono", ui-monospace, "Menlo", monospace;
 }
 
