@@ -395,3 +395,15 @@ P3 M3 组件变体；P2 打包（api 编 JS + electron-builder + 签名）。GUI
 
 至此 5 类交互里：通知系统 done；新建项目/输入物/配置 已接入通知反馈。剩余偏「新建结构」的：
 输出物管理深化、格式转换导出 UI、M3 组件变体、新建项目向导。
+
+### 2026-06-18（续8）— P4 格式转换/导出（done + build 绿）→ 5 类交互全部触达
+
+- `lib/export.ts`：纯客户端格式转换——Markdown(.md) 原文、HTML(.html，文档走轻量 md→html 包整页/交互件原样)、
+  PDF（开打印窗口走系统「存为 PDF」）。含一个够用的 markdown→html（标题/列表/引用/代码块/段落/行内）。
+- `views/DocumentWorkspace/ExportBar.tsx`：选中产物的导出条（文档给三种、交互件给 HTML/PDF），接 toast 反馈。
+- 挂进 `Workspace` 选中产物区上方。build 绿。
+
+**5 类交互盘点（全部触达，深浅不一）**：① 新建项目=创建流 + toast；② 输入/输出物管理=上传/删除 toast +
+产物导出条；③ 格式转换=md/html/pdf 导出；④ 配置管理=Settings + API Key toast；⑤ 前后台状态与通知=
+M3 Snackbar + 后台原生通知。**剩余为「深化」而非「从无到有」**：新建项目向导、M3 组件变体（Dialog/Chip/Tabs/
+FAB/NavigationRail）、把所有 ErrorBanner 全量收敛 toast。打包/签名仍为 Mac 侧。
