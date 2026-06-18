@@ -10,6 +10,26 @@ import { Dialog } from "../components/M3.tsx";
 
 const MODE_LABELS: Record<string, string> = { local: "本地", team: "团队" };
 
+/** 可复制命令字段：代码块 + 一键复制（配置页可用性）。 */
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <div>
+      <div className="mb-1.5 text-[12px] font-medium text-[var(--md-on-surface-variant)]">{label}</div>
+      <div className="flex items-stretch gap-2">
+        <code className="boule-code flex-1">{value}</code>
+        <button
+          type="button"
+          className="boule-btn boule-btn--secondary shrink-0"
+          onClick={() => { void navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1600); }}
+        >
+          {done ? "已复制" : "复制"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface RuntimeSettings {
   mode: "local" | "team";
   claudeOnly: boolean;
@@ -46,8 +66,8 @@ export function SettingsPage() {
   return (
     <div ref={pageRef}>
     <PageShell wide>
-      <PageHeader eyebrow="Nº 05 — CONTROL PLANE" title="配置与密钥">
-        当前登录用户即配置管理员。这里展示运行环境、Claude 调用路径、检索服务商与个人 API Key。
+      <PageHeader eyebrow="配置" title="配置与密钥">
+        当前登录用户即配置管理员。这里查看运行环境、Claude 调用路径、检索服务商，并管理个人 API Key。
       </PageHeader>
 
       <div ref={panelGroupRef} className="mt-8 space-y-8">
@@ -57,7 +77,7 @@ export function SettingsPage() {
               <PanelHeader k="RUNTIME" title="运行环境状态" />
               <div className="boule-panel-body">
                 <dl>
-                  <DataRow label="模式" value={MODE_LABELS[data.mode] ?? data.mode} />
+                  <DataRow label="模式" value={<Badge tone={data.mode === "local" ? "blue" : "dark"}>{MODE_LABELS[data.mode] ?? data.mode}</Badge>} />
                   <DataRow label="模型" value={data.agent.model} />
                   <DataRow label="运行环境" value={data.agent.runtime} />
                   <DataRow label="调用方式" value={data.agent.invocationMode} />
@@ -78,11 +98,11 @@ export function SettingsPage() {
               </div>
             </Panel>
             <Panel className="md:col-span-2">
-              <PanelHeader k="CLI / MCP" title="命令入口" />
-              <div className="boule-panel-body grid gap-3 md:grid-cols-2">
-                <code className="boule-code">{data.cli.mcpCommand}</code>
-                <code className="boule-code">{data.cli.submitExample}</code>
-                <p className="text-sm text-[var(--text-2)] md:col-span-2">API Key 走 <code>{data.apiKeys.auth}</code>；{data.apiKeys.management}。</p>
+              <PanelHeader k="CLI / MCP" title="命令入口">复制以下命令把本地 Claude Code / Cursor 接入工作流。</PanelHeader>
+              <div className="boule-panel-body grid gap-4 md:grid-cols-2">
+                <CopyField label="启动 MCP 桥" value={data.cli.mcpCommand} />
+                <CopyField label="提交产物示例" value={data.cli.submitExample} />
+                <p className="text-sm text-[var(--md-on-surface-variant)] md:col-span-2">API Key 走 <code>{data.apiKeys.auth}</code>；{data.apiKeys.management}。</p>
               </div>
             </Panel>
           </div>
@@ -99,7 +119,7 @@ export function SettingsPage() {
               </SelectInput>
               <Button disabled={createKey.isPending || name.trim() === ""} onClick={() => createKey.mutate()}>创建 Key</Button>
             </div>
-            {createdKey &&<div className="border-2 border-[var(--app-fg)] bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
+            {createdKey && <div className="rounded-[var(--md-shape-md)] p-4" style={{ background: "var(--md-primary-container)", color: "var(--md-on-primary-container)" }}><div className="text-[13px] font-semibold">🔑 明文仅显示一次，请立即复制保存</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="primary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
             {keys.isLoading ? <Skeleton rows={3} /> : keys.isError ? <ErrorBanner severity="P1" message="加载 API Keys 失败" onRetry={() => void keys.refetch()} /> : (
               <div className="boule-list shadow-none">
                 {(keys.data?.keys ?? []).map((key) => (
