@@ -32,28 +32,80 @@ h1, h2, h3 {
 }
 
 /* ───────────────────────────────────────────────────────────────
-   控制台化形态语义层（U2 · 性格=终端寄存器）。真值源 = _design/console-workbench-demo.html。
-   配色/字体（上方 --boule-*）不动；这里只定义「形态数值」与「状态点色」，
-   各 .boule-* class 在 U3 改引用这些变量，不再写死字面量（KTD-1）。
-   一处改形态、全站生效。
+   Material 3 设计 token 层（macOS app 重皮）。color roles + shape + elevation + motion + state layer。
+   下方「形态语义层」的 --surface-* / --app-fg / --hairline-* / --row-* / --ease 全部改派生自此，
+   各 .boule-* class 与组件不动，M3 一处改、全站生效（延续 KTD-1）。primary 沿用品牌电光蓝。
    ─────────────────────────────────────────────────────────────── */
 :root {
-  /* 形态：硬发丝线 + 零柔阴影 + 小圆角 + 紧凑行（替 brutalist 2px 硬边 / 6px 硬投 / 整行反色） */
-  --surface-radius: 4px;       /* 面板/卡片 */
-  --surface-radius-sm: 3px;    /* 行/按钮/标签/输入 */
-  --hairline-color: rgba(11, 11, 11, .16);   /* 结构发丝线 */
-  --hairline-strong: rgba(11, 11, 11, .30);  /* 面板外框/分区（作色值用） */
+  /* color roles（warm-neutral surface ramp，呼应原暖纸底） */
+  --md-primary: #1a18ee;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #e2e0ff;
+  --md-on-primary-container: #06006e;
+  --md-secondary-container: #e4e1ec;
+  --md-on-secondary-container: #1b1b2a;
+  --md-surface: #fdfcf8;                  /* 最高亮表面（卡片/浮起） */
+  --md-surface-container-low: #f6f4ee;
+  --md-surface-container: #f0eee7;
+  --md-surface-container-high: #eae8e0;
+  --md-surface-container-highest: #e4e2d9;
+  --md-background: #efece4;               /* 页面画布 */
+  --md-on-surface: #1b1b17;
+  --md-on-surface-variant: #49473e;
+  --md-outline: #7b7a6f;
+  --md-outline-variant: #cbc9bd;
+  --md-error: #ba1a1a;
+  --md-inverse-surface: #2f2f29;          /* 深色强调块（hero/panel--dark） */
+  --md-on-inverse-surface: #f2f0e7;
+  --md-inverse-on-surface-dim: #cdcbc1;
+
+  /* shape scale */
+  --md-shape-xs: 4px;
+  --md-shape-sm: 8px;
+  --md-shape-md: 12px;
+  --md-shape-lg: 16px;
+  --md-shape-xl: 28px;
+  --md-shape-full: 999px;
+
+  /* elevation（M3 tonal+shadow，亮色） */
+  --md-elevation-0: none;
+  --md-elevation-1: 0 1px 2px rgba(0, 0, 0, .14), 0 1px 3px 1px rgba(0, 0, 0, .08);
+  --md-elevation-2: 0 1px 2px rgba(0, 0, 0, .14), 0 2px 6px 2px rgba(0, 0, 0, .10);
+  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, .10), 0 1px 3px rgba(0, 0, 0, .14);
+
+  /* motion */
+  --md-ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --md-ease-emphasized: cubic-bezier(.2, 0, 0, 1);
+  --md-dur-short: 150ms;
+  --md-dur-medium: 250ms;
+
+  /* state layer 不透明度（M3：hover 8% / focus 10% / pressed 10%） */
+  --md-state-hover: .08;
+  --md-state-focus: .10;
+  --md-state-pressed: .10;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   形态语义层。改派生自上方 M3 token（圆角抬到 M3 shape、加 M3 elevation、行 hover 走 state layer）。
+   各 .boule-* class 引用这些变量，不再写死字面量（KTD-1）。一处改形态、全站生效。
+   ─────────────────────────────────────────────────────────────── */
+:root {
+  /* 形态：M3 shape（更圆）+ M3 elevation（替零阴影）+ state layer 行 hover */
+  --surface-radius: var(--md-shape-md);      /* 面板/卡片 12px */
+  --surface-radius-sm: var(--md-shape-sm);   /* 行/按钮/标签/输入 8px */
+  --hairline-color: var(--md-outline-variant);   /* 结构线 = M3 outline-variant */
+  --hairline-strong: var(--md-outline);          /* 强分区 = M3 outline */
   --hairline: 1px solid var(--hairline-color);
-  --surface-canvas: #ece9e1;   /* 控制台画布底（比 paper 略沉，像终端底） */
-  --surface-bg: #f7f5ef;       /* 面板/行底（比画布亮，拉层次） */
-  --surface-bg-raise: #fbfaf6; /* hover 提升 */
-  --surface-shadow: none;      /* 零柔阴影——平/脆/仪表化 */
-  --accent-rail: var(--boule-blue);          /* 选中/激活左轨 3px */
-  --row-hover-bg: rgba(26, 24, 238, .045);   /* 行 hover（替整行反色） */
-  --row-selected-bg: rgba(26, 24, 238, .08);
+  --surface-canvas: var(--md-background);        /* 页面画布 */
+  --surface-bg: var(--md-surface);               /* 面板/行底（最高亮表面，浮起） */
+  --surface-bg-raise: var(--md-surface-container-high); /* hover 提升 */
+  --surface-shadow: var(--md-elevation-1);       /* M3 elevation-1（替零阴影） */
+  --accent-rail: var(--md-primary);              /* 选中/激活左轨 */
+  --row-hover-bg: color-mix(in srgb, var(--md-primary) calc(var(--md-state-hover) * 100%), transparent);
+  --row-selected-bg: color-mix(in srgb, var(--md-primary) calc(var(--md-state-pressed) * 100%), transparent);
   --space-row-y: 9px;
   --space-row-x: 14px;
-  --ease: 120ms ease-out;      /* 微交互；GSAP 只管编排（KTD-8） */
+  --ease: var(--md-dur-medium) var(--md-ease-standard);  /* 微交互走 M3 motion */
 
   /* 状态点色（KTD-4，仅 8px 圆点/标签用色；正文 95% 中性灰阶；文案过 lib/labels.ts） */
   --boule-success: #2f8f5f;                  /* 完成 = 低饱和绿（新增） */
@@ -65,37 +117,51 @@ h1, h2, h3 {
 
   /* ── 语义文字/表面层（KTD-1：拆 --boule-ink 双关——它既是正文字色又是深色块底色。
      正文走 --app-fg，深色强调块走 --panel-dark-*；暗色只覆盖这一层，全站自动跟随）── */
-  --app-fg: var(--boule-ink);                /* 主前景文字（亮=墨黑） */
-  --text-2: #44443e;                         /* 次要正文（收敛 #33332e/#44443e/#4b4b45） */
-  --text-on-dark: #deded6;                   /* 深色块上主浅字 */
-  --text-on-dark-dim: #c9c9c2;               /* 深色块上次浅字 */
-  --panel-dark-bg: var(--boule-ink);         /* 深色强调块底（hero/panel--dark） */
+  --app-fg: var(--md-on-surface);            /* 主前景文字 = M3 on-surface */
+  --text-2: var(--md-on-surface-variant);    /* 次要正文 = on-surface-variant */
+  --text-on-dark: var(--md-on-inverse-surface);     /* 深色块上主浅字 */
+  --text-on-dark-dim: var(--md-inverse-on-surface-dim); /* 深色块上次浅字 */
+  --panel-dark-bg: var(--md-inverse-surface);       /* 深色强调块 = M3 inverse-surface */
   --panel-dark-line: rgba(241, 240, 235, .14); /* 深色块内发丝线 */
-  --input-placeholder: #b0b0a6;              /* 输入/提示占位字 */
+  --input-placeholder: var(--md-outline);    /* 输入/提示占位字 */
 }
 
-/* ── 暗色模式（KTD-5 兑现）：终端寄存器审美延续到深色——近黑画布 + 略亮表面 + 冷调发丝线。
-   只覆盖语义层与形态/状态变量，各 .boule-* class 不动，全站自动跟随。
-   data-theme 由 JS 写入（跟随系统或手动），见 stores/theme.ts + index.html 防闪烁脚本。 ── */
+/* ── 暗色模式（KTD-5 / M3 dark scheme）：只覆盖 M3 token，下方语义层经 var() 惰性解析自动跟随，
+   各 .boule-* class 与 light 语义定义都不动。data-theme 由 JS 写入，见 stores/theme.ts + 防闪烁脚本。 ── */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --boule-paper: #0d0e11;                    /* 画布底（body 背景） */
-  --boule-ink: #0d0e11;                      /* 墨色随画布下沉（少数仍作背景的字面引用不破） */
-  --app-fg: #e7e5dd;                         /* 主前景文字 */
-  --text-2: #a8a79d;                         /* 次要正文 */
-  --boule-muted: #87867c;                    /* 弱文字/标签 */
-  --surface-canvas: #131519;                 /* code/cmdk bar 底 */
-  --surface-bg: #181b21;                     /* 面板/行底 */
-  --surface-bg-raise: #20242c;               /* hover 提升 */
-  --hairline-color: rgba(231, 229, 221, .10);
-  --hairline-strong: rgba(231, 229, 221, .20);
-  --panel-dark-bg: #1b1f26;                  /* 深色强调块在暗色下提升为表面，避免糊进画布 */
+  /* M3 dark color roles（primary 抬亮以保深底对比） */
+  --md-primary: #c2c4ff;
+  --md-on-primary: #100f8a;
+  --md-primary-container: #2f2db5;
+  --md-on-primary-container: #e2e0ff;
+  --md-secondary-container: #2a2a39;
+  --md-on-secondary-container: #e4e1ec;
+  --md-surface: #181b21;                     /* 面板/行底 */
+  --md-surface-container-low: #131519;
+  --md-surface-container: #1a1d23;
+  --md-surface-container-high: #20242c;      /* hover 提升 */
+  --md-surface-container-highest: #262a33;
+  --md-background: #0d0e11;                  /* 页面画布 */
+  --md-on-surface: #e7e5dd;
+  --md-on-surface-variant: #c8c6bb;
+  --md-outline: #928f85;
+  --md-outline-variant: rgba(231, 229, 221, .14);
+  --md-error: #ffb4ab;
+  --md-inverse-surface: #1b1f26;             /* 深色强调块在暗色下提升为表面 */
+  --md-on-inverse-surface: #e7e5dd;
+  --md-inverse-on-surface-dim: #b9b7ad;
+  --md-elevation-1: 0 1px 2px rgba(0, 0, 0, .5), 0 1px 3px 1px rgba(0, 0, 0, .3);
+  --md-elevation-2: 0 1px 3px rgba(0, 0, 0, .5), 0 4px 8px 3px rgba(0, 0, 0, .3);
+  --md-elevation-3: 0 4px 12px rgba(0, 0, 0, .55);
+
+  /* 不经 --surface-* 派生、需直接覆盖的：body 背景 + 品牌/状态色 */
+  --boule-paper: var(--md-background);
+  --boule-ink: var(--md-background);         /* 少数作背景的字面引用不破 */
+  --boule-blue: var(--md-primary);           /* 品牌蓝随 M3 dark primary 抬亮 */
+  --boule-muted: #97958b;
   --panel-dark-line: rgba(231, 229, 221, .12);
-  --input-placeholder: #5f5e57;
-  --boule-blue: #6b73ff;                     /* 蓝提亮以保深底对比（强调/左轨/active） */
-  --row-hover-bg: rgba(107, 115, 255, .10);
-  --row-selected-bg: rgba(107, 115, 255, .17);
-  --boule-success: #45b07d;                  /* 状态色提亮 */
+  --boule-success: #45b07d;
   --boule-orange: #e8927a;
   --boule-red: #f0584f;
 }

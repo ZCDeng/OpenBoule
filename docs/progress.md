@@ -344,3 +344,19 @@ spawn 后端 + 注入三 env + 用户数据目录落 PGlite + 加载 web build +
 
 **P2 剩余**：apps/api 编译成 JS（esbuild bundle server.ts+migrate.ts，external 原生模块）+ electron-builder 出 .dmg + 签名公证。
 **之后**：P3 Material3 全站重皮、P4 五类交互。
+
+### 2026-06-18（续4）— P3 Material3 设计 token 层（落地 + build 绿）
+
+`index.css` 引入 Material3 token 层（`--md-*`）：color roles（primary 沿用品牌电光蓝 + container/on-* +
+warm-neutral surface ramp + inverse-surface）、shape scale（圆角抬到 M3：面板 12px / 行 8px）、
+elevation（替原零阴影，elevation-1）、motion（standard easing + duration）、state-layer 不透明度。
+**现有 `--boule-*` 形态/语义层全部改派生自 `--md-*`**（--surface-*/--app-fg/--text-*/--hairline-*/--row-*/
+--ease/--accent-rail/--panel-dark-* 等），各 `.boule-*` class 与组件**零改动**——延续 KTD-1 一处改全站生效。
+
+暗色：因 CSS 变量 var() 惰性解析，dark 块**只覆盖 `--md-*` token**，下方语义层自动跟随（不再逐个重定义语义）。
+
+验证：`pnpm --filter @boule/web build` 绿（tsc + vite），CSS 62→64KB（M3 token 增量）。
+**未做**：M3 组件变体（Snackbar/FAB/Dialog/Chip/Tabs indicator 动画/NavigationRail）、可视走查（需 dev server + 浏览器）。
+
+**P3 剩余 + P4 五类交互（新建项目向导 / 输入输出物管理 / 格式转换导出 / 配置预设 / 前后台状态+通知 store+Snackbar+
+原生通知）+ P2 打包（api 编 JS + electron-builder + 签名）= 后续会话工作。**
