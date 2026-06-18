@@ -47,6 +47,8 @@ async function main() {
     engine,
     snapshotProvider: () => createFrozenSnapshot(), // 创建 workflow 时固化当前 HEAD 快照
     localMode,
+    // 本地 app：Electron 注入 WEB_DIST_PATH → 同源托管前端；team 模式不设、走独立 Vite。
+    webDistPath: process.env.WEB_DIST_PATH?.trim() || undefined,
   });
 
   // 本地模式仅监听回环（双保险：listen host + onRequest loopback 守卫）。

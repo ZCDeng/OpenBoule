@@ -8,6 +8,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
 import type { DB } from "./db/client.ts";
 import type { Redis } from "ioredis";
 import type { WorkflowEngine } from "./workflow/engine.ts";
@@ -45,6 +46,8 @@ export interface AppDeps {
   now?: () => number;
   /** 本地免登录模式（U2）：注入则全局 loopback-only + 固定本地用户，跳过 JWT。 */
   localMode?: { userId: string };
+  /** 本地 app（P2）：注入 web 构建产物目录则同源托管前端 + SPA fallback（非 /api 未命中回 index.html）。 */
+  webDistPath?: string;
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
@@ -75,6 +78,18 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerLockRoutes(app, deps);
   registerSettingsRoutes(app, deps);
   registerShareRenderRoutes(app, deps);
+
+  // 本地 app：同源托管 web 构建 + SPA fallback。team 模式（无 webDistPath）不挂，前端走独立 Vite。
+  if (deps.webDistPath) {
+    app.register(fastifyStatic, { root: deps.webDistPath, wildcard: false });
+    app.setNotFoundHandler((req, reply) => {
+      // 非 /api、非 /health 的 GET 未命中 → 交给 SPA 路由（回 index.html）；其余仍 JSON 404。
+      if (req.method === "GET" && !req.url.startsWith("/api") && !req.url.startsWith("/health")) {
+        return reply.sendFile("index.html");
+      }
+      return reply.code(404).send({ error: "NOT_FOUND" });
+    });
+  }
 
   return app;
 }
