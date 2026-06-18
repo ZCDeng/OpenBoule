@@ -309,3 +309,21 @@ CTE+window / FOR UPDATE / ON CONFLICT RETURNING）。结论：**SQL 层几乎零
 
 **剩余 P1**：P1.4 Redis 小工具内存化（ticket/doc-lock/撤销集/限流/active-context + document-parsing.worker）、
 P1.5 local-app 模式（免 JWT/单用户/安全集不连 Redis）。之后 P2 Electron。
+
+### 2026-06-18（续2）— P1.4 + P1.5：后端零基础设施单进程（done + 整机验证）
+
+**P1.4 安全集 Redis 内存化**：新增 `services/memory-redis.ts`，忠实复刻安全集实际用到的命令子集
+（set EX/PX/NX/XX/GET、get、getdel、del、expire、ttl、sadd、sismember、incr、exists、ping、quit，
+eval 仅认 doc-lock 的 RENEW/RELEASE 两段 compare-and-act）。`createSecurityRedis()` 在 inproc 驱动下返回
+内存替身，**5 个消费方（sse ticket / doc-lock / share 撤销集+限流 / active-context）全部零改动**。
+（`document-parsing.worker` 用 node:worker_threads，非 Redis——之前 grep 误匹配。）
+
+**P1.5 local-app 运行模式**：无需新代码——MODE=local（server.ts 既有：免 JWT + 单用户 ensureLocalUser +
+loopback-only）+ DB_DRIVER=pglite（自动 QUEUE_DRIVER=inproc + 内存安全集）三者组合即 local-app 运行时，
+由 Electron 注入这三个 env。
+
+**整机验证**：`MODE=local DB_DRIVER=pglite QUEUE_DRIVER=inproc node src/server.ts` → 启动日志干净
+（免登录单用户 + 仅本机），`/health` = `{"ok":true}`，**零 Redis、零外部 Postgres**，ensureLocalUser 在 pglite 跑通。
+
+**P1 数据层全部完成**：后端已是零基础设施单进程。下一步 **P2 Electron 外壳**（新建 apps/desktop：主进程
+spawn 后端 + 注入三 env + 用户数据目录落 PGlite + 加载 web build + 原生通知/菜单 + electron-builder 出 .dmg）。
