@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
 import { Skeleton, EmptyState, ErrorBanner } from "../components/States.tsx";
+import { toast } from "../stores/notification.ts";
 import { Badge, Button, PageHeader, PageShell, Panel, TextInput } from "../components/Brutalist.tsx";
 import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
@@ -29,7 +30,12 @@ export function ProjectsPage() {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["projects"], queryFn: () => api.json<{ projects: Project[] }>("/api/projects") });
   const create = useMutation({
     mutationFn: (n: string) => api.json<{ projectId: string }>("/api/projects", { method: "POST", body: JSON.stringify({ name: n }) }),
-    onSuccess: () => { setName(""); void qc.invalidateQueries({ queryKey: ["projects"] }); },
+    onSuccess: (_res, n) => {
+      setName("");
+      void qc.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`项目「${n}」已创建，进入详情页上传材料、选择模式后启动。`, "新建项目");
+    },
+    onError: () => toast.error("创建项目失败，请重试。", "新建项目"),
   });
   const projects = data?.projects ?? [];
   useFadeIn(pageRef);
@@ -88,7 +94,6 @@ export function ProjectsPage() {
           </div>
         )}
       </div>
-      {create.isError && <div className="mt-5"><ErrorBanner severity="P1" message="创建项目失败" /></div>}
       <Panel className="mt-10">
         <div className="boule-panel-body project-entry-help">
           <Badge tone="dark">任务入口</Badge>
