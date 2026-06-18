@@ -463,3 +463,19 @@ build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、
   （圆角卡片 + elevation + 电光蓝 primary）+ 右下「新建项目」FAB + 空态。**桌面 app 完整链路跑通并目视确认。**
 
 至此 .dmg→启动→零基础设施后端→SPA→工作台路由→M3 UI→FAB/向导 全链路验证。仅剩 Apple 证书签名/公证。
+
+### 2026-06-18（续13）— Material3 真·重构（类层，非仅 token）
+
+回应「只改了 token、没真重构成 M3」。改 .boule-* 类定义本身（全站共用，一处改全站生效）：
+- `--boule-disp` 从 Arial Black 改干净无衬线 → 所有 font-[var(--boule-disp)]/font-black 处去粗野化。
+- `.boule-eyebrow`：mono 大写 → M3 sans label（primary 色、不大写）。
+- `.boule-title`：78px Arial Black（line-height .92）→ M3 headline（sans 600，clamp 28-40px，line 1.15）。
+- `.boule-panel`：硬发丝边 → M3 elevated card（tonal surface + elevation-1，无硬边，12px 圆角）。
+- `.boule-btn`：mono 大写发丝边 → M3 药丸（full radius，sans 600，primary=filled/secondary=tonal/danger=error，state layer）。
+- `.boule-badge`：mono 大写 → M3 chip（圆角，tonal container 色）。
+- `.boule-list`/`.boule-list-row`：寄存器行（发丝线+左轨）→ M3 list（elevated 容器 + 圆角 item + state-layer hover + secondary-container 选中，去左轨）。
+- `.boule-input`：→ M3 outlined（圆角，聚焦 2px primary）。`.boule-data-row dt`：mono 大写 → sans label。
+- `Navigation`：终端导航 → M3 top app bar（sans logo + 药丸 nav，active=primary-container；去 mono/uppercase/k 码）。
+
+实拍 `docs/screenshots/macos-app-window.png`：暗色 M3 工作台——药丸导航/按钮、tonal 圆角卡片 + elevation、干净无衬线层级、FAB。
+剩余页面级精修（Methodology hero / ProjectDetail mode-cards 仍部分 brutalist 结构，但配色/圆角已随 token M3 化）。
