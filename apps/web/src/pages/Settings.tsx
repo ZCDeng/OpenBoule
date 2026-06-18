@@ -6,6 +6,7 @@ import { Badge, Button, DataRow, PageHeader, PageShell, Panel, PanelHeader, Sele
 import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
 import { toast } from "../stores/notification.ts";
+import { Dialog } from "../components/M3.tsx";
 
 const MODE_LABELS: Record<string, string> = { local: "本地", team: "团队" };
 
@@ -26,6 +27,7 @@ export function SettingsPage() {
   const [scope, setScope] = useState<"read" | "write">("read");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<ApiKeyRow | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const panelGroupRef = useRef<HTMLDivElement>(null);
 
@@ -106,7 +108,7 @@ export function SettingsPage() {
                       <div className="font-[var(--boule-disp)] text-xl font-black tracking-[-0.02em]">{key.name}</div>
                       <div className="mt-1 font-[var(--boule-mono)] text-[11px] uppercase tracking-[0.1em] text-[var(--boule-muted)]">{key.prefix} · {key.scope === "write" ? "读写" : "只读"} · {key.lastUsedAt ? `最近使用 ${new Date(key.lastUsedAt).toLocaleString()}` : "未使用"}</div>
                     </div>
-                    <Button variant="secondary" disabled={revoke.isPending} onClick={() => revoke.mutate(key.id)}>撤销</Button>
+                    <Button variant="secondary" disabled={revoke.isPending} onClick={() => setRevokeTarget(key)}>撤销</Button>
                   </div>
                 ))}
                 {keys.data?.keys.length === 0 && <div className="p-6 text-sm text-[var(--boule-muted)]">暂无 API Key。</div>}
@@ -115,6 +117,18 @@ export function SettingsPage() {
           </div>
         </Panel>
       </div>
+
+      <Dialog
+        open={!!revokeTarget}
+        title="撤销 API Key？"
+        onClose={() => setRevokeTarget(null)}
+        actions={<>
+          <Button variant="secondary" onClick={() => setRevokeTarget(null)}>取消</Button>
+          <Button variant="danger" disabled={revoke.isPending} onClick={() => { if (revokeTarget) revoke.mutate(revokeTarget.id); setRevokeTarget(null); }}>确认撤销</Button>
+        </>}
+      >
+        撤销「{revokeTarget?.name}」（{revokeTarget?.prefix}）后，使用该 Key 的 CLI / MCP / 脚本将立即失效，且不可恢复。
+      </Dialog>
     </PageShell>
     </div>
   );

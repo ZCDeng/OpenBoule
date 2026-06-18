@@ -13,6 +13,7 @@ import { SharePanel } from "../views/ReportShare/SharePanel.tsx";
 import type { Decision } from "../components/CheckpointCard.tsx";
 import { InteractiveTrackPicker } from "../components/InteractiveTrackPicker.tsx";
 import { ErrorBanner } from "../components/States.tsx";
+import { SegmentedTabs } from "../components/M3.tsx";
 import { ApiError } from "../lib/api.ts";
 import { Badge, PageHeader, PageShell, Panel } from "../components/Brutalist.tsx";
 import { phaseLabel, statusLabel } from "../lib/labels.ts";
@@ -66,9 +67,9 @@ export function WorkflowPage() {
   const wf = status.data;
   const canDecide = wf?.myRole === "editor" || wf?.myRole === "owner";
   const offline = connection === "reconnecting";
-  const tabs = [
-    ["timeline", "时间线"], ["monitor", "AI 监控"], ["docs", "文档"], ["share", "分享"],
-  ] as const;
+  const tabs: { id: "timeline" | "monitor" | "docs" | "share"; label: string }[] = [
+    { id: "timeline", label: "时间线" }, { id: "monitor", label: "AI 监控" }, { id: "docs", label: "文档" }, { id: "share", label: "分享" },
+  ];
 
   return (
     <div ref={pageRef}>
@@ -77,8 +78,8 @@ export function WorkflowPage() {
         当前阶段：<b>{wf ? phaseLabel(wf.currentPhase) : "加载中"}</b>；状态：<b>{statusLabel(wf?.status)}</b>。所有任务事件、文档与分享入口在同一个控制台内切换。
       </PageHeader>
 
-      <div className="mt-6 boule-tabbar">
-        {tabs.map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`boule-tab ${tab === key ? "boule-tab--active" : ""}`}>{label}</button>)}
+      <div className="mt-6">
+        <SegmentedTabs tabs={tabs} value={tab} onChange={setTab} />
       </div>
       {decisionError && <div className="mt-6"><ErrorBanner severity={decisionError.severity} message={decisionError.msg} /></div>}
 

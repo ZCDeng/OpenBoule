@@ -423,3 +423,14 @@ migrate 在 pglite 跑通；server 启动 /health=ok；同源托管 SPA（/）�
 
 仍未做：GUI 窗口可视实跑（需显示器，无头环境看不了）+ Apple 证书签名/公证（未签名 app 首次需右键打开）。
 余下为 UI 深化：M3 组件变体、新建项目向导、ErrorBanner 全量收敛 toast。
+
+### 2026-06-18（续10）— P3 Material3 组件变体（Chip / Dialog / SegmentedTabs / FAB）
+
+`components/M3.tsx`：M3 组件变体，走 --md-* token、明暗自动跟随。CSS 入 index.css。
+- **Chip**：已接入 ProjectReferencesPanel 解析状态（parsed→success / partial→warning / failed→error tone）。
+- **Dialog + scrim**：已接入 Settings API Key「撤销」二次确认（ESC/点遮罩关、危险操作前拦一道）。
+- **SegmentedTabs**：已替换 Workflow 页四标签（时间线/AI监控/文档/分享）的 boule-tabbar，M3 下划线指示条。
+  （注意：重命名为 .boule-seg-tab* 避开与既有控制台 .boule-tab 冲突。）
+- **FAB**：styled 组件已就绪（primary-container + elevation），待放置。
+
+build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、NavigationRail、ErrorBanner 全量收敛 toast。

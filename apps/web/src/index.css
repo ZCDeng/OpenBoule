@@ -469,3 +469,65 @@ button, input, select, textarea { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .boule-snackbar { animation: none; }
 }
+
+/* ── Material3 组件变体（Chip / FAB / Dialog / Tabs）。走 --md-* token，明暗自动跟随。 ── */
+.boule-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: var(--md-shape-sm);
+  border: 1px solid var(--md-outline-variant); background: transparent;
+  color: var(--md-on-surface-variant);
+  font-size: 12px; line-height: 1.4; white-space: nowrap;
+}
+.boule-chip--clickable { cursor: pointer; transition: background var(--md-dur-short) var(--md-ease-standard); }
+.boule-chip--clickable:hover { background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+.boule-chip--selected { background: var(--md-secondary-container); color: var(--md-on-secondary-container); border-color: transparent; }
+.boule-chip--primary { background: var(--md-primary-container); color: var(--md-on-primary-container); border-color: transparent; }
+.boule-chip--success { color: var(--status-done); border-color: color-mix(in srgb, var(--status-done) 50%, transparent); }
+.boule-chip--warning { color: var(--status-attention); border-color: color-mix(in srgb, var(--status-attention) 50%, transparent); }
+.boule-chip--error { color: var(--status-failed); border-color: color-mix(in srgb, var(--status-failed) 50%, transparent); }
+
+.boule-fab {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 20px; border: none; cursor: pointer;
+  border-radius: var(--md-shape-lg);
+  background: var(--md-primary-container); color: var(--md-on-primary-container);
+  box-shadow: var(--md-elevation-3);
+  font-size: 15px; font-weight: 600;
+  transition: box-shadow var(--md-dur-short) var(--md-ease-standard), filter var(--md-dur-short) var(--md-ease-standard);
+}
+.boule-fab:hover { filter: brightness(0.97); box-shadow: var(--md-elevation-2); }
+.boule-fab:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+.boule-fab__icon { font-size: 20px; line-height: 1; }
+
+.boule-scrim {
+  position: fixed; inset: 0; z-index: 1100;
+  background: rgba(0, 0, 0, .42);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: boule-scrim-in var(--md-dur-short) var(--md-ease-standard);
+}
+@keyframes boule-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+.boule-dialog {
+  width: min(92vw, 460px);
+  background: var(--md-surface); color: var(--md-on-surface);
+  border-radius: var(--md-shape-xl); box-shadow: var(--md-elevation-3);
+  padding: 24px; display: flex; flex-direction: column; gap: 14px;
+  animation: boule-dialog-in var(--md-dur-medium) var(--md-ease-emphasized);
+}
+@keyframes boule-dialog-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+.boule-dialog__title { font-family: var(--boule-disp); font-size: 22px; font-weight: 700; }
+.boule-dialog__body { color: var(--md-on-surface-variant); font-size: 14px; line-height: 1.6; }
+.boule-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.boule-seg-tabs { display: inline-flex; gap: 4px; border-bottom: 1px solid var(--md-outline-variant); }
+.boule-seg-tab {
+  background: transparent; border: none; cursor: pointer;
+  padding: 12px 16px; color: var(--md-on-surface-variant);
+  font-size: 14px; font-weight: 500;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color var(--md-dur-short) var(--md-ease-standard), border-color var(--md-dur-short) var(--md-ease-standard);
+}
+.boule-seg-tab:hover { color: var(--md-on-surface); }
+.boule-seg-tab--active { color: var(--md-primary); border-bottom-color: var(--md-primary); }
+@media (prefers-reduced-motion: reduce) {
+  .boule-scrim, .boule-dialog { animation: none; }
+}

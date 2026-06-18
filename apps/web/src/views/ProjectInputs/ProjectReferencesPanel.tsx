@@ -5,6 +5,7 @@ import { ErrorBanner, Skeleton } from "../../components/States.tsx";
 import { Badge, Button } from "../../components/Brutalist.tsx";
 import { humanBytes } from "../../lib/labels.ts";
 import { toast } from "../../stores/notification.ts";
+import { Chip } from "../../components/M3.tsx";
 
 export interface ProjectReference { id: string; filename: string; mimeType: string; sizeBytes: number; parseStatus: "parsed" | "failed" | "partial"; parseSource: "local-js" | "anthropic" | null; parseError: string | null; createdAt: string; }
 
@@ -27,7 +28,7 @@ export function ProjectReferencesPanel({ projectId, selectedIds, onSelectedIdsCh
       </div>
       {refs.isLoading ? <Skeleton rows={3} /> : refs.isError ? <ErrorBanner severity="P1" message="加载材料失败" onRetry={() => void refs.refetch()} /> : references.length === 0 ? <div className="border-2 border-dashed border-[var(--app-fg)] px-4 py-6 font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)]">暂无材料。可先上传客户简报、访谈纪要、行业材料或数据摘录。</div> : (
         <div className="border-2 border-[var(--app-fg)] shadow-[5px_5px_0_var(--app-fg)]">
-          {references.map((ref) => <div key={ref.id} className="flex items-center gap-3 border-t-2 border-[var(--app-fg)] px-3 py-3 first:border-t-0"><input type="checkbox" checked={selected.has(ref.id)} onChange={() => toggle(ref.id)} className="h-4 w-4 accent-[var(--boule-blue)]" /><div className="min-w-0 flex-1"><div className="truncate font-[var(--boule-disp)] text-lg font-black tracking-[-0.02em]">{ref.filename}</div><div className="mt-1 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--boule-muted)]">{friendlyType(ref.mimeType, ref.filename)} · {humanBytes(ref.sizeBytes)} · {statusLabel(ref.parseStatus, ref.parseSource)}{ref.parseError ? ` · ${parseErrorLabel(ref.parseError)}` : ""}</div></div><Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(ref.id)}>删除</Button></div>)}
+          {references.map((ref) => <div key={ref.id} className="flex items-center gap-3 border-t-2 border-[var(--app-fg)] px-3 py-3 first:border-t-0"><input type="checkbox" checked={selected.has(ref.id)} onChange={() => toggle(ref.id)} className="h-4 w-4 accent-[var(--boule-blue)]" /><div className="min-w-0 flex-1"><div className="truncate font-[var(--boule-disp)] text-lg font-black tracking-[-0.02em]">{ref.filename}</div><div className="mt-1 flex flex-wrap items-center gap-2 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--boule-muted)]"><span>{friendlyType(ref.mimeType, ref.filename)} · {humanBytes(ref.sizeBytes)}</span><Chip label={statusLabel(ref.parseStatus, ref.parseSource)} tone={ref.parseStatus === "parsed" ? "success" : ref.parseStatus === "partial" ? "warning" : "error"} />{ref.parseError ? <span className="text-[var(--status-failed)]">{parseErrorLabel(ref.parseError)}</span> : null}</div></div><Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(ref.id)}>删除</Button></div>)}
         </div>
       )}
       <Badge tone="dark">本次启动将存档 {selectedIds.length} 个材料</Badge>
