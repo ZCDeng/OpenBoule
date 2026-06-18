@@ -5,8 +5,10 @@ import tailwindcss from "@tailwindcss/vite";
 // 前端 dev 把 /api、/s、/health 代理到 Fastify（U6），避免跨域 + cookie 同源。
 // 目标端口走 VITE_API_PORT，默认 3000（本地 3000 被占时可覆盖，如 Flowise 占用）。
 const apiTarget = `http://localhost:${process.env.VITE_API_PORT ?? "3000"}`;
+// base：GitHub Pages 部署在 /OpenBoule/ 子路径；桌面 app（Electron 同源根路径）需 "/"。
+// 由 VITE_BASE 覆盖——desktop 的 build:web 传 VITE_BASE=/。
 export default defineConfig({
-  base: "/OpenBoule/",
+  base: process.env.VITE_BASE ?? "/OpenBoule/",
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

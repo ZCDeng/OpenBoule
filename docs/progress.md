@@ -434,3 +434,20 @@ migrate 在 pglite 跑通；server 启动 /health=ok；同源托管 SPA（/）�
 - **FAB**：styled 组件已就绪（primary-container + elevation），待放置。
 
 build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、NavigationRail、ErrorBanner 全量收敛 toast。
+
+### 2026-06-18（续11）— 🖥️ GUI 实跑验证 + 修白屏（base 路径）+ 桌面免登录
+
+实际启动打包后的 .app 并截图验证窗口渲染（本机有显示器，`screencapture` 抓图）。
+- **首次白屏根因**：web 的 Vite `base: "/OpenBoule/"`（为 GitHub Pages 子路径），打包 app 同源根路径下
+  `/OpenBoule/assets/*.js` 404 → 命中 SPA fallback 回 index.html（text/html）→ 模块 MIME 报错 → React 不挂载。
+  修：`base` 改 `process.env.VITE_BASE ?? "/OpenBoule/"`，desktop 的 build:web 传 `VITE_BASE=/`。
+- **桌面免登录**：`/` 是公开营销 Landing；桌面应直入工作台。main.js loadURL 改 `/projects`；
+  auth store `isAuthed()` 在 `window.boule.isDesktop`（preload 暴露）时返 true（后端 local 模式自动注入用户，
+  前端无需 token）。
+- main.js 加 did-fail-load / render-process-gone 转 stdout 便于排查。
+- flatten:api 先 `rm -rf` 目标（pnpm deploy 要求空目录）。
+
+**验证**：重打包后启动 .app → 窗口渲染完整工作台 UI（顶栏 + 大字标题 + 电光蓝 M3 accent + 卡片），无加载失败。
+截图存 `docs/screenshots/macos-app-window.png`。**= GUI 实跑确认渲染（此前 hook 标记的未验证项已解决）。**
+
+仅剩：Apple 证书签名/公证（需你的证书）；UI 增量精修（NavigationRail、向导、FAB 落位、ErrorBanner 全量收敛）。

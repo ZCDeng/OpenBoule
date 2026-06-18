@@ -143,7 +143,11 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  win.loadURL(`http://127.0.0.1:${apiPort}/`);
+  // 加载失败 / 渲染进程崩溃转到 stdout（便于排查）。
+  win.webContents.on("did-fail-load", (_e, code, desc, url) => console.log(`[did-fail-load] ${code} ${desc} ${url}`));
+  win.webContents.on("render-process-gone", (_e, d) => console.log(`[render-gone] ${d.reason}`));
+  // 桌面 app 直接进工作台（/projects），跳过公开营销落地页（本地免登录，前端 isDesktop 视为已认证）。
+  win.loadURL(`http://127.0.0.1:${apiPort}/projects`);
   // 外链走系统浏览器，不在 app 内开新窗。
   win.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
