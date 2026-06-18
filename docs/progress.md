@@ -372,3 +372,16 @@ elevation（替原零阴影，elevation-1）、motion（standard easing + durati
 
 **剩余**：P4 其余 4 类交互（新建项目向导 / 输入输出物管理 / 格式转换导出 / 配置预设）+ 把散落 ErrorBanner 收敛到 toast；
 P3 M3 组件变体；P2 打包（api 编 JS + electron-builder + 签名）。GUI 实跑 + .dmg 签名需桌面环境/Apple 证书，无头环境无法验证。
+
+### 2026-06-18（续6）— P2 打包前置：api 编译成可运行 JS（done + 实测）
+
+`apps/api/scripts/build.mjs`（esbuild）：只 bundle src/*.ts（解析 .ts 扩展名 import），npm 依赖标 external
+（packages: external）——pglite/pdfjs/liteparse 等 WASM/原生包不进 bundle，运行时从随包 node_modules 加载，
+绕开 WASM 打包难题。迁移 SQL 复制到 dist/db/migrations。产物 dist/server.js(197KB) + dist/db/migrate.js。
+- 实测：`node dist/db/migrate.js` 迁移 pglite OK；`node dist/server.js` 在 local-app 模式启动、/health=ok、
+  托管 SPA、优雅关停——**全在 plain Node（target node20，Electron 兼容）跑通**。
+- `apps/api` 加 `build` 脚本；`apps/desktop` 加 `dist`=build:web+build:api+electron-builder，extraResources 增 api/node_modules。
+- README 记 Mac 侧打包步骤（关键：pnpm 符号链接 node_modules 要先 `pnpm deploy` 扁平化）+ 签名说明。
+
+**仍需在 Mac 上做（无头环境物理做不了）**：`pnpm --filter @boule/desktop dist` 实跑 electron-builder 出 .dmg
+（含 pnpm node_modules 扁平化）+ GUI 实跑验证 + Apple 证书签名/公证。

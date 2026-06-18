@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=../../.env src/server.ts",
     "dev": "node --watch --env-file-if-exists=../../.env src/server.ts",
+    "build": "node scripts/build.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=../../.env src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
@@ -37,6 +38,7 @@
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.0",
     "@types/yauzl": "^2.10.3",
-    "drizzle-kit": "^0.30.0"
+    "drizzle-kit": "^0.30.0",
+    "esbuild": "^0.28.1"
   }
 }

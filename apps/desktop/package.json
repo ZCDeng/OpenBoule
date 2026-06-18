@@ -7,19 +7,23 @@
   "scripts": {
     "dev": "electron .",
     "build:web": "pnpm --filter @boule/web build",
-    "dist": "echo 'TODO: electron-builder 出 .dmg（需先 build:web + 编译 api 到 JS，见 main.js 顶部说明）' && exit 1"
+    "build:api": "pnpm --filter @boule/api build",
+    "prebundle": "pnpm run build:web && pnpm run build:api",
+    "dist": "pnpm run prebundle && electron-builder"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "ai.openconsult.boule",
     "productName": "Boule",
     "directories": { "output": "release" },
-    "files": ["main.js", "preload.js", "lib/**"],
+    "files": ["main.js", "preload.js"],
     "extraResources": [
       { "from": "../web/dist", "to": "web" },
-      { "from": "../api/dist", "to": "api" }
+      { "from": "../api/dist", "to": "api" },
+      { "from": "../api/node_modules", "to": "api/node_modules" }
     ],
     "mac": { "category": "public.app-category.productivity", "target": ["dmg"] }
   }
