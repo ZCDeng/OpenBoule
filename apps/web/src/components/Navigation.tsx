@@ -4,6 +4,7 @@ import { useAuth } from "../stores/auth.ts";
 import { useTheme, type ThemePref } from "../stores/theme.ts";
 import { Badge } from "./Brutalist.tsx";
 import { MessageCenterButton } from "./MessageCenter.tsx";
+import { Icon } from "./Icon.tsx";
 
 const NAV = [
   { to: "/projects", label: "项目" },
@@ -11,10 +12,10 @@ const NAV = [
   { to: "/settings", label: "配置" },
 ];
 
-const THEME_META: Record<ThemePref, { glyph: string; label: string }> = {
-  system: { glyph: "◐", label: "跟随系统" },
-  light: { glyph: "○", label: "亮色" },
-  dark: { glyph: "●", label: "暗色" },
+const THEME_META: Record<ThemePref, { icon: string; label: string }> = {
+  system: { icon: "brightness_auto", label: "跟随系统" },
+  light: { icon: "light_mode", label: "亮色" },
+  dark: { icon: "dark_mode", label: "暗色" },
 };
 
 function ThemeToggle() {
@@ -29,7 +30,7 @@ function ThemeToggle() {
       aria-label={`主题：${meta.label}，点击切换`}
       className="flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)]"
     >
-      <span aria-hidden className="text-[14px] leading-none text-[var(--md-primary)]">{meta.glyph}</span>
+      <Icon name={meta.icon} size={18} className="text-[var(--md-primary)]" />
       <span className="hidden lg:inline">{meta.label}</span>
     </button>
   );
@@ -69,9 +70,9 @@ export function Navigation() {
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((v) => !v)}
-            className="rounded-full px-3 py-2 text-[15px] text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)] md:hidden"
+            className="flex items-center rounded-full px-3 py-2 text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)] md:hidden"
           >
-            {open ? "✕" : "≡"}
+            <Icon name={open ? "close" : "menu"} size={22} />
           </button>
         </div>
       </div>

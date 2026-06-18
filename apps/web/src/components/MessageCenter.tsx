@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useNotifications, type ToastKind } from "../stores/notification.ts";
 import { relativeTime } from "../lib/time.ts";
+import { Icon } from "./Icon.tsx";
 
 const DOT: Record<ToastKind, string> = {
   info: "var(--status-running)",
@@ -28,9 +29,9 @@ export function MessageCenterButton() {
         type="button"
         aria-label={`消息中心${unread > 0 ? `（${unread} 条未读）` : ""}`}
         onClick={() => { setOpen(true); }}
-        className="relative rounded-full px-3 py-2 text-[15px] text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)]"
+        className="relative flex items-center rounded-full px-3 py-2 text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)]"
       >
-        <span aria-hidden>🔔</span>
+        <Icon name="notifications" size={20} />
         {unread > 0 && (
           <span
             className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold"
@@ -54,7 +55,7 @@ export function MessageCenterButton() {
               <div className="flex items-center gap-2">
                 <button type="button" className="rounded-full px-3 py-1.5 text-[13px] font-medium text-[var(--md-on-surface-variant)] hover:bg-[var(--row-hover-bg)]" onClick={() => markAllRead()}>全部已读</button>
                 <button type="button" className="rounded-full px-3 py-1.5 text-[13px] font-medium text-[var(--md-on-surface-variant)] hover:bg-[var(--row-hover-bg)]" onClick={() => clearMessages()}>清空</button>
-                <button type="button" aria-label="关闭" className="rounded-full px-2.5 py-1.5 text-[13px] text-[var(--md-on-surface-variant)] hover:bg-[var(--row-hover-bg)]" onClick={() => setOpen(false)}>✕</button>
+                <button type="button" aria-label="关闭" className="flex items-center rounded-full p-2 text-[var(--md-on-surface-variant)] hover:bg-[var(--row-hover-bg)]" onClick={() => setOpen(false)}><Icon name="close" size={18} /></button>
               </div>
             </header>
             <div className="flex-1 overflow-auto px-3 py-3">

@@ -3,6 +3,7 @@
  * 走 index.css 的 --md-* token；明暗自动跟随。供工作台逐步替换 brutalist 原语。
  */
 import { useEffect, type ReactNode } from "react";
+import { Icon } from "./Icon.tsx";
 
 /** M3 Chip（assist/filter）。selected 走 secondary-container 填充。 */
 export function Chip({ label, selected, tone, onClick }: { label: ReactNode; selected?: boolean; tone?: "neutral" | "primary" | "success" | "warning" | "error"; onClick?: () => void }) {
@@ -17,11 +18,11 @@ export function Chip({ label, selected, tone, onClick }: { label: ReactNode; sel
   );
 }
 
-/** M3 FAB（floating action button）。primary 容器 + elevation。 */
-export function Fab({ label, icon = "＋", onClick, disabled }: { label: string; icon?: string; onClick?: () => void; disabled?: boolean }) {
+/** M3 FAB（floating action button，extended）。primary 容器 + elevation + Material Symbols 图标。 */
+export function Fab({ label, icon = "add", onClick, disabled }: { label: string; icon?: string; onClick?: () => void; disabled?: boolean }) {
   return (
     <button type="button" className="boule-fab" onClick={onClick} disabled={disabled} aria-label={label}>
-      <span className="boule-fab__icon" aria-hidden>{icon}</span>
+      <Icon name={icon} size={22} className="boule-fab__icon" />
       <span className="boule-fab__label">{label}</span>
     </button>
   );

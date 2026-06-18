@@ -5,6 +5,7 @@
  */
 
 import { useNotifications, type ToastKind } from "../stores/notification.ts";
+import { Icon } from "./Icon.tsx";
 
 const RAIL: Record<ToastKind, string> = {
   info: "var(--status-running)",
@@ -39,7 +40,7 @@ export function SnackbarContainer() {
             </button>
           ) : null}
           <button type="button" className="boule-snackbar__close" aria-label="关闭" onClick={() => dismiss(t.id)}>
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
       ))}

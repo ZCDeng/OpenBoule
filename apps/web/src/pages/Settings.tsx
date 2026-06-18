@@ -7,6 +7,7 @@ import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
 import { toast } from "../stores/notification.ts";
 import { Dialog } from "../components/M3.tsx";
+import { Icon } from "../components/Icon.tsx";
 
 const MODE_LABELS: Record<string, string> = { local: "本地", team: "团队" };
 
@@ -119,7 +120,7 @@ export function SettingsPage() {
               </SelectInput>
               <Button disabled={createKey.isPending || name.trim() === ""} onClick={() => createKey.mutate()}>创建 Key</Button>
             </div>
-            {createdKey && <div className="rounded-[var(--md-shape-md)] p-4" style={{ background: "var(--md-primary-container)", color: "var(--md-on-primary-container)" }}><div className="text-[13px] font-semibold">🔑 明文仅显示一次，请立即复制保存</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="primary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
+            {createdKey && <div className="rounded-[var(--md-shape-md)] p-4" style={{ background: "var(--md-primary-container)", color: "var(--md-on-primary-container)" }}><div className="flex items-center gap-1.5 text-[13px] font-semibold"><Icon name="vpn_key" size={16} />明文仅显示一次，请立即复制保存</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="primary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
             {keys.isLoading ? <Skeleton rows={3} /> : keys.isError ? <ErrorBanner severity="P1" message="加载 API Keys 失败" onRetry={() => void keys.refetch()} /> : (
               <div className="boule-list shadow-none">
                 {(keys.data?.keys ?? []).map((key) => (

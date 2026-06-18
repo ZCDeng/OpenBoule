@@ -138,16 +138,17 @@ h1, h2, h3 {
   --md-on-primary-container: #e2e0ff;
   --md-secondary-container: #2a2a39;
   --md-on-secondary-container: #e4e1ec;
-  --md-surface: #181b21;                     /* 面板/行底 */
-  --md-surface-container-low: #131519;
-  --md-surface-container: #1a1d23;
-  --md-surface-container-high: #20242c;      /* hover 提升 */
-  --md-surface-container-highest: #262a33;
-  --md-background: #0d0e11;                  /* 页面画布 */
-  --md-on-surface: #e7e5dd;
-  --md-on-surface-variant: #c8c6bb;
-  --md-outline: #928f85;
-  --md-outline-variant: rgba(231, 229, 221, .14);
+  /* M3 dark surface ramp：画布最暗，容器逐级抬亮（带极淡 primary tint），卡片明显浮起。 */
+  --md-surface: #17171e;                     /* 输入/对话框底 */
+  --md-surface-container-low: #1b1b23;       /* 卡片/面板底（比画布明显亮） */
+  --md-surface-container: #20202a;
+  --md-surface-container-high: #2a2a35;      /* hover 提升 */
+  --md-surface-container-highest: #353541;
+  --md-background: #0e0e13;                  /* 页面画布（最暗） */
+  --md-on-surface: #e6e1e9;
+  --md-on-surface-variant: #c9c5d0;
+  --md-outline: #948f9e;
+  --md-outline-variant: rgba(230, 225, 233, .16);
   --md-error: #ffb4ab;
   --md-inverse-surface: #1b1f26;             /* 深色强调块在暗色下提升为表面 */
   --md-on-inverse-surface: #e7e5dd;
@@ -167,7 +168,25 @@ h1, h2, h3 {
   --boule-red: #f0584f;
 }
 
-body { background: var(--boule-paper); color: var(--app-fg); transition: background .2s ease, color .2s ease; }
+/* Material Symbols（M3 图标）：统一字号轴 + 不换行。Google Fonts 提供字体本体。 */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  white-space: nowrap;
+  direction: ltr;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+/* M3 页面背景：surface 底 + 顶部极淡 primary surface-tint 光晕（增加层次，不喧宾夺主）。 */
+body {
+  color: var(--app-fg);
+  background:
+    radial-gradient(1100px 560px at 50% -12%, color-mix(in srgb, var(--md-primary) 7%, transparent), transparent 70%),
+    var(--boule-paper);
+  background-attachment: fixed;
+  transition: color .2s ease;
+}
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 ::selection { background: var(--boule-blue); color: #fff; }
@@ -189,7 +208,7 @@ button, input, select, textarea { font: inherit; }
 .boule-grid--3 { grid-template-columns: 1fr; }
 /* ── 共享组件：Material3 形态（elevated card / pill button / chip / list item；走 --md-* token）── */
 /* M3 elevated card：tonal surface + elevation-1，无硬边。 */
-.boule-panel { border: 1px solid transparent; border-radius: var(--md-shape-md); background: var(--md-surface-container-low); box-shadow: var(--md-elevation-1); overflow: hidden; }
+.boule-panel { border: 1px solid var(--md-outline-variant); border-radius: var(--md-shape-md); background: var(--md-surface-container-low); box-shadow: var(--md-elevation-1); overflow: hidden; }
 .boule-panel--dark { background: var(--md-inverse-surface); color: var(--md-on-inverse-surface); box-shadow: var(--md-elevation-2); }
 .boule-panel-head { border-bottom: 1px solid var(--md-outline-variant); padding: 16px 20px; }
 .boule-panel--dark .boule-panel-head { border-color: rgba(255,255,255,.12); }
@@ -235,7 +254,7 @@ button, input, select, textarea { font: inherit; }
 .boule-data-row dt { font-family: var(--font-sans); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--md-on-surface-variant); }
 .boule-data-row dd { min-width: 0; overflow-wrap: anywhere; }
 /* M3 list：elevated 容器 + list item（去左轨/发丝线，hover/选中走 state layer + 圆角）。 */
-.boule-list { border: 1px solid transparent; border-radius: var(--md-shape-md); box-shadow: var(--md-elevation-1); overflow: hidden; background: var(--md-surface-container-low); padding: 6px; }
+.boule-list { border: 1px solid var(--md-outline-variant); border-radius: var(--md-shape-md); box-shadow: var(--md-elevation-1); overflow: hidden; background: var(--md-surface-container-low); padding: 6px; }
 .boule-list-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 0; border-radius: var(--md-shape-sm); padding: 12px 14px; background: transparent; transition: background var(--md-dur-short) var(--md-ease-standard); }
 .boule-list-row:hover { background: var(--row-hover-bg); }
 .boule-list-row[aria-current="true"], .boule-list-row--selected { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
