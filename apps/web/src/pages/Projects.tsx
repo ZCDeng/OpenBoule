@@ -12,6 +12,7 @@ import { relativeTime } from "../lib/time.ts";
 import { phaseLabel, statusLabel } from "../lib/labels.ts";
 import { Fab } from "../components/M3.tsx";
 import { NewProjectWizard } from "../components/NewProjectWizard.tsx";
+import { Icon } from "../components/Icon.tsx";
 
 interface Project {
   id: string;
@@ -83,9 +84,9 @@ export function ProjectsPage() {
         {data && projects.length > 0 && filtered.length === 0 && <EmptyState title="没有匹配项目" hint="换个关键词，或创建一条新的咨询生产线。" />}
         {filtered.length > 0 && (
           <div ref={listRef} className="boule-list project-list">
-            {filtered.map((p, i) => (
+            {filtered.map((p) => (
               <Link key={p.id} to={`/projects/${p.id}`} className="boule-list-row" aria-label={`打开项目 ${p.name}`}>
-                <span className="w-8 shrink-0 font-[var(--boule-mono)] text-[11px] tracking-[0.04em] text-[var(--boule-muted)]">N{String(i + 1).padStart(2, "0")}</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--md-secondary-container)", color: "var(--md-on-secondary-container)" }}><Icon name="folder_open" size={20} /></span>
                 <span className={`boule-dot boule-dot--${projectStatusTone(p.status)}`} aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-semibold">{p.name}</div>

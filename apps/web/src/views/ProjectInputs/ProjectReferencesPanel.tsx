@@ -6,6 +6,18 @@ import { Badge, Button } from "../../components/Brutalist.tsx";
 import { humanBytes } from "../../lib/labels.ts";
 import { toast } from "../../stores/notification.ts";
 import { Chip } from "../../components/M3.tsx";
+import { Icon } from "../../components/Icon.tsx";
+
+/** mime/扩展名 → Material Symbols 文件图标。 */
+function fileIcon(mime: string, filename: string): string {
+  if (mime === "application/pdf" || /\.pdf$/i.test(filename)) return "picture_as_pdf";
+  if (mime === "application/json" || /\.json$/i.test(filename)) return "data_object";
+  if (mime.includes("spreadsheet") || /\.(csv|xlsx)$/i.test(filename)) return "table";
+  if (mime.includes("presentation") || /\.pptx$/i.test(filename)) return "slideshow";
+  if (mime.includes("word") || /\.docx$/i.test(filename)) return "description";
+  if (mime.startsWith("text/") || /\.(md|txt|ya?ml)$/i.test(filename)) return "article";
+  return "draft";
+}
 
 export interface ProjectReference { id: string; filename: string; mimeType: string; sizeBytes: number; parseStatus: "parsed" | "failed" | "partial"; parseSource: "local-js" | "anthropic" | null; parseError: string | null; createdAt: string; }
 
@@ -28,7 +40,7 @@ export function ProjectReferencesPanel({ projectId, selectedIds, onSelectedIdsCh
       </div>
       {refs.isLoading ? <Skeleton rows={3} /> : refs.isError ? <ErrorBanner severity="P1" message="加载材料失败" onRetry={() => void refs.refetch()} /> : references.length === 0 ? <div className="px-4 py-8 text-center text-sm text-[var(--md-on-surface-variant)]" style={{ border: "1px dashed var(--md-outline-variant)", borderRadius: "var(--md-shape-md)" }}>暂无材料。可先上传客户简报、访谈纪要、行业材料或数据摘录。</div> : (
         <div className="boule-list">
-          {references.map((ref) => <div key={ref.id} className="boule-list-row"><input type="checkbox" checked={selected.has(ref.id)} onChange={() => toggle(ref.id)} className="h-4 w-4 accent-[var(--md-primary)]" /><div className="min-w-0 flex-1"><div className="truncate font-[var(--boule-disp)] text-[15px] font-semibold tracking-[-0.005em]">{ref.filename}</div><div className="mt-1 flex flex-wrap items-center gap-2 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--boule-muted)]"><span>{friendlyType(ref.mimeType, ref.filename)} · {humanBytes(ref.sizeBytes)}</span><Chip label={statusLabel(ref.parseStatus, ref.parseSource)} tone={ref.parseStatus === "parsed" ? "success" : ref.parseStatus === "partial" ? "warning" : "error"} />{ref.parseError ? <span className="text-[var(--status-failed)]">{parseErrorLabel(ref.parseError)}</span> : null}</div></div><Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(ref.id)}>删除</Button></div>)}
+          {references.map((ref) => <div key={ref.id} className="boule-list-row"><input type="checkbox" checked={selected.has(ref.id)} onChange={() => toggle(ref.id)} className="h-4 w-4 accent-[var(--md-primary)]" /><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--md-surface-container-high)", color: "var(--md-on-surface-variant)" }}><Icon name={fileIcon(ref.mimeType, ref.filename)} size={20} /></span><div className="min-w-0 flex-1"><div className="truncate font-[var(--boule-disp)] text-[15px] font-semibold tracking-[-0.005em]">{ref.filename}</div><div className="mt-1 flex flex-wrap items-center gap-2 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--boule-muted)]"><span>{friendlyType(ref.mimeType, ref.filename)} · {humanBytes(ref.sizeBytes)}</span><Chip label={statusLabel(ref.parseStatus, ref.parseSource)} tone={ref.parseStatus === "parsed" ? "success" : ref.parseStatus === "partial" ? "warning" : "error"} />{ref.parseError ? <span className="text-[var(--status-failed)]">{parseErrorLabel(ref.parseError)}</span> : null}</div></div><Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(ref.id)}>删除</Button></div>)}
         </div>
       )}
       <Badge tone="dark">本次启动将存档 {selectedIds.length} 个材料</Badge>

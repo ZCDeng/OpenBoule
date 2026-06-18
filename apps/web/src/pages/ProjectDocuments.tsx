@@ -12,6 +12,7 @@ import { ExportBar } from "../views/DocumentWorkspace/ExportBar.tsx";
 import { markdownToHtml } from "../lib/export.ts";
 import { phaseLabel, statusLabel } from "../lib/labels.ts";
 import { relativeTime } from "../lib/time.ts";
+import { Icon } from "../components/Icon.tsx";
 
 interface ProjectWorkflow { id: string; currentPhase: string; status: string; mode: string | null; updatedAt: string; createdAt: string; }
 interface Artifact { id: string; phase: string; type: string; version: number; status: string; body?: string; }
@@ -70,6 +71,7 @@ export function ProjectDocumentsPage() {
                       <div className="flex flex-col gap-0.5">
                         {artifacts.map((a) => (
                           <button key={a.id} type="button" onClick={() => setSelectedId(a.id)} className="boule-list-row w-full text-left" aria-current={selectedId === a.id}>
+                            <Icon name={a.type === "interactive" ? "widgets" : "description"} size={18} className="shrink-0 text-[var(--md-on-surface-variant)]" />
                             <span className="min-w-0 flex-1 truncate text-[14px]">{phaseLabel(a.phase)}{a.type === "interactive" ? " · 交互件" : ""}</span>
                             <span className="shrink-0 text-[11px] text-[var(--md-on-surface-variant)]">v{a.version}</span>
                           </button>

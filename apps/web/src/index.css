@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Material Symbols（M3 官方图标集）本地打包——离线可用，去 CDN 依赖。woff2 在 public/fonts/。 */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("/fonts/material-symbols-outlined.woff2") format("woff2");
+}
+
 /* 暗色 variant：手动切换走 [data-theme="dark"]（不直接用 prefers，跟随系统由 JS 写入 attribute）。
    tsx 里少数无法变量化的硬色可用 dark: 前缀，但主力策略是引用下方语义变量（KTD-1：一处改全站生效）。 */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
