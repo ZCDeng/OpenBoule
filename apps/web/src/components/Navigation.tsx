@@ -27,10 +27,9 @@ function ThemeToggle() {
       onClick={cycle}
       title={`主题：${meta.label}（点击切换）`}
       aria-label={`主题：${meta.label}，点击切换`}
-      className="flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)]"
+      className="flex items-center justify-center rounded-full p-2 text-[var(--md-on-surface-variant)] transition-colors hover:bg-[var(--row-hover-bg)]"
     >
-      <Icon name={meta.icon} size={18} className="text-[var(--md-primary)]" />
-      <span className="hidden lg:inline">{meta.label}</span>
+      <Icon name={meta.icon} size={20} className="text-[var(--md-primary)]" />
     </button>
   );
 }

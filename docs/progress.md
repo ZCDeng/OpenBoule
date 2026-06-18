@@ -519,3 +519,11 @@ build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、
 
 实拍 `docs/screenshots/macos-app-window.png`：logo 旁 Claude chip、无 Boule、方法论在右、rail=项目/文件管理/配置。
 App 图标见 `docs/screenshots/app-icon.png`。打包 .app 内置 icon.icns。
+
+### 2026-06-18（续17）— 字体（Roboto Flex 标题 / Roboto Serif 正文）+ 主题切换图标 pill
+
+1. 字体：本地打包 Roboto Flex（标题，83K latin）+ Roboto Serif（正文，144K latin）woff2 到 public/fonts/，
+   index.css @font-face。--font-sans=Roboto Flex(标题/UI)、--font-serif=Roboto Serif(正文)；body→serif、
+   h1-3→sans；--boule-disp=--font-sans、--boule-body=--font-serif。中文走 Source Han 回退。
+2. 主题切换：顶栏右侧改纯图标圆形 pill（去文字标签）。
+实拍 docs/screenshots/macos-app-window.png；fonts served 200，无加载失败。
