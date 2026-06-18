@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../stores/auth.ts";
 import { Skeleton, EmptyState, ErrorBanner } from "../components/States.tsx";
@@ -10,6 +10,8 @@ import { useStaggerIn } from "../hooks/useStaggerIn.ts";
 import { projectStatusTone } from "../lib/derive.ts";
 import { relativeTime } from "../lib/time.ts";
 import { phaseLabel, statusLabel } from "../lib/labels.ts";
+import { Fab } from "../components/M3.tsx";
+import { NewProjectWizard } from "../components/NewProjectWizard.tsx";
 
 interface Project {
   id: string;
@@ -23,17 +25,21 @@ interface Project {
 export function ProjectsPage() {
   const api = useAuth((s) => s.api);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
+  const [wizardOpen, setWizardOpen] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["projects"], queryFn: () => api.json<{ projects: Project[] }>("/api/projects") });
   const create = useMutation({
     mutationFn: (n: string) => api.json<{ projectId: string }>("/api/projects", { method: "POST", body: JSON.stringify({ name: n }) }),
-    onSuccess: (_res, n) => {
+    onSuccess: (res, n) => {
       setName("");
+      setWizardOpen(false);
       void qc.invalidateQueries({ queryKey: ["projects"] });
       toast.success(`项目「${n}」已创建，进入详情页上传材料、选择模式后启动。`, "新建项目");
+      if (res?.projectId) navigate(`/projects/${res.projectId}`);
     },
     onError: () => toast.error("创建项目失败，请重试。", "新建项目"),
   });
@@ -101,6 +107,11 @@ export function ProjectsPage() {
         </div>
       </Panel>
     </PageShell>
+
+      <div style={{ position: "fixed", right: 28, bottom: 28, zIndex: 50 }}>
+        <Fab label="新建项目" onClick={() => setWizardOpen(true)} />
+      </div>
+      <NewProjectWizard open={wizardOpen} onClose={() => setWizardOpen(false)} onCreate={(n) => create.mutate(n)} pending={create.isPending} />
     </div>
   );
 }

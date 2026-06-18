@@ -451,3 +451,15 @@ build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、
 截图存 `docs/screenshots/macos-app-window.png`。**= GUI 实跑确认渲染（此前 hook 标记的未验证项已解决）。**
 
 仅剩：Apple 证书签名/公证（需你的证书）；UI 增量精修（NavigationRail、向导、FAB 落位、ErrorBanner 全量收敛）。
+
+### 2026-06-18（续12）— 修工作台路由（HashRouter）+ 新建项目分步向导 + FAB 落位（GUI 实拍工作台）
+
+- **关键路由修复**：前端用 HashRouter（路由在 # 之后）。main.js 之前 loadURL `/projects`（无 hash）→ HashRouter
+  只读 hash → 落到 "/" Landing。改成 `/#/projects` → 正确进入工作台。（这才是之前截图总是 Landing 的真因；
+  base 修复解决白屏，hash 修复解决进错页。）
+- **新建项目分步向导**（components/NewProjectWizard.tsx）：M3 Dialog stepper 两步（命名 → 创建后三步引导 +
+  交付模式 Chip 预览），创建成功 toast + 跳转到项目详情。由 Projects 右下角 **M3 FAB** 唤起（FAB 落位、不再死代码）。
+- **实拍验证**：启动 .app → 截图 `docs/screenshots/macos-app-window.png` = 「项目控制台」工作台，暗色 Material3
+  （圆角卡片 + elevation + 电光蓝 primary）+ 右下「新建项目」FAB + 空态。**桌面 app 完整链路跑通并目视确认。**
+
+至此 .dmg→启动→零基础设施后端→SPA→工作台路由→M3 UI→FAB/向导 全链路验证。仅剩 Apple 证书签名/公证。
