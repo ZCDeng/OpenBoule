@@ -385,3 +385,13 @@ P3 M3 组件变体；P2 打包（api 编 JS + electron-builder + 签名）。GUI
 
 **仍需在 Mac 上做（无头环境物理做不了）**：`pnpm --filter @boule/desktop dist` 实跑 electron-builder 出 .dmg
 （含 pnpm node_modules 扁平化）+ GUI 实跑验证 + Apple 证书签名/公证。
+
+### 2026-06-18（续7）— P4 交互接入通知系统（输入物管理 + 配置管理）
+
+把 P4.5 通知系统接入更多交互面，统一替散落 ErrorBanner：
+- 输入物管理（ProjectReferencesPanel）：上传成功/失败、删除 → toast（前台 Snackbar / 后台原生通知）。
+- 配置管理（Settings）：API Key 创建/撤销成功失败 → toast。
+- （新建项目已在续5接入。）build 绿。
+
+至此 5 类交互里：通知系统 done；新建项目/输入物/配置 已接入通知反馈。剩余偏「新建结构」的：
+输出物管理深化、格式转换导出 UI、M3 组件变体、新建项目向导。

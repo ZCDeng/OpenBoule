@@ -5,6 +5,7 @@ import { ErrorBanner, Skeleton } from "../components/States.tsx";
 import { Badge, Button, DataRow, PageHeader, PageShell, Panel, PanelHeader, SelectInput, TextInput } from "../components/Brutalist.tsx";
 import { useFadeIn } from "../hooks/useFadeIn.ts";
 import { useStaggerIn } from "../hooks/useStaggerIn.ts";
+import { toast } from "../stores/notification.ts";
 
 const MODE_LABELS: Record<string, string> = { local: "本地", team: "团队" };
 
@@ -32,9 +33,10 @@ export function SettingsPage() {
   const keys = useQuery({ queryKey: ["api-keys"], queryFn: () => api.json<{ keys: ApiKeyRow[] }>("/api/api-keys") });
   const createKey = useMutation({
     mutationFn: () => api.json<{ id: string; prefix: string; apiKey: string }>("/api/api-keys", { method: "POST", body: JSON.stringify({ name, scope, projectIds: null }) }),
-    onSuccess: (res) => { setCreatedKey(res.apiKey); setName(""); void qc.invalidateQueries({ queryKey: ["api-keys"] }); },
+    onSuccess: (res) => { setCreatedKey(res.apiKey); setName(""); void qc.invalidateQueries({ queryKey: ["api-keys"] }); toast.success("API Key 已创建，明文仅显示一次，请立即复制保存。", "配置"); },
+    onError: () => toast.error("创建 API Key 失败。", "配置"),
   });
-  const revoke = useMutation({ mutationFn: (id: string) => api.json(`/api/api-keys/${id}`, { method: "DELETE" }), onSuccess: () => void qc.invalidateQueries({ queryKey: ["api-keys"] }) });
+  const revoke = useMutation({ mutationFn: (id: string) => api.json(`/api/api-keys/${id}`, { method: "DELETE" }), onSuccess: () => { void qc.invalidateQueries({ queryKey: ["api-keys"] }); toast.info("API Key 已撤销，不可恢复。", "配置"); }, onError: () => toast.error("撤销 API Key 失败。", "配置") });
   const data = runtime.data;
   useFadeIn(pageRef);
   useStaggerIn(panelGroupRef, ".boule-panel", { dependencies: [runtime.isLoading, keys.data?.keys.length ?? 0] });
@@ -95,9 +97,7 @@ export function SettingsPage() {
               </SelectInput>
               <Button disabled={createKey.isPending || name.trim() === ""} onClick={() => createKey.mutate()}>创建 Key</Button>
             </div>
-            {createKey.isError && <ErrorBanner severity="P1" message="创建 API Key 失败" />}
-            {revoke.isError && <ErrorBanner severity="P1" message="撤销 API Key 失败" />}
-            {createdKey && <div className="border-2 border-[var(--app-fg)] bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
+            {createdKey &&<div className="border-2 border-[var(--app-fg)] bg-[var(--boule-orange)] p-4 text-white"><div className="boule-eyebrow !text-white">明文仅显示一次</div><div className="mt-2 flex items-start gap-3"><code className="block flex-1 break-all font-[var(--boule-mono)] text-xs">{createdKey}</code><Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(createdKey); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? "已复制" : "复制"}</Button></div></div>}
             {keys.isLoading ? <Skeleton rows={3} /> : keys.isError ? <ErrorBanner severity="P1" message="加载 API Keys 失败" onRetry={() => void keys.refetch()} /> : (
               <div className="boule-list shadow-none">
                 {(keys.data?.keys ?? []).map((key) => (

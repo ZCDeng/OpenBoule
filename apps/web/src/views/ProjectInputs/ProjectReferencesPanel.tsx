@@ -4,6 +4,7 @@ import { useAuth } from "../../stores/auth.ts";
 import { ErrorBanner, Skeleton } from "../../components/States.tsx";
 import { Badge, Button } from "../../components/Brutalist.tsx";
 import { humanBytes } from "../../lib/labels.ts";
+import { toast } from "../../stores/notification.ts";
 
 export interface ProjectReference { id: string; filename: string; mimeType: string; sizeBytes: number; parseStatus: "parsed" | "failed" | "partial"; parseSource: "local-js" | "anthropic" | null; parseError: string | null; createdAt: string; }
 
@@ -12,8 +13,8 @@ export function ProjectReferencesPanel({ projectId, selectedIds, onSelectedIdsCh
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const refs = useQuery({ queryKey: ["project-references", projectId], queryFn: () => api.json<{ references: ProjectReference[] }>(`/api/projects/${projectId}/references`) });
-  const upload = useMutation({ mutationFn: async (file: File) => { const form = new FormData(); form.append("file", file); return api.json<{ reference: ProjectReference }>(`/api/projects/${projectId}/references`, { method: "POST", body: form }); }, onSuccess: (res) => { onSelectedIdsChange([...new Set([...selectedIds, res.reference.id])]); void qc.invalidateQueries({ queryKey: ["project-references", projectId] }); if (inputRef.current) inputRef.current.value = ""; } });
-  const remove = useMutation({ mutationFn: (referenceId: string) => api.request(`/api/projects/${projectId}/references/${referenceId}`, { method: "DELETE" }), onSuccess: (_, referenceId) => { onSelectedIdsChange(selectedIds.filter((id) => id !== referenceId)); void qc.invalidateQueries({ queryKey: ["project-references", projectId] }); } });
+  const upload = useMutation({ mutationFn: async (file: File) => { const form = new FormData(); form.append("file", file); return api.json<{ reference: ProjectReference }>(`/api/projects/${projectId}/references`, { method: "POST", body: form }); }, onSuccess: (res) => { onSelectedIdsChange([...new Set([...selectedIds, res.reference.id])]); void qc.invalidateQueries({ queryKey: ["project-references", projectId] }); if (inputRef.current) inputRef.current.value = ""; toast.success(`材料「${res.reference.filename}」已上传并存档勾选。`, "输入物"); }, onError: () => toast.error("上传材料失败，请确认格式、大小或解析状态。", "输入物") });
+  const remove = useMutation({ mutationFn: (referenceId: string) => api.request(`/api/projects/${projectId}/references/${referenceId}`, { method: "DELETE" }), onSuccess: (_, referenceId) => { onSelectedIdsChange(selectedIds.filter((id) => id !== referenceId)); void qc.invalidateQueries({ queryKey: ["project-references", projectId] }); toast.info("材料已删除。", "输入物"); }, onError: () => toast.error("删除材料失败。", "输入物") });
   const references = refs.data?.references ?? [];
   const selected = new Set(selectedIds);
   function toggle(id: string) { onSelectedIdsChange(selected.has(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]); }
@@ -24,8 +25,6 @@ export function ProjectReferencesPanel({ projectId, selectedIds, onSelectedIdsCh
         <div><h2 className="font-[var(--boule-disp)] text-3xl font-black tracking-[-0.04em]">项目材料</h2><p className="mt-2 text-sm text-[var(--text-2)]">上传客户参考/原始材料。启动任务时只存档勾选的材料。</p><p className="mt-1 text-xs text-[var(--boule-orange)]">扫描件或混合扫描文档会发送至 Anthropic/Claude 抽取文本；数字文档优先本地解析。</p></div>
         <label className="boule-btn boule-btn--secondary cursor-pointer">上传材料<input ref={inputRef} type="file" className="hidden" accept=".txt,.md,.csv,.json,.yaml,.yml,.pdf,.docx,.pptx,.xlsx,text/*,application/json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={upload.isPending} onChange={(e) => { const file = e.currentTarget.files?.[0]; if (file) upload.mutate(file); }} /></label>
       </div>
-      {upload.isError && <ErrorBanner severity="P1" message="上传材料失败，请确认格式、大小或解析状态" />}
-      {remove.isError && <ErrorBanner severity="P1" message="删除材料失败" />}
       {refs.isLoading ? <Skeleton rows={3} /> : refs.isError ? <ErrorBanner severity="P1" message="加载材料失败" onRetry={() => void refs.refetch()} /> : references.length === 0 ? <div className="border-2 border-dashed border-[var(--app-fg)] px-4 py-6 font-[var(--boule-mono)] text-xs uppercase tracking-[0.1em] text-[var(--boule-muted)]">暂无材料。可先上传客户简报、访谈纪要、行业材料或数据摘录。</div> : (
         <div className="border-2 border-[var(--app-fg)] shadow-[5px_5px_0_var(--app-fg)]">
           {references.map((ref) => <div key={ref.id} className="flex items-center gap-3 border-t-2 border-[var(--app-fg)] px-3 py-3 first:border-t-0"><input type="checkbox" checked={selected.has(ref.id)} onChange={() => toggle(ref.id)} className="h-4 w-4 accent-[var(--boule-blue)]" /><div className="min-w-0 flex-1"><div className="truncate font-[var(--boule-disp)] text-lg font-black tracking-[-0.02em]">{ref.filename}</div><div className="mt-1 font-[var(--boule-mono)] text-[10px] uppercase tracking-[0.08em] text-[var(--boule-muted)]">{friendlyType(ref.mimeType, ref.filename)} · {humanBytes(ref.sizeBytes)} · {statusLabel(ref.parseStatus, ref.parseSource)}{ref.parseError ? ` · ${parseErrorLabel(ref.parseError)}` : ""}</div></div><Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(ref.id)}>删除</Button></div>)}
