@@ -589,3 +589,20 @@ button, input, select, textarea { font: inherit; }
 .boule-prose blockquote { border-left: 3px solid var(--md-primary); margin: 1em 0; padding: .2em 1em; color: var(--md-on-surface-variant); }
 .boule-prose a { color: var(--md-primary); text-decoration: underline; }
 .boule-prose hr { border: none; border-top: 1px solid var(--md-outline-variant); margin: 1.6em 0; }
+
+/* ── Material3 Navigation Rail（lg+ 左侧导航，固定在顶栏下方）── */
+.boule-rail { display: none; }
+@media (min-width: 1024px) {
+  .boule-rail {
+    position: fixed; left: 0; top: 64px; bottom: 0; width: 80px; z-index: 40;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 16px 0; background: var(--md-surface);
+    border-right: 1px solid var(--md-outline-variant);
+  }
+}
+.boule-rail__item { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 6px 0; color: var(--md-on-surface-variant); cursor: pointer; }
+.boule-rail__indicator { display: flex; align-items: center; justify-content: center; width: 56px; height: 32px; border-radius: var(--md-shape-full); transition: background var(--md-dur-short) var(--md-ease-standard); }
+.boule-rail__item:hover .boule-rail__indicator { background: var(--row-hover-bg); }
+.boule-rail__item--active { color: var(--md-on-surface); }
+.boule-rail__item--active .boule-rail__indicator { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.boule-rail__label { font-size: 11px; font-weight: 600; }

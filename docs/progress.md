@@ -493,3 +493,14 @@ build 绿（CSS 65→69KB）。剩余深化：FAB 落位、新建项目向导、
 
 实拍 `docs/screenshots/macos-app-window.png`：M3 工作台 + 顶栏铃铛，无加载失败。打包 .dmg 重出验证通过。
 唯一剩余：Apple 证书签名/公证（需证书）。
+
+### 2026-06-18（续15）— M3 可选补强：离线图标字体 + 列表项图标 + NavigationRail
+
+1. **图标字体本地打包**：Material Symbols woff2（3.8MB 变体）下载到 public/fonts/，index.css @font-face 本地引用，
+   index.html 去 CDN 改 preload。离线可用（实测打包后 /fonts/*.woff2 served 200，图标渲染）。
+2. **M3 list leading 图标**：项目列表 folder_open（圆形 secondary-container）；材料按 mime 出类型图标
+   （pdf/data_object/table/slideshow/description/article）；项目文档 description/widgets。
+3. **NavigationRail**（components/NavigationRail.tsx）：lg+ 左侧 80dp 导航栏（图标 + 药丸 active 指示 + 标签），
+   顶栏中部链接在 lg+ 收起交给 rail；窄屏仍顶栏/汉堡。main 在 lg+ 左 padding 80px。
+
+实拍 `docs/screenshots/macos-app-window.png`：左侧 M3 Navigation Rail + 顶栏 + M3 工作台，无加载失败。

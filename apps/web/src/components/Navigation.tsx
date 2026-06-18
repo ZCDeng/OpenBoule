@@ -47,7 +47,7 @@ export function Navigation() {
           <span className="font-[var(--boule-disp)] text-[20px] font-semibold tracking-[-0.01em] text-[var(--md-on-surface)]">OpenConsult<span className="text-[var(--md-primary)]">///</span></span>
           <span className="rounded-full bg-[var(--md-secondary-container)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--md-on-secondary-container)]">Boule</span>
         </Link>
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-1 md:flex lg:hidden">
           {NAV.map((n) => {
             const active = loc.pathname.startsWith(n.to);
             return (
